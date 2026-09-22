@@ -1,0 +1,3 @@
+export const OTP_CODE_LENGTH = 6;
+
+export const RESEND_COOLDOWN_SECONDS = 90;
