@@ -1,0 +1,80 @@
+مرحله‌ی ۴ (فاز ۱ از ۴) — پایه‌ی بک‌اند CMS + بلاگ
+
+هدف کلی (طبق درخواست): یه CMS تمیز برای مدیریت محتوای صفحه‌ی فرود + بلاگ،
+به‌علاوه‌ی بازطراحی UI/UX کل سایت (فرود + پنل) با انیمیشن‌های ظریف و مدرن.
+کارِ به این بزرگی رو تو ۴ فاز جدا انجام می‌دیم تا هر فاز جدا قابل‌بررسی/تست
+باشه:
+
+  فاز ۱ (همین مرحله) - مدل داده + API بک‌اند برای CMS و بلاگ        ✅ انجام شد
+  فاز ۲ - پنل ادمین (فرم‌های ویرایش محتوای فرود + مدیریت پست‌های بلاگ)
+  فاز ۳ - صفحات عمومی (/blog، /blog/:slug) + اتصال صفحه‌ی فرود به CMS
+  فاز ۴ - بازطراحی UI/UX کل سایت با framer-motion (فرود + پنل داشبورد)
+
+تصمیم‌هایی که گرفته شد:
+
+۱. محتوا دو مدل جداست:
+   - BlogPost: هر پست یه ردیف، با slug/عنوان/خلاصه/contentMarkdown/کاور/
+     published. contentMarkdown خام ذخیره می‌شه؛ رندر به HTML سمت کلاینته
+     (react-markdown، بهش اضافه شد تو client/package.json) - سرور هیچ‌وقت
+     HTML خام از ورودی ادمین رو ذخیره/برنمی‌گردونه (امنیت XSS).
+   - SiteContent: یه ردیف به‌ازای هر section از صفحه‌ی فرود (hero/about/
+     features/pricing/news/footer - لیست دقیق تو
+     server/src/validation/cmsSchemas.ts). data آزادانه JSON ـه چون شکل هر
+     section فرق می‌کنه.
+
+۲. مدیریت محتوا: پنل ادمین داخل همین پروژه (طبق گزینه‌ای که خودت به‌عنوان
+   پیشنهاد خواستی) - فقط SuperAdmin بهش دسترسی داره (بلاگ/محتوای فرود
+   محتوای سراسریِ سایته، نه چیزی که هر مدرس مالِ خودش داشته باشه). فاز ۲
+   فرم‌هاش رو می‌سازه.
+
+۳. تصویرها (کاور بلاگ، تصویر بخش‌های فرود): این‌ها برخلاف ویدیو/جزوه (که
+   خصوصی و پشت signed URL هستن) باید بدون لاگین قابل‌دیدن باشن - چون صفحه‌ی
+   فرود/بلاگ عمومی‌ان. برای همین یه لایه‌ی جدا اضافه شد
+   (server/src/lib/storage.ts -> uploadPublicObject/getPublicObjectUrl) که
+   زیر پیشوند "public/" تو همون bucket ذخیره می‌کنه. این یعنی قبل از استفاده
+   از آپلود تصویر، باید سمت زیرساخت یه bucket/CDN با دسترسیِ خواندنِ عمومی
+   کانفیگ بشه و آدرسش تو S3_PUBLIC_BASE_URL (جدید، تو .env) گذاشته بشه -
+   خالی گذاشتنش باعث میشه آپلود تصویر با خطای واضح fail کنه، نه لینکِ
+   ازکارافتاده بسازه.
+
+فایل‌های جدید/تغییریافته:
+  server/prisma/schema.prisma                 (+BlogPost, +SiteContent)
+  server/prisma/migrations/20260922110000_add_cms_and_blog/
+  server/src/config/env.ts                    (+S3_PUBLIC_BASE_URL)
+  server/.env.example                         (+S3_PUBLIC_BASE_URL)
+  server/src/lib/storage.ts                   (+uploadPublicObject/getPublicObjectUrl/deletePublicObject)
+  server/src/lib/imageUpload.ts               (جدید - multer برای jpg/png/webp)
+  server/src/validation/blogSchemas.ts        (جدید)
+  server/src/validation/cmsSchemas.ts         (جدید)
+  server/src/routes/blog.ts                   (جدید)
+  server/src/routes/cms.ts                    (جدید)
+  server/src/server.ts                        (mount شدن /blog و /cms)
+  client/src/api/blogApi.ts                   (جدید)
+  client/src/api/cmsApi.ts                    (جدید)
+  client/package.json                         (+framer-motion, +react-markdown)
+
+Endpoint های جدید:
+  GET  /blog                          عمومی - لیستِ پست‌های منتشرشده
+  GET  /blog/:slug                    عمومی - یه پست منتشرشده
+  GET  /blog/admin                    SuperAdmin - همه‌ی پست‌ها (شامل draft)
+  GET  /blog/admin/:id                SuperAdmin
+  POST /blog/admin                    SuperAdmin - ساخت پست
+  PUT  /blog/admin/:id                SuperAdmin - ویرایش پست
+  DELETE /blog/admin/:id              SuperAdmin
+  POST /blog/admin/:id/cover          SuperAdmin - آپلود تصویر کاور
+
+  GET  /cms                           عمومی - همه‌ی section ها یه‌جا
+  PUT  /cms/admin/:section            SuperAdmin - ویرایش یه section
+  POST /cms/admin/:section/image      SuperAdmin - آپلود تصویر برای section
+
+قبل از اجرا:
+  1. cd server && npm install   (framer-motion/react-markdown سمت کلاینتن؛
+     سمت سرور چیز جدیدی اضافه نشده)
+  2. cd client && npm install
+  3. npx prisma migrate dev  (اعمال migration جدید رو دیتابیس dev)
+  4. S3_PUBLIC_BASE_URL رو تو server/.env پر کن (یا یه bucket/mount عمومی
+     جدید بساز، یا موقتاً همون bucket خصوصیِ فعلی رو با یه bucket policy
+     برای پیشوند public/* عمومی کن) - بدونش آپلود تصویر بلاگ/فرود کار
+     نمی‌کنه (خطای واضح می‌ده، نه شکست خاموش)
+
+ادامه: فاز ۲ (پنل ادمین) رو می‌خوای همین الان شروع کنم؟

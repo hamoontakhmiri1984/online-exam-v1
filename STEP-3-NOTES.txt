@@ -1,0 +1,23 @@
+مرحلهٔ ۳ — اصلاح OTP
+مبنا: exam-platform-full-step-2.zip؛ شامل تغییرات مراحل ۱ و ۲.
+
+تغییرها:
+- server/src/lib/otpStore.ts: فایل جدید؛ قفل تراکنشی PostgreSQL برای هر identifier و purpose؛ باطل‌کردن قبلی و ساخت جدید در همان تراکنش با ReadCommitted.
+- server/src/lib/otp.ts: استفاده از ذخیره‌ساز جدید و کنترل انقضا هنگام رزرو تلاش و مصرف کد.
+- server/tests/otp.test.cjs: هفت تست مستقل با جایگزین حافظه‌ای دیتابیس و bcrypt.
+- server/tests/otp.integration.test.ts: دو تست PostgreSQL واقعی؛ در این محیط اجرا نشده‌اند. نبود دیتابیس باعث خطا می‌شود، نه skip.
+- server/package.json: افزودن تست‌ها به npm test و فرمان‌های test:otp و test:otp:integration.
+- server/src/routes/exams.ts: ثبت instructorId از کاربر احراز هویت‌شده هنگام ایجاد آزمون؛ رفع ناسازگاری با schema موجود. تکمیل سیاست مالکیت و حذف گروه در مرحلهٔ بعد بررسی می‌شود.
+
+اعتبارسنجی انجام‌شده:
+- تولید Prisma Client از schema همین بسته و بررسی TypeScript بک‌اند: موفق.
+- TypeScript و build فرانت: موفق.
+- ۷ تست OTP و ۱۰ تست نشست: موفق.
+- PostgreSQL/Redis واقعی و ارسال واقعی پیامک/ایمیل: اجرا نشده.
+
+برای اجرای تست دیتابیس در محیط تست، ابتدا تنظیمات و migrationهای موجود پروژه را اعمال کنید، سپس در server اجرا کنید:
+npm run test:otp:integration
+این مرحله migration جدید ندارد.
+
+قفل، صدور کد در چند پردازش سرور را هماهنگ می‌کند؛ ترتیب رسیدن پیامک/ایمیل را تضمین نمی‌کند. فقط آخرین چالش ثبت‌شده معتبر است.
+هیچ فایل کد مرده‌ای در محدودهٔ این مرحله تأیید و حذف نشد.

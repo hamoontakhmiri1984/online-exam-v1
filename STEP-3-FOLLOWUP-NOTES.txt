@@ -1,0 +1,46 @@
+پیگیری بعد از مرحله‌ی ۳ — اصلاح تاریخچه‌ی migration
+
+یافته (خارج از محدوده‌ی خودِ مرحله‌ی ۳، ولی حین بررسیِ کل پروژه پیدا شد):
+
+server/prisma/migrations/20260912175323_add_approval_status اسمش با
+20260912120000_add_approval_status (که واقعاً approvalStatus رو اضافه
+می‌کنه) تکراریه، ولی محتواش کاملاً غیرمرتبطه: دقیقاً همون تغییراتی که
+exam_attempt_server_timing (ساعت ۱۳:۳۰ همون روز) اضافه کرده بود رو
+برمی‌گردونه (expiresAt رو DROP می‌کنه، finishedAt رو NOT NULL می‌کنه،
+ایندکس یکتای examId+studentId رو DROP می‌کنه).
+
+migration بعدی (20260914191557_add_exam_attempt_unique_constraint) سعی
+می‌کنه expiresAt رو دوباره برگردونه، ولی به‌صورت NOT NULL بدون default -
+که فقط رو جدول خالی (نصب تازه) کار می‌کنه؛ رو هر محیطی که تا اون لحظه
+ردیفی تو exam_attempts داشته، همین migration با خطای Postgres fail
+می‌کنه (خودِ فایل هم تو کامنت auto-generated‌ش همینو هشدار داده بود).
+
+روی یه دیتابیس کاملاً تازه (چون جدول خالیه) کل زنجیره تا آخر بدون خطا
+اجرا می‌شه و به وضعیت درستِ schema.prisma فعلی می‌رسه - برای همین این
+مشکل تا الان تو dev دیده نشده بود.
+
+اصلاح: به‌جای دست‌کاریِ migration های قدیمی (که checksum‌شون رو برای هر
+کسی که قبلاً اجراشون کرده به‌هم می‌ریزه)، یه migration جدید اضافه شد:
+
+  server/prisma/migrations/20260922100000_fix_exam_attempt_timing_migration_history
+
+idempotent ـه و مستقل از اینه که یه دیتابیسِ مشخص کدوم زیرمجموعه از
+migration های بالا روش موفق اجرا شده: expiresAt رو اگه نبود دوباره اضافه
+می‌کنه (nullable)، از finishedAt برای ردیف‌های موجود backfill می‌کنه، بعد
+NOT NULL می‌کنه، finishedAt رو nullable می‌کنه، و ایندکس یکتا رو اگه نبود
+می‌سازه.
+
+نکته برای هر محیطی (staging/production) که ممکنه از قبل این تاریخچه رو
+اجرا کرده باشه: اگه migrate deploy دقیقاً رو
+20260914191557_add_exam_attempt_unique_constraint با خطای NOT NULL
+constraint متوقف شده، Prisma اون migration رو "failed" علامت زده و قبل
+از اجرای migration جدید باید دستی resolve بشه:
+
+  npx prisma migrate resolve --rolled-back 20260914191557_add_exam_attempt_unique_constraint
+
+و بعد npx prisma migrate deploy دوباره اجرا بشه تا migration جدید
+(20260922100000) اون رو درست کنه.
+
+یه فایلِ اضافه‌ی صفربایتی و بی‌ربط (encoding خراب، اسمش #U00f7) هم مستقیم
+داخل پوشه‌ی migrations بود که پاک شد - migration واقعی نبود، فقط یه
+artifact بی‌ضرر ولی گمراه‌کننده.
