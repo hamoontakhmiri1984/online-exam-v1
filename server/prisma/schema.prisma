@@ -1,0 +1,438 @@
+// بازسازی‌شده از روی migrationهای موجود (server/prisma/migrations) + کد سرور.
+// فایل اصلی تو zip خراب بود؛ بعد از جایگزینی حتماً با `npx prisma migrate diff`
+// (پایین) با دیتابیس واقعی مقایسه بشه:
+//   npx prisma migrate diff --from-migrations prisma/migrations \
+//     --to-schema-datamodel prisma/schema.prisma --shadow-database-url <URL>
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SuperAdmin
+  Instructor
+  Student
+}
+
+enum ApprovalStatus {
+  Pending
+  Approved
+  Rejected
+}
+
+enum OtpPurpose {
+  REGISTER
+  LOGIN
+  RESET_PASSWORD
+}
+
+enum OtpChannel {
+  SMS
+  EMAIL
+}
+
+enum VideoSourceType {
+  LINK
+  UPLOAD
+}
+
+enum PlanId {
+  free
+  gold
+  platinum
+  vip
+}
+
+enum NotificationIcon {
+  info
+  people
+  award
+}
+
+enum CategoryStatus {
+  Pending
+  Approved
+}
+
+enum QuestionDifficulty {
+  Easy
+  Medium
+  Hard
+}
+
+enum ExamStatus {
+  Draft
+  Published
+}
+
+enum PaymentStatus {
+  Pending
+  Success
+  Failed
+  Refunded
+}
+
+model User {
+  id                  String         @id @default(cuid())
+  phone               String?        @unique
+  email               String?        @unique
+  passwordHash        String?
+  name                String?
+  role                Role           @default(Student)
+  googleId            String?        @unique
+  phoneVerifiedAt     DateTime?
+  emailVerifiedAt     DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  username            String?        @unique
+  usernameNormalized  String?        @unique
+  approvalStatus      ApprovalStatus @default(Approved)
+  onboardingCompleted Boolean        @default(false)
+  organizationName    String?
+
+  otpCodes           OtpCode[]
+  instructedGroups   Group[]            @relation("GroupInstructor")
+  groupsMember       Group[]            @relation("GroupMembers")
+  ownedExams         Exam[]             @relation("ExamOwner")
+  attempts           ExamAttempt[]
+  subscriptions      Subscription[]
+  payments           Payment[]
+  notifications      Notification[]
+  notificationReads  NotificationRead[]
+  proposedCategories Category[]
+  questionBanks      QuestionBank[]
+  handouts           Handout[]
+  blogPosts          BlogPost[]         @relation("BlogAuthor")
+  siteContentEdits   SiteContent[]      @relation("SiteContentEditor")
+
+  @@map("users")
+}
+
+model OtpCode {
+  id         String     @id @default(cuid())
+  identifier String
+  channel    OtpChannel
+  purpose    OtpPurpose
+  codeHash   String
+  attempts   Int        @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime   @default(now())
+  userId     String?
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([identifier, purpose])
+  @@map("otp_codes")
+}
+
+model Group {
+  id           String   @id @default(cuid())
+  name         String
+  category     String
+  joinCode     String   @unique
+  instructorId String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  instructor     User            @relation("GroupInstructor", fields: [instructorId], references: [id], onDelete: Restrict)
+  students       User[]          @relation("GroupMembers")
+  exams          Exam[]          @relation("GroupExams")
+  lessonSessions LessonSession[] @relation("GroupSessions")
+  handouts       Handout[]
+
+  @@index([instructorId])
+  @@map("groups")
+}
+
+model LessonSession {
+  id            String          @id @default(cuid())
+  category      String
+  title         String
+  description   String
+  videoType     VideoSourceType
+  videoUrl      String?
+  videoFileName String?
+  // آدرس/کلید آبجکت تو storage (MinIO/S3) برای ویدیوی آپلودی
+  videoObjectUrl String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  groups      Group[]            @relation("GroupSessions")
+  attachments LessonAttachment[]
+
+  @@map("lesson_sessions")
+}
+
+model LessonAttachment {
+  id        String   @id @default(cuid())
+  fileName  String
+  fileUrl   String
+  fileSize  Int
+  sessionId String
+  createdAt DateTime @default(now())
+
+  session LessonSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("lesson_attachments")
+}
+
+model Handout {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  category     String
+  groupId      String?
+  instructorId String
+  fileName     String
+  fileUrl      String
+  fileSize     Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  group      Group? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  instructor User   @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+
+  @@index([instructorId])
+  @@index([groupId])
+  @@index([category])
+  @@map("handouts")
+}
+
+// یه پست بلاگ. contentMarkdown همون‌طوری که نویسنده تو ادمین نوشته ذخیره
+// می‌شه (Markdown خام) - رندر به HTML سمت کلاینته (react-markdown)، نه سمت
+// سرور؛ یعنی سرور هیچ‌وقت HTML خام از ورودی کاربر رو مستقیم ذخیره/برنمی‌گردونه.
+// coverImageKey فقط object key ـه (نه URL کامل) - چون تو public bucket
+// (نه bucket خصوصی uploads) ذخیره می‌شه، routes/blog.ts موقع serialize
+// کردن پاسخ، URL کامل رو با getPublicObjectUrl می‌سازه.
+model BlogPost {
+  id              String    @id @default(cuid())
+  slug            String    @unique
+  title           String
+  excerpt         String
+  contentMarkdown String
+  coverImageKey   String?
+  published       Boolean   @default(false)
+  publishedAt     DateTime?
+  authorId        String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  author User @relation("BlogAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([published, publishedAt])
+  @@map("blog_posts")
+}
+
+// محتوای قابل‌ویرایشِ صفحه‌ی فرود، به‌صورت یه ردیف به‌ازای هر بخش (section):
+// 'hero' | 'features' | 'pricing' | 'news' | 'about' | 'footer' (لیست دقیق
+// تو server/src/validation/cmsSchemas.ts). data آزادانه JSON ـه چون شکل هر
+// بخش فرق می‌کنه (مثلاً hero یه عنوان/زیرعنوان/تصویر داره، pricing یه آرایه
+// از پلن‌ها) - اعتبارسنجیِ شکلِ داخلی هر بخش سمت route انجام می‌شه، نه اسکیمای
+// یکسان برای همه. section هیچ‌وقت از کلاینت نمیاد؛ فقط از لیست ثابتِ بالا
+// انتخاب می‌شه، پس محدودیتی رو مقدارش لازم نیست.
+model SiteContent {
+  id          String   @id @default(cuid())
+  section     String   @unique
+  data        Json
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  updatedBy User? @relation("SiteContentEditor", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("site_contents")
+}
+
+model Category {
+  id             String         @id @default(cuid())
+  name           String
+  nameNormalized String         @unique
+  status         CategoryStatus @default(Pending)
+  proposedById   String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  proposedBy User? @relation(fields: [proposedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@map("categories")
+}
+
+model Exam {
+  id              String     @id @default(cuid())
+  title           String
+  category        String
+  scheduledAt     DateTime
+  durationMinutes Int
+  allowReview     Boolean    @default(true)
+  status          ExamStatus @default(Draft)
+  // مالکِ مستقلِ آزمون. قبلاً مالکیت فقط از groups.instructorId استنباط
+  // می‌شد (examAccess.ts) - یعنی حذفِ آخرین/تنها گروهِ وصل‌شده به یه آزمون،
+  // اون آزمون رو کاملاً از دسترسِ مدرس خارج می‌کرد (نه تو GET /exams
+  // می‌موند، نه قابل ویرایش/حذف بود)، بدون این‌که خودِ آزمون یا داده‌هاش
+  // پاک شده باشن. حالا مالکیت مستقل از گروه‌هاست؛ حذف/تغییرِ گروه‌ها فقط
+  // رو دسترسیِ دانشجوها اثر می‌ذاره، نه رو مالکیتِ مدرس.
+  instructorId String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  instructor User           @relation("ExamOwner", fields: [instructorId], references: [id], onDelete: Restrict)
+  groups     Group[]        @relation("GroupExams")
+  attempts   ExamAttempt[]
+  questions  ExamQuestion[]
+
+  @@index([instructorId])
+  @@map("exams")
+}
+
+model QuestionBank {
+  id           String   @id @default(cuid())
+  name         String
+  category     String
+  instructorId String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  instructor User       @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  questions  Question[]
+
+  @@index([instructorId])
+  @@index([category])
+  @@map("question_banks")
+}
+
+model Question {
+  id                 String             @id @default(cuid())
+  text               String
+  options            String[]
+  correctOptionIndex Int
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  bankId             String
+  difficulty         QuestionDifficulty @default(Medium)
+
+  bank          QuestionBank   @relation(fields: [bankId], references: [id], onDelete: Cascade)
+  examQuestions ExamQuestion[]
+
+  @@index([bankId])
+  @@index([bankId, difficulty])
+  @@map("questions")
+}
+
+// snapshot مستقل از سوال بانک: حذف سوال/بانک فقط questionId رو null می‌کنه
+model ExamQuestion {
+  id                   String   @id @default(cuid())
+  examId               String
+  questionId           String?
+  order                Int
+  textSnapshot         String
+  optionsSnapshot      String[]
+  correctIndexSnapshot Int
+  createdAt            DateTime @default(now())
+
+  exam     Exam      @relation(fields: [examId], references: [id], onDelete: Cascade)
+  question Question? @relation(fields: [questionId], references: [id], onDelete: SetNull)
+
+  @@unique([examId, order])
+  @@index([examId])
+  @@index([questionId])
+  @@map("exam_questions")
+}
+
+model ExamAttempt {
+  id             String    @id @default(cuid())
+  examId         String
+  studentId      String
+  answers        Json
+  // شماره‌ی نسخه‌ی آخرین ذخیره‌ی خودکار (PATCH .../attempts/answers): سرور فقط
+  // نسخه‌ی بزرگ‌تر از این مقدار رو می‌پذیره، تا ذخیره‌ی قدیمی که دیرتر می‌رسه
+  // جواب جدیدتر رو بازنویسی نکنه
+  answersRevision Int      @default(0)
+  correctCount   Int
+  totalQuestions Int
+  startedAt      DateTime
+  // null یعنی attempt هنوز در حال انجامه
+  finishedAt     DateTime?
+  endedByTimeout Boolean   @default(false)
+  expiresAt      DateTime
+
+  exam    Exam @relation(fields: [examId], references: [id], onDelete: Restrict)
+  student User @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@unique([examId, studentId])
+  @@index([examId])
+  @@index([studentId])
+  @@map("exam_attempts")
+}
+
+// تاریخچه‌ی append-only؛ «پلن فعلی» = جدیدترین ردیف بر اساس startDate
+model Subscription {
+  id               String    @id @default(cuid())
+  instructorId     String
+  planId           PlanId
+  startDate        DateTime  @default(now())
+  endDate          DateTime?
+  expiryNotifiedAt DateTime?
+
+  instructor User      @relation(fields: [instructorId], references: [id], onDelete: Restrict)
+  payments   Payment[]
+
+  @@index([instructorId])
+  @@map("subscriptions")
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  instructorId   String
+  planId         PlanId
+  amount         Int
+  authority      String        @unique
+  status         PaymentStatus @default(Pending)
+  refId          Int?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  subscriptionId String?
+
+  instructor   User          @relation(fields: [instructorId], references: [id], onDelete: Restrict)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([instructorId])
+  @@index([status])
+  @@map("payments")
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String?
+  targetRoles Role[]
+  title       String
+  read        Boolean          @default(false)
+  icon        NotificationIcon
+  createdAt   DateTime         @default(now())
+
+  user  User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  reads NotificationRead[]
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+// وضعیت خوندنِ اعلانِ گروهی (userId = null) به‌ازای هر کاربر؛ ستون read خودِ
+// Notification فقط برای اعلان‌های شخصی معنا داره
+model NotificationRead {
+  userId         String
+  notificationId String
+  readAt         DateTime @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, notificationId])
+  @@index([notificationId])
+  @@map("notification_reads")
+}
