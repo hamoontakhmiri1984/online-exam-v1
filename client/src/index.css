@@ -1,0 +1,126 @@
+@import 'tailwindcss';
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-brand-50: #f2f1fc;
+  --color-brand-100: #e5e3f9;
+  --color-brand-200: #c8c3f1;
+  --color-brand-300: #a89fe8;
+  --color-brand-400: #7d70d9;
+  --color-brand-500: #4f46c9;
+  --color-brand-600: #3730a3;
+  --color-brand-700: #2d2682;
+  --color-brand-800: #241f68;
+  --color-brand-900: #1c1852;
+  --color-brand-950: #100d33;
+
+  --color-accent-400: #f59e0b;
+  --color-accent-500: #e08a04;
+  --color-accent-600: #d97706;
+  --color-accent-700: #b45309;
+
+  --color-success-500: #22c55e;
+  --color-success-600: #16a34a;
+
+  --color-danger-50: #fef2f2;
+  --color-danger-100: #fee2e2;
+  --color-danger-200: #fecaca;
+  --color-danger-400: #f87171;
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
+  --color-danger-700: #b91c1c;
+  --color-danger-900: #7f1d1d;
+  --color-danger-950: #450a0a;
+
+  --color-surface-light: #f6f7fb;
+  --color-surface-dark: #0b0e17;
+}
+
+body {
+  font-family: 'Vazirmatn', sans-serif;
+  user-select: none;
+}
+
+input,
+textarea {
+  user-select: text;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 88px;
+  scrollbar-gutter: stable;
+}
+
+@keyframes fade-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-slide {
+  animation: fade-slide-in 0.45s ease forwards;
+}
+
+/* --- ورود هماهنگ‌شده‌ی هوم‌پیج/لاگین: عناصر با تاخیر پشت‌سرهم fade+slide-up
+   می‌شن (به‌جای این‌که همه هم‌زمان یا اصلاً بدون انیمیشن ظاهر بشن) --- */
+@keyframes fade-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-slide-up {
+  animation: fade-slide-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.stagger-1 {
+  animation-delay: 0.08s;
+}
+.stagger-2 {
+  animation-delay: 0.16s;
+}
+.stagger-3 {
+  animation-delay: 0.24s;
+}
+.stagger-4 {
+  animation-delay: 0.32s;
+}
+
+/* حباب‌های تزئینی پس‌زمینه (هوم‌پیج و پنل برندینگ لاگین) یه drift خیلی
+   آروم و ظریف می‌گیرن تا صفحه کاملاً ثابت به‌نظر نرسه */
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(14px, -18px);
+  }
+}
+
+.animate-drift {
+  animation: drift 11s ease-in-out infinite;
+}
+.animate-drift-slow {
+  animation: drift 16s ease-in-out infinite reverse;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-slide,
+  .animate-fade-slide-up,
+  .animate-drift,
+  .animate-drift-slow {
+    animation: none !important;
+  }
+}
