@@ -1,0 +1,35 @@
+{
+  "name": "exam-platform-client",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "lint": "oxlint ."
+  },
+  "dependencies": {
+    "@react-oauth/google": "^0.12.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.0.0",
+    "lucide-react": "^0.460.0",
+    "recharts": "^2.13.0",
+    "socket.io-client": "^4.8.0",
+    "xlsx": "^0.18.5",
+    "jalaali-js": "^1.2.6",
+    "framer-motion": "^11.11.0",
+    "react-markdown": "^9.0.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "oxlint": "^0.15.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.6.2",
+    "vite": "^6.0.0"
+  }
+}
