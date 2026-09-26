@@ -5,7 +5,6 @@ import { getCurrentSubscription, isSubscriptionExpired } from './subscriptions';
 import { lockInstructorForUpdate } from './instructorLock';
 import { AppError } from './errors';
 
-// کلاینتِ کوئری: یا تراکنش، یا خودِ prisma (PrismaClient با این نوع سازگاره)
 export type QuotaDb = Prisma.TransactionClient;
 
 export type UsageSummary = {
@@ -15,8 +14,6 @@ export type UsageSummary = {
   handouts: number;
 };
 
-// دقیقاً معادل getInstructorUsage تو mock: تعداد گروه‌های خودِ مدرس، تعداد
-// آزمون‌های «upcoming» (هنوز تموم نشده) روی اون گروه‌ها، و مجموع سوال‌ها.
 export async function getInstructorUsage(
   instructorId: string,
   db: QuotaDb = prisma
@@ -27,41 +24,33 @@ export async function getInstructorUsage(
   });
   const groupIds = groups.map((g) => g.id);
 
-  // سقف پلن رو مجموعِ (سوال‌های بانک) + (سوال‌هایی که مستقیم تو یه آزمون
-  // نوشته شدن، نه از بانک ایمپورت - questionId: null) حساب می‌کنیم. سوالی
-  // که از بانک به چند آزمون ایمپورت می‌شه دوباره شمرده نمی‌شه (همون یه
-  // سوال بانکه)، ولی نوشتنِ مستقیمِ سوال تو آزمون (که تا الان قسر در
-  // می‌رفت و سهمیه رو دور می‌زد) الان حساب می‌شه
+
   const questionsPromise = (async () => {
     const [bankCount, localExamQuestionCount] = await Promise.all([
       db.question.count({ where: { bank: { instructorId } } }),
       db.examQuestion.count({
         where: {
           questionId: null,
-          exam: { groups: { some: { instructorId } } },
+          exam: { instructorId },          // ← قبلاً: exam: { groups: { some: { instructorId } } }
         },
       }),
     ]);
     return bankCount + localExamQuestionCount;
   })();
 
-  // جزوه‌های خودِ مدرس، چه به یه گروه خاص وصل باشن چه فقط به دسته - همه‌شون
-  // رو خود مدرس می‌سازه، پس سقف پلن روی instructorId حساب می‌شه (نه گروه)
   const handoutsPromise = db.handout.count({ where: { instructorId } });
 
-  if (groupIds.length === 0) {
-    return {
-      groups: 0,
-      activeExams: 0,
-      questions: await questionsPromise,
-      handouts: await handoutsPromise,
-    };
-  }
 
-  const exams = await db.exam.findMany({
-    where: { groups: { some: { id: { in: groupIds } } } },
+  const examsPromise = db.exam.findMany({
+    where: { instructorId },
     select: { scheduledAt: true, durationMinutes: true },
   });
+
+  const [exams, questions, handouts] = await Promise.all([
+    examsPromise,
+    questionsPromise,
+    handoutsPromise,
+  ]);
 
   const now = Date.now();
   const activeExams = exams.filter(
@@ -71,8 +60,8 @@ export async function getInstructorUsage(
   return {
     groups: groupIds.length,
     activeExams,
-    questions: await questionsPromise,
-    handouts: await handoutsPromise,
+    questions,
+    handouts,
   };
 }
 
@@ -99,7 +88,6 @@ async function getRemainingQuota(
   const limit = getLimit(sub.planId);
   const expired = isSubscriptionExpired(sub);
 
-  // limit === null یعنی «نامحدود»، ولی فقط تا وقتی که پلن منقضی نشده.
   if (limit === null && !expired) return { limited: false };
 
   const usage = await getInstructorUsage(instructorId);
@@ -128,8 +116,7 @@ async function checkLimit(
     : { allowed: false, reason: 'limit_reached' };
 }
 
-// چک محدودیت با تعداد آیتم قابل‌درخواست (برای ایمپورت دسته‌ای سوال) - اگه
-// remaining کمتر از count باشه یعنی این دسته کامل جا نمی‌شه
+
 async function checkLimitForCount(
   instructorId: string,
   count: number,
@@ -144,22 +131,6 @@ async function checkLimitForCount(
     : { allowed: false, reason: 'limit_reached' };
 }
 
-// ---------------------------------------------------------------------------
-// اعمالِ اتمیکِ سهمیه (چک + ساخت داخل یه تراکنش، پشت قفلِ مدرس)
-// ---------------------------------------------------------------------------
-//
-// quotaCheckers/remainingQuota پایین‌تر فقط «مشورتی»ان (نمایش نوار پیشرفت،
-// خطای زودهنگام): چک جدا از ساخت انجام می‌شن، پس چند درخواستِ موازی همه‌شون
-// می‌تونن چکِ «جا هست» رو رد کنن و از سقف پلن بگذرن. هر مسیری که ردیفِ
-// سهمیه‌دار می‌سازه باید از withQuotaLock (یا prepareQuotaGuard + قفل خودش)
-// رد بشه:
-//   ۱) پلنِ مدرس *قبل از تراکنش* خونده می‌شه (getCurrentSubscription ممکنه
-//      خودش بنویسه/اعلان بفرسته و کانکشن دوم بخواد - داخل تراکنش نمی‌ذاریمش
-//      تا با کانکشنِ نگه‌داشته‌شده pool رو قفل نکنه)
-//   ۲) داخل تراکنش: قفلِ ردیف مدرس، شمارشِ مصرف با همون tx، مقایسه با سقف
-//   ۳) ساختنِ ردیف با همون tx - قبل از آزاد شدن قفل commit می‌شه، پس
-//      درخواستِ بعدیِ همون مدرس مصرفِ به‌روز رو می‌بینه
-// پلن نامحدود (و منقضی‌نشده) هیچ قفلی نمی‌گیره.
 
 export type QuotaKind = 'groups' | 'activeExams' | 'questions' | 'handouts';
 
@@ -209,9 +180,7 @@ async function enforceQuotaInTx(
   if (plan.limit - used < count) throw planLimitError('limit_reached');
 }
 
-// برای مسیرهایی که تراکنشِ خودشون رو دارن (مثل withExamWriteLock): بعد از
-// صدا زدنِ این تابع، چکِ سهمیه رو باید *اول‌ترین کارِ تراکنش* صدا بزنن (قبل از
-// قفل ردیف آزمون؛ ترتیبِ قفل‌ها همه‌جا «مدرس ← آزمون» ـه)
+
 export async function prepareQuotaGuard(
   instructorId: string,
   kind: QuotaKind,
@@ -243,8 +212,7 @@ export async function withQuotaLock<T>(
   );
 }
 
-// نسخه‌ی نقش‌دار: SuperAdmin از سهمیه معافه ولی ساخت همچنان داخل یه
-// تراکنشِ اتمیک اجرا می‌شه (ایمپورت دسته‌ای نباید نیمه‌کاره بمونه)
+
 export async function withQuotaForRole<T>(
   role: string,
   instructorId: string,

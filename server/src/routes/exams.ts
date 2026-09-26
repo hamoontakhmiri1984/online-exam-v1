@@ -71,7 +71,7 @@ router.get(
       role === 'SuperAdmin'
         ? {}
         : role === 'Instructor'
-        ? { groups: { some: { instructorId: sub } } }
+        ? { instructorId: sub }     
         : {
             status: 'Published' as const,
             groups: { some: { students: { some: { id: sub } } } },
