@@ -1,7 +1,9 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
-import { conflict, notFound } from '../../lib/errors';
+import { conflict, forbidden, notFound } from '../../lib/errors';
 import { withExamWriteLock } from '../../lib/examLock';
+import { loadAccessibleExam, type AccessibleExam } from '../../lib/examAccess';
+import type { Role } from '../../lib/jwt';
 
 export type ExamQuestionRecord = {
   id: string;
@@ -18,6 +20,33 @@ export type ExamQuestionInput = {
   options: string[];
   correctOptionIndex: number;
 };
+
+// کنترل دسترسیِ مشترکِ هر دو router (خواندن و مدیریت): آزمون رو با دسترسیِ
+// نقش/عضویتِ کاربر می‌خونه و اگه پیدا نشه/مجاز نباشه همون خطای همیشگی رو
+// می‌ده - هر دو router دقیقاً همین رفتار رو قبلاً جدا از هم تکرار کرده بودن
+export async function loadExamOrThrow(
+  examId: string,
+  userId: string,
+  role: Role
+): Promise<AccessibleExam> {
+  const { exam, allowed } = await loadAccessibleExam(examId, userId, role);
+  if (!exam) throw notFound('آزمون یافت نشد');
+  if (!allowed) throw forbidden();
+  return exam;
+}
+
+// شکل خروجیِ سوال برای Instructor/SuperAdmin (جواب صحیح همیشه همراهشه).
+// دانشجو از این استفاده نمی‌کنه - سریالایزِ خودش رو تو examQuestionsRead.routes.ts داره
+export function serializeExamQuestion(question: ExamQuestionRecord) {
+  return {
+    id: question.id,
+    examId: question.examId,
+    questionId: question.questionId,
+    text: question.textSnapshot,
+    options: question.optionsSnapshot,
+    correctOptionIndex: question.correctIndexSnapshot,
+  };
+}
 
 // بعد از اینکه حتی یه دانشجو آزمون رو شروع کرده، سوال‌ها (متن، گزینه، جواب
 // صحیح، تعداد) نباید عوض بشن - نمره‌دهیِ finish از همین سوال‌ها حساب می‌شه
