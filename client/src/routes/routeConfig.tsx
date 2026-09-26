@@ -173,7 +173,7 @@ export const routes: RouteConfig[] = [
     path: '/students',
     Component: StudentsPage,
     protected: true,
-    allowedRoles: MANAGEMENT_ROLES,
+    allowedRoles: ['Instructor'],
   },
   {
     path: '/lessons',

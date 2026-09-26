@@ -51,7 +51,10 @@ export const navigationItems: NavigationItem[] = [
     label: 'دانشجویان',
     to: '/students',
     icon: Users,
-    roles: MANAGEMENT_ROLES,
+    // SuperAdmin دیگه اینجا نیست: همین دیتا تو «مدرس‌ها و دانشجوها»
+    // (/instructor-students) به تفکیک مدرس نشون داده می‌شه - نگه‌داشتن
+    // هر دو یعنی دو منوی موازی برای یه چیز
+    roles: ['Instructor'],
   },
   {
     label: 'گروه‌ها',

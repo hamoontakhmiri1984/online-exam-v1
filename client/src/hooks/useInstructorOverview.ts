@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getInstructorsByStatus, type AdminInstructor } from '../api/adminApi';
 import { getGroups, type Group } from '../api/groupApi';
-import { getStudents, type Student } from '../api/studentApi';
+import { getStudents, deleteStudent, type Student } from '../api/studentApi';
 
 // این صفحه عمداً هیچ endpoint جدیدی نمی‌خواد - GET /groups و GET /students
 // برای SuperAdmin از قبل همه‌ی رکوردهای سیستم رو برمی‌گردونن (نه فقط
@@ -65,6 +65,23 @@ function useInstructorOverview() {
     return ids.size;
   }
 
+  // حذف واقعی حساب دانشجو (همون DELETE /students/:id که StudentsPage هم
+  // استفاده می‌کرد) - بعد از موفقیت فقط state محلی رو آپدیت می‌کنیم، نیازی
+  // به رفچ دوباره‌ی groups/instructors نیست
+  async function removeStudent(studentId: string): Promise<void> {
+    await deleteStudent(studentId);
+    setStudents((prev) => prev.filter((s) => s.id !== studentId));
+    // سرور همزمان دانشجو رو از تمام گروه‌ها هم بیرون می‌کنه (نگاه کن به
+    // کامنتِ StudentsPage.tsx) - این‌جا هم باید هماهنگ بشه، وگرنه تا رفچ
+    // بعدی تعداد/چیپِ دانشجو تو گروه‌ها اشتباه می‌مونه
+    setGroups((prev) =>
+      prev.map((g) => ({
+        ...g,
+        studentIds: g.studentIds.filter((id) => id !== studentId),
+      }))
+    );
+  }
+
   return {
     instructors,
     groupsByInstructor,
@@ -76,6 +93,7 @@ function useInstructorOverview() {
     expandedId,
     toggleExpanded: (id: string) =>
       setExpandedId((prev) => (prev === id ? null : id)),
+    removeStudent,
   };
 }
 

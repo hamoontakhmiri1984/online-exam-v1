@@ -89,8 +89,12 @@ router.post(
   })
 );
 
+// هم‌راستا با POST بالا: SuperAdmin پنل محتوا نیست - فقط مالکِ بانک
+// (Instructor) حق ویرایش داره؛ loadOwnedBank برای GET هنوز به SuperAdmin
+// اجازه‌ی دیدن می‌ده، ولی این‌جا دیگه استفاده نمی‌شه
 router.put(
   '/:bankId',
+  requireRole('Instructor'),
   asyncHandler(async (req, res) => {
     const { role, sub } = req.user!;
     const { bank, allowed } = await loadOwnedBank(req.params.bankId, sub, role);
@@ -116,6 +120,7 @@ router.put(
 // questionId ـشون null می‌شه (onDelete SetNull)
 router.delete(
   '/:bankId',
+  requireRole('Instructor'),
   asyncHandler(async (req, res) => {
     const { role, sub } = req.user!;
     const { bank, allowed } = await loadOwnedBank(req.params.bankId, sub, role);

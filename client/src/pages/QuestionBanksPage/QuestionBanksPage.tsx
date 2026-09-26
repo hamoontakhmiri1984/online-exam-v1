@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Pencil, Plus, Trash2, XCircle } from 'lucide-react';
 
+import { getCurrentUser } from '../../api/authApi';
 import AppLayout from '../../components/AppLayout/AppLayout';
 import EmptyState from '../../components/EmptyState/EmptyState';
 import Spinner from '../../components/Spinner/Spinner';
@@ -22,6 +23,10 @@ const EMPTY_FORM: QuestionBankInput = {
 
 function QuestionBanksPage() {
   const navigate = useNavigate();
+  // SuperAdmin پنل محتوا نیست: بک‌اند دیگه ایجاد/ویرایش/حذف بانک رو ازش
+  // قبول نمی‌کنه (server/src/routes/questionBanks/banks.routes.ts) - فقط
+  // مشاهده برای نظارت باقی می‌مونه
+  const canManage = getCurrentUser()?.role !== 'SuperAdmin';
 
   const { banks, loading, error, clearError, addBank, updateBank, deleteBank } =
     useQuestionBanks();
@@ -106,11 +111,16 @@ function QuestionBanksPage() {
         />
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
-        <form
-          onSubmit={handleSubmit}
-          className="h-fit rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"
-        >
+      <div
+        className={`grid gap-6 ${
+          canManage ? 'lg:grid-cols-[340px_minmax(0,1fr)]' : ''
+        }`}
+      >
+        {canManage && (
+          <form
+            onSubmit={handleSubmit}
+            className="h-fit rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+          >
           <div className="mb-5 flex items-center gap-2">
             <Plus size={20} className="text-brand-600" />
 
@@ -173,7 +183,8 @@ function QuestionBanksPage() {
               )}
             </div>
           </div>
-        </form>
+          </form>
+        )}
 
         <section>
           {loading ? (
@@ -221,31 +232,33 @@ function QuestionBanksPage() {
                     {bank.questionCount} سوال
                   </div>
 
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        startEdit(bank);
-                      }}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-                    >
-                      <Pencil size={15} />
-                      ویرایش
-                    </button>
+                  {canManage && (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          startEdit(bank);
+                        }}
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                      >
+                        <Pencil size={15} />
+                        ویرایش
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        void handleDelete(bank);
-                      }}
-                      className="flex items-center justify-center rounded-lg border border-danger-200 px-3 py-2 text-danger-600 transition hover:bg-danger-50 dark:border-danger-900 dark:text-danger-400 dark:hover:bg-danger-950/30"
-                      aria-label={`حذف ${bank.name}`}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void handleDelete(bank);
+                        }}
+                        className="flex items-center justify-center rounded-lg border border-danger-200 px-3 py-2 text-danger-600 transition hover:bg-danger-50 dark:border-danger-900 dark:text-danger-400 dark:hover:bg-danger-950/30"
+                        aria-label={`حذف ${bank.name}`}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  )}
                 </article>
               ))}
             </div>

@@ -1,10 +1,18 @@
-import { Fragment } from 'react';
-import { ChevronDown, GraduationCap, Layers, XCircle } from 'lucide-react';
+import { Fragment, useState } from 'react';
+import {
+  ChevronDown,
+  GraduationCap,
+  Layers,
+  Trash2,
+  XCircle,
+} from 'lucide-react';
 import AppLayout from '../../components/AppLayout/AppLayout';
+import Modal from '../../components/Modal/Modal';
 import Spinner from '../../components/Spinner/Spinner';
 import Toast from '../../components/Toast/Toast';
 import EmptyState from '../../components/EmptyState/EmptyState';
 import useInstructorOverview from '../../hooks/useInstructorOverview';
+import type { Student } from '../../api/studentApi';
 
 function InstructorStudentsPage() {
   const {
@@ -17,7 +25,16 @@ function InstructorStudentsPage() {
     clearError,
     expandedId,
     toggleExpanded,
+    removeStudent,
   } = useInstructorOverview();
+
+  const [deleteTarget, setDeleteTarget] = useState<Student | null>(null);
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    await removeStudent(deleteTarget.id);
+    setDeleteTarget(null);
+  }
 
   return (
     <AppLayout title="مدرس‌ها و دانشجوها">
@@ -138,7 +155,7 @@ function InstructorStudentsPage() {
                                           return (
                                             <span
                                               key={studentId}
-                                              className="rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300"
+                                              className="flex items-center gap-1.5 rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300"
                                             >
                                               {student?.name ?? 'دانشجوی حذف‌شده'}
                                               {student && (
@@ -146,6 +163,18 @@ function InstructorStudentsPage() {
                                                   {' '}
                                                   · {student.username}
                                                 </span>
+                                              )}
+                                              {student && (
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    setDeleteTarget(student)
+                                                  }
+                                                  className="text-gray-400 hover:text-danger-600 dark:hover:text-danger-400 transition"
+                                                  title="حذف دانشجو"
+                                                >
+                                                  <Trash2 size={12} />
+                                                </button>
                                               )}
                                             </span>
                                           );
@@ -167,6 +196,28 @@ function InstructorStudentsPage() {
           </div>
         )}
       </div>
+
+      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)}>
+        <h2 className="text-lg font-bold mb-2 dark:text-white">حذف دانشجو</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+          آیا از حذف «{deleteTarget?.name}» مطمئنی؟ حساب کاربری‌اش کامل و
+          برای همیشه پاک می‌شه. این عملیات قابل بازگشت نیست.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setDeleteTarget(null)}
+            className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+          >
+            انصراف
+          </button>
+          <button
+            onClick={confirmDelete}
+            className="flex-1 rounded-xl bg-danger-600 py-2.5 text-sm font-medium text-white hover:bg-danger-700 transition"
+          >
+            حذف
+          </button>
+        </div>
+      </Modal>
     </AppLayout>
   );
 }

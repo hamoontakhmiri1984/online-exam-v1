@@ -26,7 +26,6 @@ import useExamFormModal from '../../hooks/useExamFormModal';
 import useInstructorPlanLimit from '../../hooks/useInstructorPlanLimit';
 import { getCurrentUser } from '../../api/authApi';
 import { getRemainingActiveExamQuota } from '../../api/subscriptionApi';
-import { MANAGEMENT_ROLES } from '../../constants/roles';
 import {
   getGroups,
   getGroupsByInstructor,
@@ -61,8 +60,9 @@ function ExamsPage() {
     { visibleGroupIds, currentUser }
   );
 
-  const canManage =
-    !!currentUser && MANAGEMENT_ROLES.includes(currentUser.role);
+  // SuperAdmin پنل محتوا نیست - آزمون‌ساز کارِ مدرسه. اینجا فقط UI مدیریت
+  // رو مخفی می‌کنیم؛ SuperAdmin هنوز کل لیست رو برای نظارت می‌بینه
+  const canManage = currentUser?.role === 'Instructor';
 
   const [availableGroups, setAvailableGroups] = useState<Group[]>([]);
 

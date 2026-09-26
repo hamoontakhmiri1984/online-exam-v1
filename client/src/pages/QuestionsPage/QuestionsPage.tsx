@@ -1,97 +1,107 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import {
-  ArrowRight,
-  Upload,
-  XCircle,
-  AlertTriangle,
-  HelpCircle,
-} from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { BookOpen, Pencil, Plus, Trash2, XCircle } from 'lucide-react';
+
+import { getCurrentUser } from '../../api/authApi';
 import AppLayout from '../../components/AppLayout/AppLayout';
+import EmptyState from '../../components/EmptyState/EmptyState';
 import Spinner from '../../components/Spinner/Spinner';
 import Toast from '../../components/Toast/Toast';
-import EmptyState from '../../components/EmptyState/EmptyState';
-import QuestionCard from './components/QuestionCard';
-import QuestionFormModal from './components/QuestionFormModal';
-import DeleteQuestionModal from './components/DeleteQuestionModal';
-import ImportQuestionsModal from './components/ImportQuestionsModal';
-import PlanLimitModal from './components/PlanLimitModal';
-import useQuestionBank from '../../hooks/useQuestionBank';
-import useQuestionFormModal from '../../hooks/useQuestionFormModal';
-import useQuestionImportModal from '../../hooks/useQuestionImportModal';
-import useInstructorPlanLimit from '../../hooks/useInstructorPlanLimit';
-import { getExamById, type Exam } from '../../api/examApi';
-import type { Question } from '../../api/questionApi';
-import { getCurrentUser } from '../../api/authApi';
-import { getRemainingQuestionQuota } from '../../api/subscriptionApi';
+import CategorySelect from '../../components/CategorySelect/CategorySelect';
 
-function QuestionsPage() {
-  const { examId } = useParams<{ examId: string }>();
+import useQuestionBanks from '../../hooks/useQuestionBanks';
+
+import type {
+  QuestionBank,
+  QuestionBankInput,
+} from '../../api/questionBankApi';
+
+const EMPTY_FORM: QuestionBankInput = {
+  name: '',
+  category: '',
+};
+
+function QuestionBanksPage() {
   const navigate = useNavigate();
-  const currentUser = getCurrentUser();
+  // SuperAdmin پنل محتوا نیست: بک‌اند دیگه ایجاد/ویرایش/حذف بانک رو ازش
+  // قبول نمی‌کنه (server/src/routes/questionBanks/banks.routes.ts) - فقط
+  // مشاهده برای نظارت باقی می‌مونه
+  const canManage = getCurrentUser()?.role !== 'SuperAdmin';
 
-  const [exam, setExam] = useState<Exam | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Question | null>(null);
+  const { banks, loading, error, clearError, addBank, updateBank, deleteBank } =
+    useQuestionBanks();
 
-  const {
-    questions,
-    loading,
-    error,
-    clearError,
-    addItem,
-    addMany,
-    updateItem,
-    deleteItem,
-  } = useQuestionBank(examId ?? '');
+  const [form, setForm] = useState<QuestionBankInput>(EMPTY_FORM);
 
-  const planLimit = useInstructorPlanLimit({
-    isGated: currentUser?.role === 'Instructor',
-    fetchQuota: () => getRemainingQuestionQuota(currentUser?.id ?? ''),
-  });
+  const [editingBank, setEditingBank] = useState<QuestionBank | null>(null);
 
-  const form = useQuestionFormModal({ addItem, updateItem });
+  const [saving, setSaving] = useState(false);
 
-  const importModal = useQuestionImportModal({
-    addMany,
-    getQuotaIfGated: planLimit.getQuotaIfGated,
-    onLimitExceeded: planLimit.showLimit,
-  });
+  const isEditing = editingBank !== null;
 
-  useEffect(() => {
-    if (!examId) return;
-    let cancelled = false;
+  function resetForm() {
+    setEditingBank(null);
+    setForm(EMPTY_FORM);
+  }
 
-    // بدون catch، خطای شبکه یه unhandled rejection می‌شد (و عنوان صفحه همون
-    // «بانک سوال» می‌موند)؛ عنوان حیاتی نیست، پس ساکت رد می‌شیم
-    getExamById(examId)
-      .then((data) => {
-        if (!cancelled) setExam(data ?? null);
-      })
-      .catch(() => {
-        if (!cancelled) setExam(null);
+  function startEdit(bank: QuestionBank) {
+    setEditingBank(bank);
+
+    setForm({
+      name: bank.name,
+      category: bank.category,
+    });
+  }
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+
+    const name = form.name.trim();
+
+    if (!name || !form.category) return;
+
+    setSaving(true);
+
+    try {
+      if (editingBank) {
+        const updated = await updateBank(editingBank.id, {
+          name,
+          category: form.category,
+        });
+
+        if (updated) resetForm();
+
+        return;
+      }
+
+      const created = await addBank({
+        name,
+        category: form.category,
       });
 
-    return () => {
-      cancelled = true;
-    };
-  }, [examId]);
-
-  async function openAddModal() {
-    if (await planLimit.ensureAllowed()) form.openAdd();
+      if (created) resetForm();
+    } finally {
+      setSaving(false);
+    }
   }
 
-  async function openImportModal() {
-    if (await planLimit.ensureAllowed()) importModal.open();
-  }
+  async function handleDelete(bank: QuestionBank) {
+    const confirmed = window.confirm(
+      `بانک «${bank.name}» و تمام سوال‌های داخل آن حذف شوند؟`
+    );
 
-  async function confirmDelete() {
-    if (!deleteTarget) return;
-    await deleteItem(deleteTarget.id);
-    setDeleteTarget(null);
+    if (!confirmed) return;
+
+    const removed = await deleteBank(bank.id);
+
+    // اگه حذف شکست خورد، فرمِ ویرایش رو پاک نکن
+    if (removed && editingBank?.id === bank.id) {
+      resetForm();
+    }
   }
 
   return (
-    <AppLayout title={exam ? `بانک سوال — ${exam.title}` : 'بانک سوال'}>
+    <AppLayout title="بانک سوال">
       {error && (
         <Toast
           message={error}
@@ -100,113 +110,163 @@ function QuestionsPage() {
           onDismiss={clearError}
         />
       )}
-      {form.validationError && (
-        <Toast
-          message={form.validationError}
-          tone="warning"
-          icon={AlertTriangle}
-          onDismiss={form.dismissValidationError}
-        />
-      )}
-      <button
-        type="button"
-        onClick={() => navigate('/exams')}
-        className="mb-4 flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400 transition"
-      >
-        <ArrowRight size={16} />
-        بازگشت به لیست آزمون‌ها
-      </button>
 
-      {loading ? (
-        <Spinner />
-      ) : (
-        <>
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-            <h1 className="text-2xl font-bold dark:text-white">
-              سوالات {exam?.title}
-            </h1>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={openImportModal}
-                disabled={planLimit.checkingLimit}
-                className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 transition disabled:opacity-60"
-              >
-                <Upload size={16} />
-                ایمپورت از اکسل
-              </button>
-              <button
-                onClick={openAddModal}
-                disabled={planLimit.checkingLimit}
-                className="bg-brand-600 text-white px-4 py-2 rounded-lg hover:bg-brand-700 transition disabled:opacity-60"
-              >
-                + سوال جدید
-              </button>
-            </div>
+      <div
+        className={`grid gap-6 ${
+          canManage ? 'lg:grid-cols-[340px_minmax(0,1fr)]' : ''
+        }`}
+      >
+        {canManage && (
+          <form
+            onSubmit={handleSubmit}
+            className="h-fit rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+          >
+          <div className="mb-5 flex items-center gap-2">
+            <Plus size={20} className="text-brand-600" />
+
+            <h2 className="font-bold text-gray-900 dark:text-white">
+              {isEditing ? 'ویرایش بانک سوال' : 'بانک سوال جدید'}
+            </h2>
           </div>
 
-          {questions.length === 0 ? (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
+              <label className="text-sm text-gray-600 dark:text-gray-300">
+                نام بانک
+              </label>
+
+              <input
+                value={form.name}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    name: event.target.value,
+                  }))
+                }
+                placeholder="مثلاً سوالات ریاضی دهم"
+                className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-800 outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-brand-900"
+              />
+            </div>
+
+            <CategorySelect
+              label="دسته‌بندی"
+              value={form.category}
+              onChange={(category) =>
+                setForm((current) => ({
+                  ...current,
+                  category,
+                }))
+              }
+            />
+
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={saving || !form.name.trim() || !form.category}
+                className="flex-1 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {saving
+                  ? 'در حال ذخیره...'
+                  : isEditing
+                  ? 'ذخیره تغییرات'
+                  : 'ساخت بانک'}
+              </button>
+
+              {isEditing && (
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                >
+                  انصراف
+                </button>
+              )}
+            </div>
+          </div>
+          </form>
+        )}
+
+        <section>
+          {loading ? (
+            <Spinner />
+          ) : banks.length === 0 ? (
             <EmptyState
-              icon={HelpCircle}
-              title="هنوز سوالی برای این آزمون ثبت نشده"
-              description="با دکمه‌ی «سوال جدید» بساز، یا سوالات رو یک‌جا از اکسل ایمپورت کن."
-              action={{ label: '+ سوال جدید', onClick: openAddModal }}
+              icon={BookOpen}
+              title="هنوز بانک سوالی نداری"
+              description="اولین بانک سوالت رو بساز و سوال‌ها رو داخلش مدیریت کن."
             />
           ) : (
-            <div className="flex flex-col gap-4">
-              {questions.map((question, index) => (
-                <QuestionCard
-                  key={question.id}
-                  question={question}
-                  index={index}
-                  onEdit={form.openEdit}
-                  onDelete={setDeleteTarget}
-                />
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {banks.map((bank) => (
+                // کلیکِ ماوس روی هرجای کارت جزئیات رو باز می‌کنه. برای کیبورد،
+                // خودِ کارت فوکوس نمی‌گیره (قبلاً role="button" + onKeyDown روی
+                // کارت بود و Enter/Space روی دکمه‌های ویرایش/حذف داخلش بالا
+                // می‌اومد و به‌جای اون‌ها صفحه‌ی جزئیات باز می‌شد)؛ به‌جاش
+                // اسمِ بانک یه <button> واقعیه و Enter/Space روش همون کلیکِ
+                // کارت رو صدا می‌زنه.
+                <article
+                  key={bank.id}
+                  onClick={() => navigate(`/question-banks/${bank.id}`)}
+                  className="cursor-pointer rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:border-brand-800"
+                >
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-gray-900 dark:text-white">
+                        <button
+                          type="button"
+                          className="block max-w-full truncate rounded text-start hover:text-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 dark:hover:text-brand-400"
+                        >
+                          {bank.name}
+                        </button>
+                      </h3>
+
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        {bank.category}
+                      </p>
+                    </div>
+
+                    <BookOpen size={20} className="shrink-0 text-brand-600" />
+                  </div>
+
+                  <div className="mb-5 rounded-xl bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:bg-gray-700/50 dark:text-gray-300">
+                    {bank.questionCount} سوال
+                  </div>
+
+                  {canManage && (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          startEdit(bank);
+                        }}
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                      >
+                        <Pencil size={15} />
+                        ویرایش
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void handleDelete(bank);
+                        }}
+                        className="flex items-center justify-center rounded-lg border border-danger-200 px-3 py-2 text-danger-600 transition hover:bg-danger-50 dark:border-danger-900 dark:text-danger-400 dark:hover:bg-danger-950/30"
+                        aria-label={`حذف ${bank.name}`}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  )}
+                </article>
               ))}
             </div>
           )}
-        </>
-      )}
-
-      <QuestionFormModal
-        isOpen={form.isOpen}
-        isEditing={!!form.editingId}
-        isSubmitting={form.isSubmitting}
-        text={form.text}
-        onTextChange={form.setText}
-        options={form.options}
-        correctOptionIndex={form.correctOptionIndex}
-        onCorrectOptionChange={form.setCorrectOptionIndex}
-        onOptionTextChange={form.updateOptionText}
-        onAddOption={form.addOption}
-        onRemoveOption={form.removeOption}
-        onSubmit={form.handleSubmit}
-        onClose={form.close}
-      />
-
-      <DeleteQuestionModal
-        isOpen={!!deleteTarget}
-        onConfirm={confirmDelete}
-        onClose={() => setDeleteTarget(null)}
-      />
-
-      <ImportQuestionsModal
-        isOpen={importModal.isOpen}
-        preview={importModal.preview}
-        isParsing={importModal.isParsing}
-        isImporting={importModal.isImporting}
-        importError={importModal.importError}
-        importWarning={importModal.importWarning}
-        onFileSelected={importModal.handleFileSelected}
-        onConfirm={importModal.confirmImport}
-        onClose={importModal.close}
-      />
-
-      <PlanLimitModal
-        quota={planLimit.limitQuota}
-        onClose={planLimit.dismissLimit}
-      />
+        </section>
+      </div>
     </AppLayout>
   );
 }
 
-export default QuestionsPage;
+export default QuestionBanksPage;
