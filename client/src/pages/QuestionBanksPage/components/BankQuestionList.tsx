@@ -1,10 +1,10 @@
 import { FileQuestion } from 'lucide-react';
 
-import Spinner from '../../../../components/Spinner/Spinner';
-import EmptyState from '../../../../components/EmptyState/EmptyState';
-import BankQuestionCard from '../BankQuestionCard/BankQuestionCard';
+import Spinner from '../../../components/Spinner/Spinner';
+import EmptyState from '../../../components/EmptyState/EmptyState';
+import BankQuestionCard from './BankQuestionCard';
 
-import type { BankQuestion } from '../../../../api/questionBankApi';
+import type { BankQuestion } from '../../../api/questionBankApi';
 
 type BankQuestionListProps = {
   questions: BankQuestion[];
