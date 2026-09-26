@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
+import { Prisma } from '@prisma/client';
 
 import { prisma } from '../lib/prisma';
 import { requireAuth, requireRole } from '../middleware/requireAuth';
@@ -56,10 +57,15 @@ router.put(
     const parsed = updateSiteContentSchema.safeParse(req.body);
     if (!parsed.success) throw badRequest(parsed.error.issues[0].message);
 
+    // Zod همین الان تضمین کرده data یه object معتبره؛ فقط برای Prisma
+    // (که برای فیلد Json نوع InputJsonValue می‌خواد، نه Record<string, unknown>)
+    // به‌صراحت تایپش می‌کنیم
+    const data = parsed.data.data as Prisma.InputJsonValue;
+
     const row = await prisma.siteContent.upsert({
       where: { section },
-      create: { section, data: parsed.data.data, updatedById: sub },
-      update: { data: parsed.data.data, updatedById: sub },
+      create: { section, data, updatedById: sub },
+      update: { data, updatedById: sub },
     });
     res.json({ section: row.section, data: row.data });
   })
