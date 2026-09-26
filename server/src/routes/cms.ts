@@ -6,7 +6,7 @@ import { prisma } from '../lib/prisma';
 import { requireAuth, requireRole } from '../middleware/requireAuth';
 import { asyncHandler } from '../lib/asyncHandler';
 import { badRequest } from '../lib/errors';
-import { imageUpload } from '../lib/imageUpload';
+import { extensionForImageMimeType, imageUpload } from '../lib/imageUpload';
 import { uploadPublicObject, getPublicObjectUrl } from '../lib/storage';
 import {
   SITE_CONTENT_SECTIONS,
@@ -84,7 +84,7 @@ router.post(
     }
     if (!req.file) throw badRequest('فایل تصویر ارسال نشده');
 
-    const extension = req.file.mimetype === 'image/png' ? 'png' : 'jpg';
+    const extension = extensionForImageMimeType(req.file.mimetype);
     const key = `cms/${section}/${randomUUID()}.${extension}`;
     await uploadPublicObject(key, req.file.buffer, req.file.mimetype);
 

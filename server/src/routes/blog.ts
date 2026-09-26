@@ -5,7 +5,7 @@ import { prisma } from '../lib/prisma';
 import { requireAuth, requireRole } from '../middleware/requireAuth';
 import { asyncHandler } from '../lib/asyncHandler';
 import { badRequest, notFound, conflict } from '../lib/errors';
-import { imageUpload } from '../lib/imageUpload';
+import { extensionForImageMimeType, imageUpload } from '../lib/imageUpload';
 import {
   uploadPublicObject,
   getPublicObjectUrl,
@@ -235,7 +235,7 @@ router.post(
     if (!existing) throw notFound('پست بلاگ یافت نشد');
     if (!req.file) throw badRequest('فایل تصویر ارسال نشده');
 
-    const extension = req.file.mimetype === 'image/png' ? 'png' : 'jpg';
+    const extension = extensionForImageMimeType(req.file.mimetype);
     const key = `blog/${existing.id}/${randomUUID()}.${extension}`;
     await uploadPublicObject(key, req.file.buffer, req.file.mimetype);
 
