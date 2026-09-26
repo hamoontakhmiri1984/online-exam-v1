@@ -1,0 +1,6 @@
+import{c as u,r as a,j as c,T as p}from"./index-D_60nLnS.js";import{C as x}from"./users-DYV_XJ3p.js";/**
+ * @license lucide-react v0.460.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const y=u("TimerOff",[["path",{d:"M10 2h4",key:"n1abiw"}],["path",{d:"M4.6 11a8 8 0 0 0 1.7 8.7 8 8 0 0 0 8.7 1.7",key:"10he05"}],["path",{d:"M7.4 7.4a8 8 0 0 1 10.3 1 8 8 0 0 1 .9 10.2",key:"15f7sh"}],["path",{d:"m2 2 20 20",key:"1ooewy"}],["path",{d:"M12 12v-2",key:"fwoke6"}]]);function w({message:r,tone:e="warning",duration:s=4500,icon:o,onDismiss:i}){const[n,t]=a.useState(!1);a.useEffect(()=>{const d=requestAnimationFrame(()=>t(!0)),h=setTimeout(()=>t(!1),s),f=setTimeout(i,s+300);return()=>{cancelAnimationFrame(d),clearTimeout(h),clearTimeout(f)}},[s]);const m=e==="danger"?"bg-danger-600 shadow-danger-600/30":e==="success"?"bg-success-600 shadow-success-600/30":"bg-accent-500 shadow-accent-500/30",l=o??(e==="danger"?y:e==="success"?x:p);return c.jsxs("div",{className:`fixed bottom-6 left-6 z-50 flex items-center gap-2.5 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-xl transition-all duration-300 ${m} ${n?"translate-y-0 opacity-100":"translate-y-3 opacity-0"}`,children:[c.jsx(l,{size:18,className:"shrink-0"}),r]})}export{w as T,y as a};

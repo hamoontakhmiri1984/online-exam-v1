@@ -1,0 +1,1 @@
+import{r as x}from"./index-D_60nLnS.js";function d(l,a,{visibleGroupIds:f,currentUser:o}){const i=x.useMemo(()=>(o==null?void 0:o.role)==="Instructor"||(o==null?void 0:o.role)==="Student"?l.filter(m=>a(m).some(p=>f.includes(p))):l,[l,f,o==null?void 0:o.role]);return{currentUser:o,visibleItems:i}}export{d as u};

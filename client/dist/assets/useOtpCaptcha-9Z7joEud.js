@@ -1,0 +1,1 @@
+import{r as t}from"./index-D_60nLnS.js";function p(){const[e,u]=t.useState(!1),[a,s]=t.useState(null),[c,n]=t.useState(0),l=t.useCallback(r=>{r.status==="error"&&r.captchaRequired&&u(!0),e&&(s(null),n(o=>o+1))},[e]);return{required:e,captcha:a,setCaptcha:s,resetSignal:c,afterRequest:l,ready:!e||a!==null}}export{p as u};

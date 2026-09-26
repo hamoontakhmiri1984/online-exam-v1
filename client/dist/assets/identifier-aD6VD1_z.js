@@ -1,0 +1,1 @@
+const i=/^[^\s@]+@[^\s@]+\.[^\s@]+$/,n=/^(?:0|98|\+98)?9\d{9}$/;function r(e){return e.replace(/[\u06F0-\u06F9]/g,t=>String(t.charCodeAt(0)-1776)).replace(/[\u0660-\u0669]/g,t=>String(t.charCodeAt(0)-1632))}function s(e){const t=e.trim();return i.test(t)||n.test(r(t))}export{s as i,r as t};

@@ -1,0 +1,11 @@
+import{c as a,r as n,j as e}from"./index-D_60nLnS.js";/**
+ * @license lucide-react v0.460.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const h=a("Moon",[["path",{d:"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z",key:"a7tn18"}]]);/**
+ * @license lucide-react v0.460.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const c=a("Sun",[["circle",{cx:"12",cy:"12",r:"4",key:"4exip2"}],["path",{d:"M12 2v2",key:"tus03m"}],["path",{d:"M12 20v2",key:"1lh1kg"}],["path",{d:"m4.93 4.93 1.41 1.41",key:"149t6j"}],["path",{d:"m17.66 17.66 1.41 1.41",key:"ptbguv"}],["path",{d:"M2 12h2",key:"1t8f8n"}],["path",{d:"M20 12h2",key:"1q8mjw"}],["path",{d:"m6.34 17.66-1.41 1.41",key:"1m8zz5"}],["path",{d:"m19.07 4.93-1.41 1.41",key:"1shlcs"}]]);function m(){const[t,o]=n.useState(localStorage.getItem("theme")==="dark");return n.useEffect(()=>{t?(document.documentElement.classList.add("dark"),localStorage.setItem("theme","dark")):(document.documentElement.classList.remove("dark"),localStorage.setItem("theme","light"))},[t]),{isDark:t,toggleTheme:()=>o(r=>!r)}}const d={sm:{box:"h-8 w-8",icon:16,text:"text-sm"},md:{box:"h-9 w-9",icon:18,text:"text-base"},lg:{box:"h-14 w-14",icon:28,text:"text-xl"}};function l({size:t="md",showText:o=!0,className:r=""}){const s=d[t];return e.jsxs("div",{className:`group flex items-center gap-2.5 ${r}`,children:[e.jsx("div",{className:`flex ${s.box} shrink-0 items-center justify-center rounded-xl bg-brand-600 shadow-sm shadow-brand-600/30 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`,children:e.jsxs("svg",{width:s.icon,height:s.icon,viewBox:"0 0 24 24",fill:"none",xmlns:"http://www.w3.org/2000/svg",children:[e.jsx("path",{d:"M6.5 4H14L18.5 8.5V20H6.5V4Z",stroke:"white",strokeWidth:"1.7",strokeLinejoin:"round"}),e.jsx("path",{d:"M14 4V8.5H18.5",stroke:"white",strokeWidth:"1.7",strokeLinejoin:"round"}),e.jsx("path",{d:"M9 13.4L11.1 15.5L15.5 10.7",stroke:"white",strokeWidth:"2",strokeLinecap:"round",strokeLinejoin:"round"})]})}),o&&e.jsx("span",{className:`${s.text} font-bold text-gray-900 dark:text-white`,children:"سامانه آزمون"})]})}export{l as L,h as M,c as S,m as u};
