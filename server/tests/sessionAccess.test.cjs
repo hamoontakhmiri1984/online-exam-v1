@@ -107,23 +107,23 @@ test('Reject retry retries revocation after partial failure', async () => {
   let user = { id: 'teacher', role: 'Instructor', approvalStatus: 'Approved',
     name: null, email: null, phone: null, username: null, createdAt: new Date() };
   let revocations = 0, updates = 0, disconnected = 0;
-  load('routes/admin.ts', {
+  load('routes/admin/instructors.routes.ts', {
     express: { Router: () => router },
-    '../lib/prisma': { prisma: { user: {
+    '../../lib/prisma': { prisma: { user: {
       findUnique: async () => user,
       update: async ({ data }) => { updates++; user = { ...user, ...data }; return user; },
     } } },
-    '../middleware/requireAuth': { requireAuth() {}, requireRole() {} },
-    '../lib/notifications': { notifyUser: async () => {} },
-    '../lib/session': { revokeSession: async () => {
+    '../../lib/notifications': { notifyUser: async () => {} },
+    '../../lib/session': { revokeSession: async () => {
       revocations++;
       if (revocations === 1) throw new Error('Redis offline');
     } },
-    '../realtime/socket': { forceLogoutOtherSessions: () => { disconnected++; } },
-    '../lib/asyncHandler': { asyncHandler: fn => fn },
-    '../lib/errors': errors, '../lib/categories': {}, '../validation/categorySchemas': {},
+    '../../realtime/socket': { forceLogoutOtherSessions: () => { disconnected++; } },
+    '../../lib/asyncHandler': { asyncHandler: fn => fn },
+    '../../lib/errors': errors,
+    './instructors.service': { serializeInstructor: (u) => u },
   });
-  const handler = routes['/instructors/:id/reject'];
+  const handler = routes['/:id/reject'];
   const req = { params: { id: 'teacher' } };
   const res = { json() {} };
   await assert.rejects(handler(req, res), /Redis offline/);
