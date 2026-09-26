@@ -208,6 +208,7 @@ test('سوال آزمون (سقف ۵۰): ۳ ایمپورتِ ۳۰تایی هم�
             category: 'c',
             scheduledAt: new Date(Date.now() + 86_400_000),
             durationMinutes: 30,
+            instructorId: user.id,
             groups: { connect: [{ id: group.id }] },
           },
         })
