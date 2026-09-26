@@ -8,13 +8,14 @@ import {
 } from '../../validation/examSchemas';
 import { asyncHandler } from '../../lib/asyncHandler';
 import { notFound, forbidden, badRequest } from '../../lib/errors';
-import { prepareQuotaGuard, withQuotaForRole } from '../../lib/quota';
+import { withQuotaForRole } from '../../lib/quota';
 import { withExamWriteLock } from '../../lib/examLock';
 
 import {
   serializeExam,
   assertOwnsAllGroups,
   assertNotInPast,
+  updateExam,
 } from './exams.service';
 
 const router = Router();
@@ -115,122 +116,14 @@ router.put(
     const parsed = updateExamSchema.safeParse(req.body);
     if (!parsed.success) throw badRequest(parsed.error.issues[0].message);
 
-    // چک مالکیت هم برای گروه‌های *جدیدی* که داره جایگزین می‌شن لازمه - وگرنه
-    // یه Instructor که خودش مالک آزمونه می‌تونست بعداً یه گروهِ Instructor
-    // دیگه رو به همون آزمون وصل کنه
-    await assertOwnsAllGroups(parsed.data.groupIds, role, sub);
-
-    const newScheduledAt = new Date(parsed.data.scheduledAt);
-
-    // زمان گذشته فقط وقتی رد می‌شه که زمانِ آزمون واقعاً تغییر کرده باشه؛
-    // ویرایشِ بقیه‌ی فیلدهای آزمونِ قدیمی با همون زمان مجازه (مقایسه تا دقیقه)
-    if (
-      Math.floor(newScheduledAt.getTime() / 60_000) !==
-      Math.floor(existing.scheduledAt.getTime() / 60_000)
-    ) {
-      assertNotInPast(newScheduledAt);
-    }
-
-    // بعد از اینکه حتی یه دانشجو شروع کرده، زمان/مدت/گروه‌ها قفل‌ان - وگرنه
-    // expiresAt‌ـهای قبلاً ثبت‌شده با آزمون نمی‌خونن و دسترسیِ دانشجوها
-    // (عضویت گروه) وسط آزمون عوض می‌شد. مقایسه‌ی زمان تا دقیقه‌ست تا
-    // ثانیه/میلی‌ثانیه‌ی فرم ویرایش باعث رد شدنِ الکی نشه.
-    // این نسخه‌ی مقایسه با existing (قبل از قفل خونده شده) فقط fail-fast
-    // ـه - صرفاً برای رد سریع درخواستِ واضحاً غیرمجاز، بدون باز کردنِ
-    // تراکنش. چک قطعی، با مقدارهای *بعد از قفل*، پایین‌تر تو
-    // withExamWriteLock دوباره انجام می‌شه (نگاه کن به کامنتِ اونجا) - چون
-    // existing می‌تونه بین این لحظه و گرفتنِ قفل، با یه ویرایش/شروعِ
-    // هم‌زمانِ دیگه کهنه شده باشه: اگه فقط از همین changesLockedFields
-    // استفاده می‌شد، یه فرمِ قدیمی (که خودش چیزی جز مثلاً عنوان رو عوض
-    // نکرده) می‌تونست زمان/مدت/گروه‌هایی که همین تازگی (بعد از شروعِ اولین
-    // attempt) قفل شدن رو بی‌سروصدا با مقدارهای کهنه‌ی خودِ فرم بازنویسی کنه
-    const toMinute = (d: Date) => Math.floor(d.getTime() / 60_000);
-    const newGroupIds = new Set(parsed.data.groupIds);
-    const computeChangesLockedFields = (current: {
-      scheduledAt: Date;
-      durationMinutes: number;
-      groups: { id: string }[];
-    }): boolean => {
-      const currentGroupIds = new Set(current.groups.map((g) => g.id));
-      const sameGroups =
-        currentGroupIds.size === newGroupIds.size &&
-        [...newGroupIds].every((id) => currentGroupIds.has(id));
-      return (
-        toMinute(newScheduledAt) !== toMinute(current.scheduledAt) ||
-        parsed.data.durationMinutes !== current.durationMinutes ||
-        !sameGroups
-      );
-    };
-
-    const assertScheduleEditable = (
-      attemptCount: number,
-      changesLockedFields: boolean
-    ): void => {
-      if (attemptCount > 0 && changesLockedFields) {
-        throw badRequest(
-          'این آزمون قبلاً توسط دانشجو شروع شده - زمان، مدت و گروه‌هاش قابل تغییر نیستن'
-        );
-      }
-    };
-
-    assertScheduleEditable(
-      existing._count.attempts,
-      computeChangesLockedFields(existing)
-    );
-
-    // سقف activeExams فقط موقع ساخت چک می‌شد؛ اینجا هم وقتی آزمونِ تمام‌شده
-    // (غیرفعال) با ویرایش دوباره فعال می‌شه همون چک اعمال می‌شه. خودِ چک
-    // داخل همون تراکنشِ update و پشت قفل مدرس انجام می‌شه (beforeExamLock
-    // پایین‌تر)، نه اینجا
-    let quotaGuard: Awaited<ReturnType<typeof prepareQuotaGuard>> | undefined;
-    if (role === 'Instructor') {
-      const now = Date.now();
-      const wasActive =
-        existing.scheduledAt.getTime() + existing.durationMinutes * 60_000 >
-        now;
-      const willBeActive =
-        newScheduledAt.getTime() + parsed.data.durationMinutes * 60_000 > now;
-      if (!wasActive && willBeActive) {
-        quotaGuard = await prepareQuotaGuard(sub, 'activeExams');
-      }
-    }
-
-    // قفل مشترک با start (lib/examLock.ts): اگه دانشجویی بین چک بالا و این
-    // update شروع کرده باشه، اینجا (بعد از قفل) دیده می‌شه و تغییر رد می‌شه
-    const exam = await withExamWriteLock(
+    // قواعد ویرایش (مالکیت گروه، زمان گذشته، قفل فیلدها بعد از شروع،
+    // سهمیه‌ی activeExams) داخل exams.service.ts هستن
+    const exam = await updateExam(
       req.params.id,
-      async (tx, { attemptCount }) => {
-        // مقدارهای فعلیِ آزمون رو *بعد از گرفتنِ قفل* دوباره می‌خونیم - نه
-        // existing بالا (که قبل از قفل و شاید کهنه‌ست). lockExamForUpdate
-        // فقط ردیف رو قفل می‌کنه و چیزی برنمی‌گردونه، پس این select همون
-        // آخرین مقدارِ commit‌شده رو می‌بینه (READ COMMITTED + قفلِ گرفته‌شده)
-        const current = await tx.exam.findUniqueOrThrow({
-          where: { id: req.params.id },
-          select: {
-            scheduledAt: true,
-            durationMinutes: true,
-            groups: { select: { id: true } },
-          },
-        });
-        assertScheduleEditable(
-          attemptCount,
-          computeChangesLockedFields(current)
-        );
-
-        return tx.exam.update({
-          where: { id: req.params.id },
-          data: {
-            title: parsed.data.title,
-            category: parsed.data.category,
-            scheduledAt: newScheduledAt,
-            durationMinutes: parsed.data.durationMinutes,
-            allowReview: parsed.data.allowReview,
-            groups: { set: parsed.data.groupIds.map((id) => ({ id })) },
-          },
-          include: examInclude,
-        });
-      },
-      { beforeExamLock: quotaGuard }
+      role,
+      sub,
+      existing,
+      parsed.data
     );
 
     res.json(serializeExam(exam));
