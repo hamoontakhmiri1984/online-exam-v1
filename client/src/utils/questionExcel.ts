@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 import { toLatinDigits } from './identifier';
 
 export type ParsedQuestion = {
@@ -51,6 +50,9 @@ function parseCorrectIndex(raw: unknown): number | null {
 export async function parseQuestionsFromExcel(
   file: File
 ): Promise<ParsedQuestionsResult> {
+  // xlsx حجیمه (اصلی‌ترین عامل سنگین‌بودنِ chunk این صفحه)؛ فقط همین‌جا که
+  // واقعاً لازمش داریم دانلود/اجرا می‌شه، نه با کل صفحه
+  const XLSX = await import('xlsx');
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: 'array' });
   const firstSheetName = workbook.SheetNames[0];
@@ -115,7 +117,8 @@ export async function parseQuestionsFromExcel(
   return { questions: parsed, skippedRows };
 }
 
-export function downloadQuestionTemplate() {
+export async function downloadQuestionTemplate() {
+  const XLSX = await import('xlsx');
   const templateRows = [
     {
       [COLUMN_QUESTION]: 'پایتخت ایران کدام است؟',
