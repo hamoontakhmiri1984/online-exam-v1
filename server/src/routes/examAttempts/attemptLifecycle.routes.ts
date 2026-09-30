@@ -261,14 +261,21 @@ router.patch(
 
     // اتمیک و «فقط رو به جلو»: ذخیره فقط وقتی انجام می‌شه که
     //  - attempt هنوز finish نشده باشه (بازنویسی بعد از finish هم‌زمان ممنوع)
+    //  - هنوز تو مهلت باشه (expiresAt + FINISH_GRACE_MS). چکِ بالا قبل از
+    //    نوشتن انجام شده و اگه این request (مثلاً بخاطر DB/شبکه) معطل مونده
+    //    باشه، ممکنه مهلت وسطِ راه تموم شده باشه؛ پس شرطِ زمانی باید داخلِ
+    //    خودِ where نوشتن هم باشه، نه فقط قبلش. cutoff هم همین‌جا (لحظه‌ی
+    //    نوشتن) حساب می‌شه، نه بالاتر
     //  - revision این درخواست از revision ذخیره‌شده بزرگ‌تر باشه. اگه یه
     //    درخواستِ قدیمی‌تر دیرتر از درخواست جدیدتر برسه، رد می‌شه و جواب
     //    جدیدتر رو بازنویسی نمی‌کنه
     const { answers, revision } = parsed.data;
+    const graceCutoff = new Date(Date.now() - FINISH_GRACE_MS);
     const { count } = await prisma.examAttempt.updateMany({
       where: {
         id: existing.id,
         finishedAt: null,
+        expiresAt: { gte: graceCutoff },
         answersRevision: { lt: revision },
       },
       data: { answers, answersRevision: revision },
@@ -277,10 +284,14 @@ router.patch(
     if (count === 0) {
       const current = await prisma.examAttempt.findUnique({
         where: { id: existing.id },
-        select: { finishedAt: true, answersRevision: true },
+        select: { finishedAt: true, expiresAt: true, answersRevision: true },
       });
       if (!current || current.finishedAt) {
         throw conflict('این آزمون قبلاً ثبت شده');
+      }
+      // مهلت وسطِ راه تموم شده (بین چکِ اول و نوشتن) - ذخیره نشد
+      if (Date.now() > current.expiresAt.getTime() + FINISH_GRACE_MS) {
+        throw conflict('زمان این آزمون تموم شده');
       }
       // نسخه‌ی قدیمی/تکراری: خطا نیست - یه ذخیره‌ی جدیدتر قبلاً نشسته. کلاینت
       // با revision برگشتی شمارنده‌ش رو جلو می‌بره و اگه لازم بود دوباره می‌فرسته

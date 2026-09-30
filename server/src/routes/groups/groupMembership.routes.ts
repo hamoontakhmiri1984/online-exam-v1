@@ -34,20 +34,32 @@ router.post(
         where: { id: group.id },
         data: { students: { connect: { id: req.user!.sub } } },
       });
-      // اعلان برای خودِ دانشجو - دقیقاً معادل notifyStudentAddedToGroup تو mock
-      // (client/src/api/notificationApi.ts) که از addStudentToGroup صدا زده می‌شد
-      await notifyUser(
-        req.user!.sub,
-        `به گروه «${group.name}» اضافه شدی`,
-        'people'
-      );
-      // به‌علاوه: به مدرس هم خبر بده که یه دانشجوی جدید پیوست (چیزی که mock
-      // نداشت ولی برای مدرس مفیده)
-      await notifyUser(
-        group.instructorId,
-        `یه دانشجوی جدید به گروه «${group.name}» پیوست`,
-        'people'
-      );
+      // عضویت همین‌جا commit شده؛ اعلان‌ها فقط best-effort هستن. اگه ارسالِ
+      // اعلان fail بشه (دیتابیس/سوکت) نباید به کلاینت خطا بدیم، چون دانشجو
+      // واقعاً عضو شده و با retry هم فقط alreadyMember می‌گیره. هر اعلان هم
+      // جدا مهار می‌شه تا شکستِ یکی جلوی دیگری رو نگیره
+      const notifyAll = [
+        // اعلان برای خودِ دانشجو - دقیقاً معادل notifyStudentAddedToGroup تو mock
+        // (client/src/api/notificationApi.ts) که از addStudentToGroup صدا زده می‌شد
+        notifyUser(
+          req.user!.sub,
+          `به گروه «${group.name}» اضافه شدی`,
+          'people'
+        ),
+        // به‌علاوه: به مدرس هم خبر بده که یه دانشجوی جدید پیوست (چیزی که mock
+        // نداشت ولی برای مدرس مفیده)
+        notifyUser(
+          group.instructorId,
+          `یه دانشجوی جدید به گروه «${group.name}» پیوست`,
+          'people'
+        ),
+      ];
+      const results = await Promise.allSettled(notifyAll);
+      for (const r of results) {
+        if (r.status === 'rejected') {
+          console.error('join group notification failed:', r.reason);
+        }
+      }
     }
 
     const updated = await prisma.group.findUnique({
