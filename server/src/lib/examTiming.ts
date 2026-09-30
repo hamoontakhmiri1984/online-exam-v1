@@ -40,3 +40,4 @@ export function isAnswerKeyReleased(
   if (!exam.allowReview) return false;
   return nowMs >= getExamWindowEndMs(exam) + FINISH_GRACE_MS;
 }
+
