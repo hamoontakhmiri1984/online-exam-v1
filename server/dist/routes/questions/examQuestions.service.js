@@ -1,5 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.loadExamOrThrow = loadExamOrThrow;
+exports.serializeExamQuestion = serializeExamQuestion;
 exports.assertExamQuestionsEditable = assertExamQuestionsEditable;
 exports.withNextOrder = withNextOrder;
 exports.getExamQuestions = getExamQuestions;
@@ -11,6 +13,30 @@ const client_1 = require("@prisma/client");
 const prisma_1 = require("../../lib/prisma");
 const errors_1 = require("../../lib/errors");
 const examLock_1 = require("../../lib/examLock");
+const examAccess_1 = require("../../lib/examAccess");
+// کنترل دسترسیِ مشترکِ هر دو router (خواندن و مدیریت): آزمون رو با دسترسیِ
+// نقش/عضویتِ کاربر می‌خونه و اگه پیدا نشه/مجاز نباشه همون خطای همیشگی رو
+// می‌ده - هر دو router دقیقاً همین رفتار رو قبلاً جدا از هم تکرار کرده بودن
+async function loadExamOrThrow(examId, userId, role) {
+    const { exam, allowed } = await (0, examAccess_1.loadAccessibleExam)(examId, userId, role);
+    if (!exam)
+        throw (0, errors_1.notFound)('آزمون یافت نشد');
+    if (!allowed)
+        throw (0, errors_1.forbidden)();
+    return exam;
+}
+// شکل خروجیِ سوال برای Instructor/SuperAdmin (جواب صحیح همیشه همراهشه).
+// دانشجو از این استفاده نمی‌کنه - سریالایزِ خودش رو تو examQuestionsRead.routes.ts داره
+function serializeExamQuestion(question) {
+    return {
+        id: question.id,
+        examId: question.examId,
+        questionId: question.questionId,
+        text: question.textSnapshot,
+        options: question.optionsSnapshot,
+        correctOptionIndex: question.correctIndexSnapshot,
+    };
+}
 // بعد از اینکه حتی یه دانشجو آزمون رو شروع کرده، سوال‌ها (متن، گزینه، جواب
 // صحیح، تعداد) نباید عوض بشن - نمره‌دهیِ finish از همین سوال‌ها حساب می‌شه
 // و تغییرشون وسط/بعد از آزمون نمره‌ها رو با هم ناسازگار می‌کنه.

@@ -227,7 +227,7 @@ function AdminCategoriesPage() {
         ) : categories.length === 0 ? (
           <EmptyState
             icon={Tags}
-            title="کسی اینجا نیست"
+            title="دسته‌بندی‌ای پیدا نشد"
             description={EMPTY_STATE_TEXT[tab]}
           />
         ) : (

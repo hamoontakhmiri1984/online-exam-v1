@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   getInstructorsByStatus,
   approveInstructor,
@@ -15,13 +15,24 @@ function useInstructorApprovals() {
   // چون تایید/رد هرکدوم روی یه ردیف مشخص عمل می‌کنه، به‌جای یه لودینگ
   // سراسری فقط همون دکمه‌ی همون ردیف غیرفعال می‌شه
   const [actioningId, setActioningId] = useState<string | null>(null);
+  // شماره‌ی آخرین درخواستِ لیست: جوابِ دیررسیده‌ی تبِ قبلی نباید لیستِ تبِ
+  // فعلی رو بازنویسی کنه (وگرنه دکمه‌ی «تایید» رو ردیفِ تبِ اشتباه می‌افته)
+  const requestIdRef = useRef(0);
 
   const load = useCallback(() => {
+    const requestId = ++requestIdRef.current;
+    const isLatest = () => requestId === requestIdRef.current;
     setLoading(true);
     getInstructorsByStatus(status)
-      .then(setInstructors)
-      .catch(() => setError('دریافت لیست مدرس‌ها با خطا مواجه شد'))
-      .finally(() => setLoading(false));
+      .then((data) => {
+        if (isLatest()) setInstructors(data);
+      })
+      .catch(() => {
+        if (isLatest()) setError('دریافت لیست مدرس‌ها با خطا مواجه شد');
+      })
+      .finally(() => {
+        if (isLatest()) setLoading(false);
+      });
   }, [status]);
 
   useEffect(() => {

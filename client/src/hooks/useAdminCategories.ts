@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   getAdminCategories,
   addCategoryAsAdmin,
@@ -21,13 +21,24 @@ function useAdminCategories() {
   // لودینگِ سراسری فقط همون ردیف غیرفعال می‌شه - هم‌الگو با useInstructorApprovals
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  // شماره‌ی آخرین درخواستِ لیست: اگه کاربر سریع بینِ تب‌ها عوض کنه و جوابِ
+  // درخواستِ قدیمی‌تر دیرتر برسه، نباید لیستِ تبِ فعلی رو بازنویسی کنه
+  const requestIdRef = useRef(0);
 
   const load = useCallback(() => {
+    const requestId = ++requestIdRef.current;
+    const isLatest = () => requestId === requestIdRef.current;
     setLoading(true);
     getAdminCategories(tab === 'All' ? undefined : tab)
-      .then(setCategories)
-      .catch(() => setError('دریافتِ لیستِ دسته‌بندی‌ها با خطا مواجه شد'))
-      .finally(() => setLoading(false));
+      .then((data) => {
+        if (isLatest()) setCategories(data);
+      })
+      .catch(() => {
+        if (isLatest()) setError('دریافتِ لیستِ دسته‌بندی‌ها با خطا مواجه شد');
+      })
+      .finally(() => {
+        if (isLatest()) setLoading(false);
+      });
   }, [tab]);
 
   useEffect(() => {

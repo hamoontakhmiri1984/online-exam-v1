@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.examInclude = void 0;
 exports.loadAccessibleExam = loadAccessibleExam;
+exports.isStudentInExamGroups = isStudentInExamGroups;
 const prisma_1 = require("./prisma");
 exports.examInclude = {
     groups: { select: { id: true } },
@@ -31,4 +32,16 @@ async function loadAccessibleExam(examId, userId, role) {
         where: { examId: exam.id, studentId: userId },
     });
     return { exam, allowed: hasAttempt > 0 };
+}
+// چک عضویتِ دانشجو تو گروه‌های *فعلیِ* آزمون، روی هر client (prisma یا tx).
+// برای استفاده بعد از قفل آزمون تو تراکنش: چون تغییر گروه‌ها FOR UPDATE
+// می‌گیره، بعد از FOR SHARE این نتیجه کهنه نمی‌شه
+async function isStudentInExamGroups(db, examId, studentId) {
+    const count = await db.group.count({
+        where: {
+            exams: { some: { id: examId } },
+            students: { some: { id: studentId } },
+        },
+    });
+    return count > 0;
 }

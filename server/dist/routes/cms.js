@@ -61,7 +61,7 @@ router.post('/admin/:section/image', imageUpload_1.imageUpload.single('file'), (
     }
     if (!req.file)
         throw (0, errors_1.badRequest)('فایل تصویر ارسال نشده');
-    const extension = req.file.mimetype === 'image/png' ? 'png' : 'jpg';
+    const extension = (0, imageUpload_1.extensionForImageMimeType)(req.file.mimetype);
     const key = `cms/${section}/${(0, node_crypto_1.randomUUID)()}.${extension}`;
     await (0, storage_1.uploadPublicObject)(key, req.file.buffer, req.file.mimetype);
     res.json({ imageUrl: (0, storage_1.getPublicObjectUrl)(key) });
