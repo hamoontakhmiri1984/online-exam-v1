@@ -1,6 +1,7 @@
 import { prisma } from './prisma';
 import { notifyUser, notifyRoles } from './notifications';
 import { conflict, notFound } from './errors';
+import { Prisma } from '@prisma/client';
 import type { Category, CategoryStatus } from '@prisma/client';
 
 // دقیقاً همون پترنِ normalizeUsername (lib/username.ts) - trim + lower-case
@@ -9,6 +10,14 @@ import type { Category, CategoryStatus } from '@prisma/client';
 // فارسی/عربی هم باشه.
 export function normalizeCategoryName(name: string): string {
   return name.trim().toLocaleLowerCase();
+}
+
+// خطای unique index (nameNormalized): دو درخواستِ هم‌زمان با یه اسم، هر دو
+// findUnique رو رد می‌کنن و فقط یکی create می‌شه؛ دومی P2002 می‌گیره
+function isUniqueViolation(err: unknown): boolean {
+  return (
+    err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002'
+  );
 }
 
 export function serializeCategory(category: Category) {
@@ -57,14 +66,29 @@ export async function proposeCategory(instructorId: string, rawName: string) {
     return { category: serializeCategory(existing), created: false };
   }
 
-  const created = await prisma.category.create({
-    data: {
-      name,
-      nameNormalized,
-      proposedById: instructorId,
-      status: 'Pending',
-    },
-  });
+  let created: Category;
+  try {
+    created = await prisma.category.create({
+      data: {
+        name,
+        nameNormalized,
+        proposedById: instructorId,
+        status: 'Pending',
+      },
+    });
+  } catch (err) {
+    // race: درخواستِ هم‌زمانِ دیگه زودتر همین دسته رو ساخته - idempotent
+    // برمی‌گردونیم (created: false)، بدون نوتیفِ دوباره‌ی SuperAdmin
+    if (isUniqueViolation(err)) {
+      const winner = await prisma.category.findUnique({
+        where: { nameNormalized },
+      });
+      if (winner) {
+        return { category: serializeCategory(winner), created: false };
+      }
+    }
+    throw err;
+  }
 
   const proposer = await prisma.user.findUnique({
     where: { id: instructorId },
@@ -91,10 +115,18 @@ export async function adminCreateCategory(name: string) {
     throw conflict('این دسته‌بندی از قبل وجود داره');
   }
 
-  const created = await prisma.category.create({
-    data: { name: trimmed, nameNormalized, status: 'Approved' },
-  });
-  return serializeCategory(created);
+  try {
+    const created = await prisma.category.create({
+      data: { name: trimmed, nameNormalized, status: 'Approved' },
+    });
+    return serializeCategory(created);
+  } catch (err) {
+    // race با یه درخواستِ هم‌زمان: همون پیامِ چکِ بالا، نه ۵۰۰
+    if (isUniqueViolation(err)) {
+      throw conflict('این دسته‌بندی از قبل وجود داره');
+    }
+    throw err;
+  }
 }
 
 export async function approveCategory(id: string) {
@@ -184,32 +216,42 @@ export async function renameCategory(id: string, rawNewName: string) {
 
   const oldName = category.name;
 
-  const [updated] = await prisma.$transaction([
-    prisma.category.update({
-      where: { id },
-      data: { name: newName, nameNormalized: newNormalized },
-    }),
-    prisma.group.updateMany({
-      where: { category: oldName },
-      data: { category: newName },
-    }),
-    prisma.exam.updateMany({
-      where: { category: oldName },
-      data: { category: newName },
-    }),
-    prisma.lessonSession.updateMany({
-      where: { category: oldName },
-      data: { category: newName },
-    }),
-    prisma.questionBank.updateMany({
-      where: { category: oldName },
-      data: { category: newName },
-    }),
-    prisma.handout.updateMany({
-      where: { category: oldName },
-      data: { category: newName },
-    }),
-  ]);
+  let updated: Category;
+  try {
+    [updated] = await prisma.$transaction([
+      prisma.category.update({
+        where: { id },
+        data: { name: newName, nameNormalized: newNormalized },
+      }),
+      prisma.group.updateMany({
+        where: { category: oldName },
+        data: { category: newName },
+      }),
+      prisma.exam.updateMany({
+        where: { category: oldName },
+        data: { category: newName },
+      }),
+      prisma.lessonSession.updateMany({
+        where: { category: oldName },
+        data: { category: newName },
+      }),
+      prisma.questionBank.updateMany({
+        where: { category: oldName },
+        data: { category: newName },
+      }),
+      prisma.handout.updateMany({
+        where: { category: oldName },
+        data: { category: newName },
+      }),
+    ]);
+  } catch (err) {
+    // race: هم‌زمان یه درخواستِ دیگه همین اسمِ جدید رو گرفته (چکِ collisionِ بالا
+    // فقط قبل از تراکنشه)
+    if (isUniqueViolation(err)) {
+      throw conflict('دسته‌بندیِ دیگه‌ای همین اسم رو داره');
+    }
+    throw err;
+  }
 
   return serializeCategory(updated);
 }

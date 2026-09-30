@@ -261,4 +261,4 @@ function AdminCategoriesPage() {
   );
 }
 
-export default AdminCategoriesPage;gi
+export default AdminCategoriesPage;

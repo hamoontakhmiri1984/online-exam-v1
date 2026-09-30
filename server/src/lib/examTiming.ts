@@ -8,6 +8,18 @@ type ExamWindow = {
   durationMinutes: number;
 };
 
+// شماره‌ی دقیقه‌ی یه زمان (کف‌شده) - برای مقایسه‌ی «هم‌دقیقه بودن»
+export const toMinute = (d: Date): number => Math.floor(d.getTime() / 60_000);
+
+// فرمِ ویرایش زمان رو تا دقیقه می‌فرسته، ولی scheduledAt ذخیره‌شده ممکنه ثانیه/
+// میلی‌ثانیه داشته باشه. اگه زمانِ درخواستی هم‌دقیقه با زمانِ فعلی باشه یعنی
+// «زمان عوض نشده» و همون مقدارِ دقیقِ فعلی حفظ می‌شه؛ وگرنه با ذخیره‌ی مقدارِ
+// جدیدِ هم‌دقیقه، پایانِ عمومیِ آزمون (getExamWindowEndMs) با expiresAt
+// attempt های قبلاً ثبت‌شده ناسازگار می‌شد
+export function resolveScheduledAt(current: Date, requested: Date): Date {
+  return toMinute(requested) === toMinute(current) ? current : requested;
+}
+
 // پایان «عمومی» آزمون: آخرین لحظه‌ای که هر دانشجویی می‌تونه توش attempt جدید
 // بسازه. expiresAt همه‌ی attempt‌ها (بدون استثنا) از این لحظه دیرتر نمی‌شه،
 // چون POST /attempts/start اون رو min(now + duration, windowEnd) می‌ذاره

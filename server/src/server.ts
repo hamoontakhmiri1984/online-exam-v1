@@ -28,6 +28,9 @@ import adminRouter from './routes/admin';
 import blogRouter from './routes/blog';
 import cmsRouter from './routes/cms';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import { asyncHandler } from './lib/asyncHandler';
+
+const HEALTH_TIMEOUT_MS = 3000;
 
 const app = express();
 const httpServer = createServer(app);
@@ -44,11 +47,39 @@ app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 
-app.get('/health', async (_req, res) => {
-  await prisma.$queryRaw`SELECT 1`;
-  await redis.ping();
-  res.json({ status: 'ok' });
-});
+app.get(
+  '/health',
+  asyncHandler(async (_req, res) => {
+    // هر وابستگی جدا چک می‌شه و با تایم‌اوت: Redis/DB که قطع باشه نباید request
+    // رو معلق کنه (ioredis موقع قطعی retry می‌کنه و ping دیر برمی‌گرده). خطا
+    // هم به errorHandler نمی‌ره - health check باید ۵۰۳ + وضعیتِ هر وابستگی بده
+    const check = (name: string, run: () => Promise<unknown>) => {
+      let timer: NodeJS.Timeout | undefined;
+      const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`${name} timeout`)),
+          HEALTH_TIMEOUT_MS
+        );
+      });
+      return Promise.race([run(), timeout])
+        .then(
+          () => 'ok' as const,
+          () => 'down' as const
+        )
+        .finally(() => clearTimeout(timer));
+    };
+
+    const [db, cache] = await Promise.all([
+      check('db', () => prisma.$queryRaw`SELECT 1`),
+      check('redis', () => redis.ping()),
+    ]);
+
+    if (db === 'ok' && cache === 'ok') {
+      return res.json({ status: 'ok' });
+    }
+    res.status(503).json({ status: 'error', db, redis: cache });
+  })
+);
 
 // دیگه هیچ فایلی رو دیسک سرور نگه‌داری/استاتیک سرو نمی‌شه - ویدیو/جزوه‌ها
 // تو MinIO/S3 (lib/storage.ts) هستن و فقط با signed URL موقت (بعد از چک

@@ -48,9 +48,12 @@ function PlansPage() {
   useEffect(() => {
     if (!currentUser || currentUser.role !== 'Instructor') return;
     let cancelled = false;
-    getPaymentHistory().then((data) => {
-      if (!cancelled) setPayments(data);
-    });
+    getPaymentHistory()
+      .then((data) => {
+        if (!cancelled) setPayments(data);
+      })
+      // قبلاً catch نداشت و خطای شبکه unhandled rejection می‌شد
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -95,11 +98,27 @@ function PlansPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // برگشت با دکمه‌ی Back از درگاه پرداخت: مرورگر صفحه رو با state قبلی (لودینگِ
+  // روشن) از cache برمی‌گردونه؛ بدون این، دکمه‌ها برای همیشه غیرفعال می‌مونن
+  useEffect(() => {
+    function handlePageShow(event: PageTransitionEvent) {
+      if (event.persisted) {
+        setActionLoading(false);
+        setPendingPlanId(null);
+      }
+    }
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
+
   // برای پلن رایگان مستقیم تمدید می‌کنه؛ برای پلن پولی باید دوباره از درگاه
   // پرداخت رد بشه (چون سرور تمدید مستقیم پلن پولی رو رد می‌کنه)
   async function handleRenew() {
     if (!currentUser || !subscription) return;
     setActionLoading(true);
+    // وقتی به درگاه ریدایرکت می‌شیم، لودینگ باید روشن بمونه تا تا لحظه‌ی
+    // عوض شدنِ صفحه کلیکِ دوباره یه checkoutِ دوم نسازه
+    let redirecting = false;
     try {
       if (PLANS[subscription.planId].price === 0) {
         await renewSubscription(currentUser.id);
@@ -108,6 +127,7 @@ function PlansPage() {
       } else {
         const result = await startCheckout(subscription.planId);
         if (!result.free) {
+          redirecting = true;
           window.location.href = result.paymentUrl;
           return;
         }
@@ -116,7 +136,7 @@ function PlansPage() {
     } catch {
       setToast({ message: 'تمدید اشتراک با خطا مواجه شد', tone: 'danger' });
     } finally {
-      setActionLoading(false);
+      if (!redirecting) setActionLoading(false);
     }
   }
 
@@ -138,11 +158,14 @@ function PlansPage() {
   async function confirmPlanChange() {
     if (!currentUser || !pendingPlanId) return;
     setActionLoading(true);
+    // مثل handleRenew: موقع ریدایرکت به درگاه لودینگ و مودال باز می‌مونن
+    let redirecting = false;
     try {
       const result = await startCheckout(pendingPlanId);
       if (!result.free) {
         // ریدایرکت به درگاه زرین‌پال - از این‌جا به بعد کنترل دست کاربره،
         // نیازی به toast/refresh این‌جا نیست چون صفحه عوض می‌شه
+        redirecting = true;
         window.location.href = result.paymentUrl;
         return;
       }
@@ -154,8 +177,10 @@ function PlansPage() {
     } catch {
       setToast({ message: 'تغییر پلن با خطا مواجه شد', tone: 'danger' });
     } finally {
-      setActionLoading(false);
-      setPendingPlanId(null);
+      if (!redirecting) {
+        setActionLoading(false);
+        setPendingPlanId(null);
+      }
     }
   }
 

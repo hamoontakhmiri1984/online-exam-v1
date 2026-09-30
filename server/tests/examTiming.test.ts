@@ -5,6 +5,7 @@ import {
   FINISH_GRACE_MS,
   getExamWindowEndMs,
   isAnswerKeyReleased,
+  resolveScheduledAt,
 } from '../src/lib/examTiming';
 
 // آزمون ساعت ۱۰:۰۰ تا ۱۱:۰۰ (۶۰ دقیقه)
@@ -34,4 +35,16 @@ test('بعد از پایان عمومی + مهلت ارسال منتشر می‌
 test('با allowReview=false هیچ‌وقت منتشر نمی‌شه', () => {
   const noReview = { ...exam, allowReview: false };
   assert.equal(isAnswerKeyReleased(noReview, windowEnd + 24 * 60 * 60_000), false);
+});
+
+test('resolveScheduledAt: تغییر ثانیه تو همون دقیقه، مقدار دقیقِ فعلی رو نگه می‌داره', () => {
+  const current = new Date('2026-09-21T10:00:30.500Z');
+  const requested = new Date('2026-09-21T10:00:05.000Z');
+  assert.equal(resolveScheduledAt(current, requested), current);
+});
+
+test('resolveScheduledAt: تغییر دقیقه، مقدارِ درخواستی رو برمی‌گردونه', () => {
+  const current = new Date('2026-09-21T10:00:30.500Z');
+  const requested = new Date('2026-09-21T10:01:00.000Z');
+  assert.equal(resolveScheduledAt(current, requested), requested);
 });

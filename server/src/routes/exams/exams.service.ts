@@ -5,6 +5,7 @@ import type { AccessibleExam } from '../../lib/examAccess';
 import { examInclude } from '../../lib/examAccess';
 import { prepareQuotaGuard } from '../../lib/quota';
 import { withExamWriteLock } from '../../lib/examLock';
+import { resolveScheduledAt, toMinute } from '../../lib/examTiming';
 import type { updateExamSchema } from '../../validation/examSchemas';
 import type { z } from 'zod';
 
@@ -62,11 +63,10 @@ export function assertNotInPast(scheduledAt: Date) {
 
 type UpdateExamData = z.infer<typeof updateExamSchema>;
 
-const toMinute = (d: Date) => Math.floor(d.getTime() / 60_000);
-
 // آیا فیلدهای «قفل‌شونده بعد از شروع» (زمان/مدت/گروه‌ها) نسبت به current
 // عوض شدن؟ مقایسه‌ی زمان تا دقیقه‌ست تا ثانیه/میلی‌ثانیه‌ی فرم ویرایش باعث
-// رد شدنِ الکی نشه
+// رد شدنِ الکی نشه. ورودیِ newScheduledAt باید از resolveScheduledAt رد شده
+// باشه تا زمانِ هم‌دقیقه‌ی «تغییرنکرده» مقدارِ دقیقِ فعلی رو نگه داره
 function computeChangesLockedFields(
   current: { scheduledAt: Date; durationMinutes: number; groups: { id: string }[] },
   newScheduledAt: Date,
@@ -117,7 +117,13 @@ export async function updateExam(
   // دیگه رو به همون آزمون وصل کنه
   await assertOwnsAllGroups(data.groupIds, role, sub);
 
-  const newScheduledAt = new Date(data.scheduledAt);
+  // اگه زمانِ درخواستی هم‌دقیقه با زمانِ فعلی باشه، همون مقدارِ دقیقِ فعلی
+  // (با ثانیه/میلی‌ثانیه) می‌مونه - نه مقدارِ جدیدِ فرم
+  const requestedScheduledAt = new Date(data.scheduledAt);
+  const newScheduledAt = resolveScheduledAt(
+    existing.scheduledAt,
+    requestedScheduledAt
+  );
   const newGroupIds = new Set(data.groupIds);
 
   // زمان گذشته فقط وقتی رد می‌شه که زمانِ آزمون واقعاً تغییر کرده باشه؛
@@ -167,11 +173,16 @@ export async function updateExam(
           groups: { select: { id: true } },
         },
       });
+      // دوباره با scheduledAtِ *بعد از قفل* حل می‌شه (existing ممکنه کهنه باشه)
+      const scheduledAt = resolveScheduledAt(
+        current.scheduledAt,
+        requestedScheduledAt
+      );
       assertScheduleEditable(
         attemptCount,
         computeChangesLockedFields(
           current,
-          newScheduledAt,
+          scheduledAt,
           data.durationMinutes,
           newGroupIds
         )
@@ -182,7 +193,7 @@ export async function updateExam(
         data: {
           title: data.title,
           category: data.category,
-          scheduledAt: newScheduledAt,
+          scheduledAt,
           durationMinutes: data.durationMinutes,
           allowReview: data.allowReview,
           groups: { set: data.groupIds.map((id) => ({ id })) },
