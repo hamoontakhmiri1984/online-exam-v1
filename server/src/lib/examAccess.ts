@@ -1,5 +1,6 @@
 import { prisma } from './prisma';
 import type { Role } from './jwt';
+import type { Prisma } from '@prisma/client';
 
 export const examInclude = {
   groups: { select: { id: true } },
@@ -49,4 +50,21 @@ export async function loadAccessibleExam(
     where: { examId: exam.id, studentId: userId },
   });
   return { exam, allowed: hasAttempt > 0 };
+}
+
+// چک عضویتِ دانشجو تو گروه‌های *فعلیِ* آزمون، روی هر client (prisma یا tx).
+// برای استفاده بعد از قفل آزمون تو تراکنش: چون تغییر گروه‌ها FOR UPDATE
+// می‌گیره، بعد از FOR SHARE این نتیجه کهنه نمی‌شه
+export async function isStudentInExamGroups(
+  db: Prisma.TransactionClient,
+  examId: string,
+  studentId: string
+): Promise<boolean> {
+  const count = await db.group.count({
+    where: {
+      exams: { some: { id: examId } },
+      students: { some: { id: studentId } },
+    },
+  });
+  return count > 0;
 }

@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
-import { loadAccessibleExam } from '../../lib/examAccess';
+import {
+  loadAccessibleExam,
+  isStudentInExamGroups,
+} from '../../lib/examAccess';
 import { lockExamForShare } from '../../lib/examLock';
 import { getExamWindowEndMs } from '../../lib/examTiming';
 import {
@@ -81,6 +84,13 @@ router.post(
 
         // مقدارهای بالا (exam) قبل از قفل خونده شدن و ممکنه کهنه باشن
         if (locked.status !== 'Published') throw forbidden();
+
+        // عضویت تو گروه‌های آزمون هم بعد از قفل دوباره چک می‌شه: allowed بالا
+        // قبل از تراکنش محاسبه شده و اگه گروه‌های آزمون (یا عضویت دانشجو) تو
+        // این فاصله عوض شده باشه کهنه‌ست. تغییر گروه‌های آزمون FOR UPDATE
+        // می‌گیره، پس بعد از FOR SHARE این نتیجه ثابته
+        const stillMember = await isStudentInExamGroups(tx, exam.id, sub);
+        if (!stillMember) throw forbidden();
         if (Date.now() < locked.scheduledAt.getTime()) {
           throw forbidden('این آزمون هنوز شروع نشده');
         }
