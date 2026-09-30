@@ -7,6 +7,7 @@ import { forceLogoutOtherSessions } from '../../realtime/socket';
 import { asyncHandler } from '../../lib/asyncHandler';
 import { notFound, badRequest } from '../../lib/errors';
 import type { Prisma } from '@prisma/client';
+import { recordAdminAction } from '../../lib/adminAudit';
 
 import { serializeInstructor } from './instructors.service';
 
@@ -47,9 +48,21 @@ router.post(
       return;
     }
 
-    const updated = await prisma.user.update({
-      where: { id: user.id },
-      data: { approvalStatus: 'Approved' },
+    // تغییر وضعیت و تاریخچهٔ اقدام در یک تراکنش: یا هر دو ثبت می‌شن یا هیچ‌کدوم
+    const updated = await prisma.$transaction(async (tx) => {
+      const result = await tx.user.update({
+        where: { id: user.id },
+        data: { approvalStatus: 'Approved' },
+      });
+      await recordAdminAction(tx, {
+        adminId: req.user!.sub,
+        action: 'instructor.approve',
+        targetType: 'User',
+        targetId: user.id,
+        before: { approvalStatus: user.approvalStatus },
+        after: { approvalStatus: 'Approved' },
+      });
+      return result;
     });
 
     notifyUser(
@@ -82,9 +95,20 @@ router.post(
     const alreadyRejected = user.approvalStatus === 'Rejected';
     const updated = alreadyRejected
       ? user
-      : await prisma.user.update({
-          where: { id: user.id },
-          data: { approvalStatus: 'Rejected' },
+      : await prisma.$transaction(async (tx) => {
+          const result = await tx.user.update({
+            where: { id: user.id },
+            data: { approvalStatus: 'Rejected' },
+          });
+          await recordAdminAction(tx, {
+            adminId: req.user!.sub,
+            action: 'instructor.reject',
+            targetType: 'User',
+            targetId: user.id,
+            before: { approvalStatus: user.approvalStatus },
+            after: { approvalStatus: 'Rejected' },
+          });
+          return result;
         });
 
     // با توکن قبلی (تا وقتی خودش logout نکنه) همچنان می‌تونست گروه/آزمون

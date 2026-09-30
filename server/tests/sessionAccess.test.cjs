@@ -106,13 +106,17 @@ test('Reject retry retries revocation after partial failure', async () => {
     post(route, handler) { routes[route] = handler; } };
   let user = { id: 'teacher', role: 'Instructor', approvalStatus: 'Approved',
     name: null, email: null, phone: null, username: null, createdAt: new Date() };
-  let revocations = 0, updates = 0, disconnected = 0;
+  let revocations = 0, updates = 0, disconnected = 0, audits = 0;
   load('routes/admin/instructors.routes.ts', {
     express: { Router: () => router },
-    '../../lib/prisma': { prisma: { user: {
-      findUnique: async () => user,
-      update: async ({ data }) => { updates++; user = { ...user, ...data }; return user; },
-    } } },
+    '../../lib/prisma': { prisma: {
+      user: {
+        findUnique: async () => user,
+        update: async ({ data }) => { updates++; user = { ...user, ...data }; return user; },
+      },
+      $transaction: async fn => fn({ user: { update: async ({ data }) => { updates++; user = { ...user, ...data }; return user; } } }),
+    } },
+    '../../lib/adminAudit': { recordAdminAction: async () => { audits++; } },
     '../../lib/notifications': { notifyUser: async () => {} },
     '../../lib/session': { revokeSession: async () => {
       revocations++;
@@ -124,13 +128,14 @@ test('Reject retry retries revocation after partial failure', async () => {
     './instructors.service': { serializeInstructor: (u) => u },
   });
   const handler = routes['/:id/reject'];
-  const req = { params: { id: 'teacher' } };
+  const req = { params: { id: 'teacher' }, user: { sub: 'admin' } };
   const res = { json() {} };
   await assert.rejects(handler(req, res), /Redis offline/);
   assert.equal(user.approvalStatus, 'Rejected');
   await handler(req, res);
   assert.equal(revocations, 2);
   assert.equal(updates, 1);
+  assert.equal(audits, 1, 'audit written once, not on retry');
   assert.equal(disconnected, 1);
 });
 

@@ -109,6 +109,7 @@ model User {
   handouts           Handout[]
   blogPosts          BlogPost[]         @relation("BlogAuthor")
   siteContentEdits   SiteContent[]      @relation("SiteContentEditor")
+  adminActions       AdminAuditLog[]    @relation("AdminActor")
 
   @@map("users")
 }
@@ -435,4 +436,24 @@ model NotificationRead {
   @@id([userId, notificationId])
   @@index([notificationId])
   @@map("notification_reads")
+}
+
+// تاریخچهٔ append-only اقدامات حساس SuperAdmin (تایید/رد مدرس، تغییر پلن).
+// action مثل "instructor.approve"، targetType/targetId هدف اقدام، و
+// before/after وضعیت قبل و بعد از تغییر (JSON کوچک، نه snapshot کل رکورد).
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  adminId    String
+  action     String
+  targetType String
+  targetId   String
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+
+  admin User @relation("AdminActor", fields: [adminId], references: [id], onDelete: Restrict)
+
+  @@index([adminId, createdAt])
+  @@index([targetType, targetId, createdAt])
+  @@map("admin_audit_logs")
 }
