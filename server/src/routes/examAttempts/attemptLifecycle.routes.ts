@@ -262,24 +262,31 @@ router.patch(
     // اتمیک و «فقط رو به جلو»: ذخیره فقط وقتی انجام می‌شه که
     //  - attempt هنوز finish نشده باشه (بازنویسی بعد از finish هم‌زمان ممنوع)
     //  - هنوز تو مهلت باشه (expiresAt + FINISH_GRACE_MS). چکِ بالا قبل از
-    //    نوشتن انجام شده و اگه این request (مثلاً بخاطر DB/شبکه) معطل مونده
-    //    باشه، ممکنه مهلت وسطِ راه تموم شده باشه؛ پس شرطِ زمانی باید داخلِ
-    //    خودِ where نوشتن هم باشه، نه فقط قبلش. cutoff هم همین‌جا (لحظه‌ی
-    //    نوشتن) حساب می‌شه، نه بالاتر
+    //    نوشتن انجام شده و ممکنه تا لحظه‌ی نوشتن کهنه بشه. اگه cutoff رو تو
+    //    Node حساب کنیم و به کوئری بدیم، وقتی کوئری پشتِ قفلِ ردیف (مثلاً
+    //    finalize هم‌زمان) یا تو صف کانکشن معطل بمونه، همون cutoffِ قدیمی
+    //    استفاده می‌شه و ذخیره بعد از مهلت هم می‌شینه. برای همین زمان رو
+    //    خودِ Postgres تو لحظه‌ی اجرای نوشتن می‌سنجه: clock_timestamp()
+    //    (برخلاف now() که ثابتِ شروعِ statement ـه) volatile ـه و وقتی UPDATE
+    //    بعد از گرفتنِ قفل شرط رو دوباره ارزیابی می‌کنه (READ COMMITTED)، با
+    //    زمانِ واقعیِ همون لحظه حساب می‌شه. AT TIME ZONE 'UTC' لازمه چون
+    //    Prisma ستون‌های DateTime رو UTC و بدون timezone (timestamp(3)) ذخیره
+    //    می‌کنه و مقایسه‌ی مستقیم با timestamptz به TimeZone سشنِ دیتابیس
+    //    وابسته می‌شد
     //  - revision این درخواست از revision ذخیره‌شده بزرگ‌تر باشه. اگه یه
-    //    درخواستِ قدیمی‌تر دیرتر از درخواست جدیدتر برسه، رد می‌شه و جواب
+    //    درخواستِ قدیمی‌تر دیرتر از درخواستِ جدیدتر برسه، رد می‌شه و جواب
     //    جدیدتر رو بازنویسی نمی‌کنه
     const { answers, revision } = parsed.data;
-    const graceCutoff = new Date(Date.now() - FINISH_GRACE_MS);
-    const { count } = await prisma.examAttempt.updateMany({
-      where: {
-        id: existing.id,
-        finishedAt: null,
-        expiresAt: { gte: graceCutoff },
-        answersRevision: { lt: revision },
-      },
-      data: { answers, answersRevision: revision },
-    });
+    const count = await prisma.$executeRaw`
+      UPDATE "exam_attempts"
+      SET "answers" = ${JSON.stringify(answers)}::jsonb,
+          "answersRevision" = ${revision}
+      WHERE "id" = ${existing.id}
+        AND "finishedAt" IS NULL
+        AND "answersRevision" < ${revision}
+        AND "expiresAt" + (${FINISH_GRACE_MS}::double precision * interval '1 millisecond')
+            >= (clock_timestamp() AT TIME ZONE 'UTC')
+    `;
 
     if (count === 0) {
       const current = await prisma.examAttempt.findUnique({
