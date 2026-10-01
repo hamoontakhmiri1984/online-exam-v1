@@ -10,6 +10,7 @@ import {
 import { asyncHandler } from '../../lib/asyncHandler';
 import { notFound, forbidden, badRequest } from '../../lib/errors';
 import { excelUpload } from '../../lib/excelUpload';
+import { validateUploadedFile } from '../../lib/uploadValidation';
 import { parseQuestionsExcel } from '../../lib/questionExcel';
 import { withQuotaForRole } from '../../lib/quota';
 
@@ -114,6 +115,8 @@ router.post(
       next();
     });
   },
+  // xlsx/xls با امضای باینری، CSV با اعتبارسنجی متن و ساختار (بدون magic bytes)
+  validateUploadedFile('spreadsheet'),
   asyncHandler(async (req, res) => {
     const { role, sub } = req.user!;
     const { bank, allowed } = await loadOwnedBank(req.params.bankId, sub, role);

@@ -6,6 +6,7 @@ import { requireAuth, requireRole } from '../../middleware/requireAuth';
 import { asyncHandler } from '../../lib/asyncHandler';
 import { badRequest, notFound, conflict } from '../../lib/errors';
 import { extensionForImageMimeType, imageUpload } from '../../lib/imageUpload';
+import { validateUploadedFile } from '../../lib/uploadValidation';
 import {
   uploadPublicObject,
   deletePublicObject,
@@ -173,6 +174,7 @@ router.delete(
 router.post(
   '/admin/:id/cover',
   imageUpload.single('file'),
+  validateUploadedFile('image'),
   asyncHandler(async (req, res) => {
     const existing = await prisma.blogPost.findUnique({
       where: { id: req.params.id },

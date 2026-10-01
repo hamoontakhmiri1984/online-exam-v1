@@ -7,6 +7,7 @@ import { requireAuth, requireRole } from '../middleware/requireAuth';
 import { asyncHandler } from '../lib/asyncHandler';
 import { badRequest } from '../lib/errors';
 import { extensionForImageMimeType, imageUpload } from '../lib/imageUpload';
+import { validateUploadedFile } from '../lib/uploadValidation';
 import { uploadPublicObject, getPublicObjectUrl } from '../lib/storage';
 import {
   SITE_CONTENT_SECTIONS,
@@ -77,6 +78,7 @@ router.put(
 router.post(
   '/admin/:section/image',
   imageUpload.single('file'),
+  validateUploadedFile('image'),
   asyncHandler(async (req, res) => {
     const { section } = req.params;
     if (!isSiteContentSection(section)) {

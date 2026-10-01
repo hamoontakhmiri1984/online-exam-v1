@@ -18,9 +18,15 @@ const HEADERS = [
   'سطح دشواری (Easy/Medium/Hard - اختیاری)',
 ] as const;
 
-// سقف تعداد ردیف داده تو هر فایل - جلوی فایل‌های عظیم (تراکنش چندده‌هزار
-// create و مصرف حافظه‌ی پارس) رو می‌گیره
-const MAX_IMPORT_ROWS = 1000;
+// دو سقف جدا و صریح:
+//   MAX_IMPORT_ROWS: حداکثر تعداد «سوال» (ردیف غیرخالی) تو هر فایل - جلوی
+//     تراکنش چندده‌هزار create رو می‌گیره
+//   MAX_SHEET_ROWS: حداکثر تعداد ردیف «فیزیکی» شیت (شامل هدر و ردیف‌های خالی)
+//     - سقف حافظه‌ی پارسه (به XLSX.read با sheetRows داده می‌شه). فایلی که
+//     از این سقف بزرگ‌تره هیچ‌وقت ناقص خونده نمی‌شه: رد می‌شه، حتی اگه ردیف‌های
+//     بعد از سقف همه خالی بنویسن یا سوال‌های واقعی اون‌ها بعد از ردیف‌های خالی باشن
+export const MAX_IMPORT_ROWS = 1000;
+export const MAX_SHEET_ROWS = 5000;
 
 const OPTION_COLUMN_COUNT = 6;
 const CORRECT_INDEX_COL = 1 + OPTION_COLUMN_COUNT; // 7
@@ -79,17 +85,50 @@ function isRowEmpty(row: unknown[]): boolean {
   return row.every((cell) => String(cell ?? '').trim() === '');
 }
 
+function isBinarySpreadsheet(buffer: Buffer): boolean {
+  const zip = buffer.length >= 4 && buffer.readUInt32BE(0) === 0x504b0304; // xlsx
+  const ole = buffer.length >= 4 && buffer.readUInt32BE(0) === 0xd0cf11e0; // xls
+  return zip || ole;
+}
+
+// تعداد ردیف فیزیکی یک فایل متنی (CSV)، بدون پارس. \n یا (اگه نبود) \r جداکننده‌ست.
+// اگه ردیف‌های داخل کوتیشن شامل خط جدید باشن کمی بیشتر شمرده می‌شن (محافظه‌کارانه).
+function countTextLines(buffer: Buffer): number {
+  let breaks = 0;
+  for (let i = buffer.indexOf(10); i !== -1; i = buffer.indexOf(10, i + 1)) breaks++;
+  if (breaks === 0) {
+    for (let i = buffer.indexOf(13); i !== -1; i = buffer.indexOf(13, i + 1)) breaks++;
+  }
+  const last = buffer.length ? buffer[buffer.length - 1] : 10;
+  return breaks + (last === 10 || last === 13 ? 0 : 1);
+}
+
+function rowLimitError(): ReturnType<typeof badRequest> {
+  return badRequest(
+    `فایل بیشتر از ${MAX_SHEET_ROWS.toLocaleString(
+      'fa-IR'
+    )} ردیف دارد (ردیف‌های خالی هم شمرده می‌شوند)؛ ردیف‌های خالیِ اضافه را حذف کن یا فایل را تکه‌تکه کن`
+  );
+}
+
 // بافر اکسل/CSV آپلودی رو می‌خونه و به آرایه‌ای از سوال‌های معتبر (طبق همون
 // createQuestionSchema که فرم تک‌سوالی هم ازش استفاده می‌کنه) + لیست خطاهای
 // ردیف‌به‌ردیف تبدیل می‌کنه. عمداً کل فایل رو رد نمی‌کنیم اگه یه ردیف خراب
 // باشه - سوال‌های سالم ایمپورت می‌شن و خطاها جدا به مدرس نشون داده می‌شه.
 export function parseQuestionsExcel(buffer: Buffer): QuestionImportResult {
+  // سقف ردیف فیزیکی قبل از پارس برای فایل متنی (CSV) چک می‌شه؛ برای اکسل
+  // باینری بعد از پارس (پایین) از روی محدوده‌ی واقعی شیت
+  if (!isBinarySpreadsheet(buffer) && countTextLines(buffer) > MAX_SHEET_ROWS) {
+    throw rowLimitError();
+  }
+
   let workbook: XLSX.WorkBook;
   try {
-    // sheetRows حافظه‌ی پارس رو محدود می‌کنه؛ بیشتر از سقف ردیف رو پایین رد می‌کنیم
+    // sheetRows حافظه‌ی پارس رو محدود می‌کنه. یک ردیف بیشتر از سقف می‌خونیم تا
+    // «فایل دقیقاً سقف ردیف داره» از «فایل بزرگ‌تره» جدا بشه
     workbook = XLSX.read(buffer, {
       type: 'buffer',
-      sheetRows: MAX_IMPORT_ROWS * 3,
+      sheetRows: MAX_SHEET_ROWS + 1,
     });
   } catch {
     throw badRequest('فایل قابل‌خواندن نیست؛ یک فایل اکسل/CSV معتبر آپلود کن');
@@ -101,11 +140,31 @@ export function parseQuestionsExcel(buffer: Buffer): QuestionImportResult {
   }
 
   const sheet = workbook.Sheets[sheetName];
-  const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
-    header: 1,
-    defval: '',
-  });
+  const sheetRef = sheet['!ref'];
+  const usedRange = sheetRef ? XLSX.utils.decode_range(sheetRef) : null;
 
+  // اگه SheetJS شیت رو به‌خاطر sheetRows بریده باشه (!fullref) یا محدوده‌ی
+  // شیت از سقف بیشتر باشه، ادامه نمی‌دیم - وگرنه ردیف‌های بعد از سقف بی‌صدا
+  // نادیده گرفته می‌شدن و فایل ناقص ایمپورت می‌شد
+  if (sheet['!fullref'] || (usedRange && usedRange.e.r + 1 > MAX_SHEET_ROWS)) {
+    throw rowLimitError();
+  }
+
+  // محدوده‌ی خوندن رو صریحاً از ردیف/ستون ۱ شروع می‌کنیم. بدون این، اگه چند
+  // ردیف اول (یا ستون A) خالی باشه، sheet_to_json از اولین سلول پُر شروع می‌کنه
+  // و هم شماره‌ی ردیف خطاها جابه‌جا می‌شه هم جایگاه ستون‌ها
+  const rows = usedRange
+    ? XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+        header: 1,
+        defval: '',
+        range: {
+          s: { r: 0, c: 0 },
+          e: { r: usedRange.e.r, c: Math.max(usedRange.e.c, DIFFICULTY_COL) },
+        },
+      })
+    : [];
+
+  // rows[0] همیشه ردیف ۱ فایله، پس شماره‌ی ردیف خطاها با اکسل یکیه.
   // ردیف اول رو به‌عنوان هدر در نظر می‌گیریم و رد می‌کنیم (چه دقیقاً با
   // تمپلیت یکی باشه چه نباشه - فقط جایگاه ستون‌ها مهمه، نه متن هدر)
   const dataRows = rows.slice(1);
@@ -113,7 +172,11 @@ export function parseQuestionsExcel(buffer: Buffer): QuestionImportResult {
   const filledRowCount = dataRows.filter((r) => r && !isRowEmpty(r)).length;
   if (filledRowCount > MAX_IMPORT_ROWS) {
     throw badRequest(
-      `حداکثر ${MAX_IMPORT_ROWS} سوال تو هر فایل قابل‌ایمپورته؛ فایل رو تکه‌تکه کن`
+      `حداکثر ${MAX_IMPORT_ROWS.toLocaleString(
+        'fa-IR'
+      )} سوال تو هر فایل قابل‌ایمپورته (فایل ${filledRowCount.toLocaleString(
+        'fa-IR'
+      )} ردیف پُر دارد)؛ فایل رو تکه‌تکه کن`
     );
   }
 

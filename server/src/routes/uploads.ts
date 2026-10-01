@@ -8,6 +8,7 @@ import { uploadObject, uploadObjectFromFile } from '../lib/storage';
 import { badRequest } from '../lib/errors';
 import { buildObjectKey } from '../lib/objectKeys';
 import { asyncHandler } from '../lib/asyncHandler';
+import { validateUploadedFile } from '../lib/uploadValidation';
 
 const router = Router();
 router.use(requireAuth);
@@ -46,6 +47,9 @@ router.post(
       next();
     });
   },
+  // نوع واقعی ویدیو از روی هدر فایل موقت تشخیص داده می‌شه (نه کل فایل)؛
+  // اگه نامعتبر بود فایل موقت همین‌جا پاک می‌شه
+  validateUploadedFile('video'),
   asyncHandler(async (req, res) => {
     if (!req.file) {
       throw badRequest('فایلی ارسال نشده');
@@ -95,6 +99,7 @@ router.post(
       next();
     });
   },
+  validateUploadedFile('pdf'),
   asyncHandler(async (req, res) => {
     if (!req.file) {
       throw badRequest('فایلی ارسال نشده');
