@@ -1,5 +1,6 @@
-// اجرای تست‌های فرانت (client/tests/*.test.ts) بدون وابستگی جدید: با esbuild
-// (که vite از قبل نصبش می‌کنه) هر تست به یه فایل CJS موقت bundle و با
+// اجرای تست‌های فرانت (client/tests/*.test.ts): با esbuild (که مستقیم import
+// می‌شه و به‌همین‌دلیل صریحاً تو devDependencies کلاینته، نه فقط به‌عنوان
+// وابستگیِ غیرمستقیمِ vite) هر تست به یه فایل CJS موقت bundle و با
 // `node --test` اجرا می‌شه. اگه هیچ تستی پیدا نشه یا اجرا fail بشه، exit code
 // غیرصفره.
 import { build } from 'esbuild';
