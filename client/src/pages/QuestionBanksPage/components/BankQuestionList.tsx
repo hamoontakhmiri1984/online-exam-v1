@@ -9,8 +9,8 @@ import type { BankQuestion } from '../../../api/questionBankApi';
 type BankQuestionListProps = {
   questions: BankQuestion[];
   loading: boolean;
-  onEdit: (question: BankQuestion) => void;
-  onDelete: (question: BankQuestion) => void;
+  onEdit?: (question: BankQuestion) => void;
+  onDelete?: (question: BankQuestion) => void;
 };
 
 function BankQuestionList({
@@ -26,7 +26,9 @@ function BankQuestionList({
       <EmptyState
         icon={FileQuestion}
         title="هنوز سوالی وجود ندارد"
-        description="اولین سوال این بانک را اضافه کن."
+        description={
+          onEdit ? 'اولین سوال این بانک را اضافه کن.' : 'این بانک هنوز سوالی ندارد.'
+        }
       />
     );
   }

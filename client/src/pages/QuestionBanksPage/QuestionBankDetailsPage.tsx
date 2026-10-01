@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowRight, Upload } from 'lucide-react';
 
 import AppLayout from '../../components/AppLayout/AppLayout';
+import { getCurrentUser } from '../../api/authApi';
 
 import useBankQuestions from '../../hooks/useBankQuestions';
 import useImportBankQuestionsModal from '../../hooks/useImportBankQuestionsModal';
@@ -24,6 +25,9 @@ const EMPTY_FORM: BankQuestionInput = {
 function QuestionBankDetailsPage() {
   const { bankId } = useParams();
   const navigate = useNavigate();
+  // SuperAdmin فقط مشاهده می‌کنه: بک‌اند ساخت/ویرایش/حذف سوال رو از ایشون
+  // قبول نمی‌کنه (server/src/routes/questionBanks/bankQuestions.routes.ts)
+  const canManage = getCurrentUser()?.role !== 'SuperAdmin';
 
   const {
     questions,
@@ -138,17 +142,24 @@ function QuestionBankDetailsPage() {
           بازگشت به بانک‌ها
         </button>
 
-        <button
-          type="button"
-          onClick={importModal.open}
-          className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 transition"
-        >
-          <Upload size={16} />
-          ایمپورت از اکسل
-        </button>
+        {canManage && (
+          <button
+            type="button"
+            onClick={importModal.open}
+            className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 transition"
+          >
+            <Upload size={16} />
+            ایمپورت از اکسل
+          </button>
+        )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
+      <div
+        className={`grid gap-6 ${
+          canManage ? 'lg:grid-cols-[380px_minmax(0,1fr)]' : ''
+        }`}
+      >
+        {canManage && (
         <BankQuestionForm
           form={form}
           isEditing={editing !== null}
@@ -168,17 +179,21 @@ function QuestionBankDetailsPage() {
           onSubmit={handleSubmit}
           onCancel={resetForm}
         />
+        )}
 
         <section>
           <BankQuestionList
             questions={questions}
             loading={loading}
-            onEdit={startEdit}
-            onDelete={(question) => void handleDelete(question)}
+            onEdit={canManage ? startEdit : undefined}
+            onDelete={
+              canManage ? (question) => void handleDelete(question) : undefined
+            }
           />
         </section>
       </div>
 
+      {canManage && (
       <ImportBankQuestionsModal
         isOpen={importModal.isOpen}
         file={importModal.file}
@@ -191,6 +206,7 @@ function QuestionBankDetailsPage() {
         onConfirm={importModal.confirmImport}
         onClose={importModal.close}
       />
+      )}
     </AppLayout>
   );
 }

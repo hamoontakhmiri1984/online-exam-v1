@@ -14,8 +14,9 @@ const DIFFICULTY_LABELS: Record<QuestionDifficulty, string> = {
 type BankQuestionCardProps = {
   question: BankQuestion;
   order: number;
-  onEdit: (question: BankQuestion) => void;
-  onDelete: (question: BankQuestion) => void;
+  // وقتی داده نشن (مثلاً برای SuperAdmin) دکمه‌های ویرایش/حذف نمایش داده نمی‌شن
+  onEdit?: (question: BankQuestion) => void;
+  onDelete?: (question: BankQuestion) => void;
 };
 
 function BankQuestionCard({
@@ -53,6 +54,7 @@ function BankQuestionCard({
           </p>
         </div>
 
+        {onEdit && onDelete && (
         <div className="flex gap-1">
           <button
             type="button"
@@ -74,6 +76,7 @@ function BankQuestionCard({
             <Trash2 size={16} />
           </button>
         </div>
+        )}
       </div>
     </article>
   );
