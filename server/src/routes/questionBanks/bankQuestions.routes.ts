@@ -40,6 +40,7 @@ router.get(
 
 router.post(
   '/:bankId/questions',
+  requireRole('Instructor'),
   asyncHandler(async (req, res) => {
     const { role, sub } = req.user!;
     const { bank, allowed } = await loadOwnedBank(req.params.bankId, sub, role);
@@ -64,6 +65,7 @@ router.post(
 // چون ممکنه فایل بزرگ‌تر از ظرفیت باقی‌مونده باشه
 router.post(
   '/:bankId/questions/bulk',
+  requireRole('Instructor'),
   asyncHandler(async (req, res) => {
     const { role, sub } = req.user!;
     const { bank, allowed } = await loadOwnedBank(req.params.bankId, sub, role);
@@ -99,6 +101,7 @@ router.post(
 // خطاهای ردیف‌به‌ردیف هم تو پاسخ برمی‌گرده تا مدرس بفهمه کدوم سطر مشکل داشت.
 router.post(
   '/:bankId/questions/import-excel',
+  requireRole('Instructor'),
   (req, res, next) => {
     excelUpload.single('file')(req, res, (err) => {
       if (err instanceof multer.MulterError) {
@@ -156,6 +159,7 @@ router.post(
 
 router.put(
   '/:bankId/questions/:id',
+  requireRole('Instructor'),
   asyncHandler(async (req, res) => {
     const { role, sub } = req.user!;
     const { bank, allowed, question } = await loadOwnedQuestion(
@@ -182,6 +186,7 @@ router.put(
 
 router.delete(
   '/:bankId/questions/:id',
+  requireRole('Instructor'),
   asyncHandler(async (req, res) => {
     const { role, sub } = req.user!;
     const { bank, allowed, question } = await loadOwnedQuestion(
