@@ -130,6 +130,42 @@ test('rotate زنجیره‌ای A→B→C: sid قدیمی A همون sid *فع�
   }
 });
 
+test('لاگین جدید هم‌زمان با refresh دستگاه قبلی: sid لاگین جدید هرگز به دستگاه قبلی نمی‌رسه', async (t) => {
+  if (!redisAvailable) return t.skip('Redis در دسترس نیست');
+  for (let i = 0; i < 50; i++) {
+    const userId = newUserId();
+    try {
+      const s0 = await createSession(userId);
+      const [newLogin, rotated] = await Promise.all([
+        createSession(userId),
+        rotateSessionWithGrace(userId, s0),
+      ]);
+      assert.notEqual(rotated, newLogin, 'دستگاه قبلی نباید sid لاگین جدید رو بگیره');
+      // بعد از تموم‌شدن هر دو، فقط لاگین جدید معتبره
+      assert.equal(await isSessionValid(userId, newLogin), true);
+      assert.equal(await isSessionValid(userId, s0), false);
+      if (rotated) assert.equal(await isSessionValid(userId, rotated), false);
+    } finally {
+      await revokeSession(userId);
+    }
+  }
+});
+
+test('logout هم‌زمان با refresh: بعد از logout هیچ sid ای معتبر نمی‌مونه', async (t) => {
+  if (!redisAvailable) return t.skip('Redis در دسترس نیست');
+  for (let i = 0; i < 50; i++) {
+    const userId = newUserId();
+    const s0 = await createSession(userId);
+    const [, rotated] = await Promise.all([
+      revokeSession(userId),
+      rotateSessionWithGrace(userId, s0),
+    ]);
+    assert.equal(await isSessionValid(userId, s0), false);
+    if (rotated) assert.equal(await isSessionValid(userId, rotated), false);
+    assert.equal(await rotateSessionWithGrace(userId, s0), null);
+  }
+});
+
 // این دو تست به Redis نیاز ندارن: فقط تبدیل شکستِ مخزن نشست به ۵۰۳ رو چک می‌کنن
 test('withSessionStore: خطای مخزن نشست ۵۰۳ می‌شه، نه یه خطای عمومی/۴۰۱', async () => {
   await assert.rejects(

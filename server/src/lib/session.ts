@@ -47,16 +47,27 @@ export async function withSessionStore<T>(op: () => Promise<T>): Promise<T> {
   }
 }
 
+// ساخت نشست اتمیک: «حذف نگاشتِ rotate» و «ست‌کردن sid جدید» داخل یه Lua script
+// اجرا می‌شن. قبلاً دو فرمانِ جدا بودن و یه refresh هم‌زمانِ دستگاه قبلی می‌تونست
+// وسطشون بیفته: sid جدید ست شده ولی نگاشتِ قدیمی هنوز بود، پس دستگاه قبلی
+// *sid فعلیِ* لاگین جدید رو از اسکریپت rotate می‌گرفت.
+// KEYS[1]=کلید sid فعلی  KEYS[2]=هش نگاشت rotate  ARGV[1]=sid جدید  ARGV[2]=TTL نشست
+export const CREATE_SESSION_SCRIPT = `
+redis.call('DEL', KEYS[2])
+redis.call('SET', KEYS[1], ARGV[1], 'EX', tonumber(ARGV[2]))
+return ARGV[1]
+`;
+
 export async function createSession(userId: string): Promise<string> {
   const sessionId = crypto.randomUUID();
   // یه لاگین واقعیِ جدید باید قاطع باشه - اگه یه نگاشتِ rotate قدیمی مونده
   // باشه، اینجا پاکش می‌کنیم وگرنه نشستِ دستگاه قبلی می‌تونست تا پایان اون
   // grace هنوز کار کنه
   await withSessionStore(() =>
-    Promise.all([
-      redis.set(sessionKey(userId), sessionId, { EX: REFRESH_TTL_SECONDS }),
-      redis.del(rotatedKey(userId)),
-    ])
+    redis.eval(CREATE_SESSION_SCRIPT, {
+      keys: [sessionKey(userId), rotatedKey(userId)],
+      arguments: [sessionId, String(REFRESH_TTL_SECONDS)],
+    })
   );
   return sessionId;
 }
@@ -67,19 +78,31 @@ export async function getActiveSessionId(
   return withSessionStore(() => redis.get(sessionKey(userId)));
 }
 
+// بررسی اعتبار اتمیک: خوندنِ sid فعلی و نگاشتِ rotate داخل یه Lua script انجام
+// می‌شه. قبلاً GET و HGET دو فرمانِ جدا بودن، پس logout/لاگین بینشون می‌تونست
+// نتیجه‌ی ناسازگار بده (مثلاً نگاشتِ rotate هنوز مونده ولی نشست دیگه فعال نیست).
+// مثل ROTATE_SESSION_SCRIPT: sid داخل نگاشتِ rotate فقط وقتی معتبره که یه نشستِ
+// *فعال* وجود داشته باشه.
+// KEYS[1]=کلید sid فعلی  KEYS[2]=هش نگاشت rotate  ARGV[1]=sid درخواست
+export const VALIDATE_SESSION_SCRIPT = `
+local active = redis.call('GET', KEYS[1])
+if not active then return 0 end
+if active == ARGV[1] then return 1 end
+if redis.call('HEXISTS', KEYS[2], ARGV[1]) == 1 then return 1 end
+return 0
+`;
+
 export async function isSessionValid(
   userId: string,
   sessionId: string
 ): Promise<boolean> {
-  const active = await getActiveSessionId(userId);
-  if (active !== null && active === sessionId) return true;
-
-  // شاید این sid همین چند ثانیه پیش با یه refresh دیگه (از یه تب دیگه‌ی
-  // همین کاربر) rotate شده - در این صورت هنوز داخل grace window معتبره
-  const replacedBy = await withSessionStore(() =>
-    redis.hGet(rotatedKey(userId), sessionId)
+  const result = await withSessionStore(() =>
+    redis.eval(VALIDATE_SESSION_SCRIPT, {
+      keys: [sessionKey(userId), rotatedKey(userId)],
+      arguments: [sessionId],
+    })
   );
-  return typeof replacedBy === 'string' && replacedBy.length > 0;
+  return Number(result) === 1;
 }
 
 // rotate اتمیک و idempotent برای /auth/refresh. کل منطق داخل یه Lua script
@@ -135,11 +158,10 @@ export async function rotateSessionWithGrace(
   return typeof result === 'string' && result.length > 0 ? result : null;
 }
 
+// یه DEL تک‌فرمانه با هر دو کلید - Redis اون رو اتمیک اجرا می‌کنه، پس هیچ لحظه‌ای
+// نیست که نشست پاک شده ولی نگاشتِ rotate مونده باشه (یا برعکس)
 export async function revokeSession(userId: string): Promise<void> {
   await withSessionStore(() =>
-    Promise.all([
-      redis.del(sessionKey(userId)),
-      redis.del(rotatedKey(userId)),
-    ])
+    redis.del([sessionKey(userId), rotatedKey(userId)])
   );
 }
