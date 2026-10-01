@@ -29,6 +29,9 @@ try {
     format: 'cjs',
     outExtension: { '.js': '.cjs' },
     logLevel: 'error',
+    // تست‌ها JSX و import.meta.env (vite) دارن؛ خارج از vite باید صریحاً تعریف بشن
+    jsx: 'automatic',
+    define: { 'import.meta.env': '{}' },
   });
   const files = names.map((n) => path.join(outDir, n.replace(/\.ts$/, '.cjs')));
   status = spawnSync(process.execPath, ['--test', ...files], { stdio: 'inherit' }).status ?? 1;

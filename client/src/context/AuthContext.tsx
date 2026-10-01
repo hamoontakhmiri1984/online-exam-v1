@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { bootstrapSession, getCurrentUser, logout as logoutRequest, subscribeToAuth, type User } from '../api/authApi';
 type SessionState = 'loading' | 'ready' | 'unavailable';
-type AuthContextValue = { user: User | null; isAuthenticated: boolean; isSessionReady: boolean; isSessionUnavailable: boolean; retrySession: () => void; logout: () => void; };
+export type AuthContextValue = { user: User | null; isAuthenticated: boolean; isSessionReady: boolean; isSessionUnavailable: boolean; retrySession: () => void; logout: () => void; };
 type AuthProviderProps = { children: ReactNode; };
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(() => getCurrentUser());
   const [sessionState, setSessionState] = useState<SessionState>('loading');
