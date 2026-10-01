@@ -1,4 +1,4 @@
-import { apiRequest, ApiError, getAuthToken, API_BASE_URL } from '../lib/apiClient';
+import { apiRequest, apiMultipartRequest } from '../lib/apiClient';
 
 // خلاصه (برای لیست /blog) - contentMarkdown نداره چون فقط برای preview/کارته
 export type BlogPostSummary = {
@@ -78,38 +78,17 @@ export function deleteBlogPost(id: string): Promise<void> {
   return apiRequest<void>(`/blog/admin/${id}`, { method: 'DELETE' });
 }
 
-// multipart - مثل uploadApi.ts نمی‌تونه از apiRequest (که همیشه JSON
-// می‌فرسته) استفاده کنه
-export async function uploadBlogCoverImage(
+// multipart - مثل uploadApi.ts از apiMultipartRequest استفاده می‌کنه (apiRequest
+// همیشه JSON می‌فرسته)؛ refresh مشترک و یک بار retry بعد از 401 رو داره
+export function uploadBlogCoverImage(
   postId: string,
   file: File
 ): Promise<BlogPostAdmin> {
   const formData = new FormData();
   formData.append('file', file);
-
-  const headers: Record<string, string> = {};
-  const token = getAuthToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
-
-  let response: Response;
-  try {
-    response = await fetch(`${API_BASE_URL}/blog/admin/${postId}/cover`, {
-      method: 'POST',
-      headers,
-      body: formData,
-      credentials: 'include',
-    });
-  } catch {
-    throw new ApiError(0, 'اتصال به سرور برقرار نشد');
-  }
-
-  const data = await response.json().catch(() => null);
-  if (!response.ok) {
-    const message =
-      (data && typeof data === 'object' && 'error' in data
-        ? String((data as { error?: unknown }).error)
-        : null) ?? `آپلود تصویر با خطا مواجه شد (${response.status})`;
-    throw new ApiError(response.status, message, data);
-  }
-  return data as BlogPostAdmin;
+  return apiMultipartRequest<BlogPostAdmin>(
+    `/blog/admin/${postId}/cover`,
+    formData,
+    { fallbackMessage: (status) => `آپلود تصویر با خطا مواجه شد (${status})` }
+  );
 }

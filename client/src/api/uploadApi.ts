@@ -1,9 +1,4 @@
-import { ApiError, getAuthToken } from '../lib/apiClient';
-
-// آدرس بک‌اند - همون چیزی که apiClient.ts هم استفاده می‌کنه
-const API_BASE_URL: string =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
-  'http://localhost:4000';
+import { apiMultipartRequest } from '../lib/apiClient';
 
 // دیگه سرور یه URL دائمی قابل‌دسترس برنمی‌گردونه (فایل تو bucket خصوصیه) -
 // فقط object key رو برمی‌گردونه که باید بعداً موقع نمایش، با
@@ -16,80 +11,18 @@ export type UploadedAttachment = {
   fileSize: number;
 };
 
-// این تابع از apiRequest تو apiClient.ts استفاده نمی‌کنه چون اون همیشه بدنه
-// رو JSON.stringify می‌کنه و Content-Type: application/json می‌ذاره - برای
-// آپلود فایل باید FormData/multipart بفرستیم و بذاریم خود مرورگر
-// Content-Type (با boundary درست) رو بسازه
-export async function uploadLessonVideo(file: File): Promise<UploadedVideo> {
+// آپلودها multipart هستن و از apiMultipartRequest (apiClient.ts) رد می‌شن:
+// همون refresh مشترک و «یک بار retry بعد از 401»، و Content-Type (با boundary
+// درست) رو خود مرورگر می‌سازه.
+export function uploadLessonVideo(file: File): Promise<UploadedVideo> {
   const formData = new FormData();
   formData.append('video', file);
-
-  const headers: Record<string, string> = {};
-  const token = getAuthToken();
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
-  let response: Response;
-  try {
-    response = await fetch(`${API_BASE_URL}/uploads/video`, {
-      method: 'POST',
-      headers,
-      body: formData,
-      credentials: 'include',
-    });
-  } catch {
-    throw new ApiError(0, 'اتصال به سرور برقرار نشد');
-  }
-
-  const data = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    const message =
-      (data && typeof data === 'object' && 'error' in data
-        ? String((data as { error?: unknown }).error)
-        : null) ?? `آپلود با خطا مواجه شد (${response.status})`;
-    throw new ApiError(response.status, message, data);
-  }
-
-  return data as UploadedVideo;
+  return apiMultipartRequest<UploadedVideo>('/uploads/video', formData);
 }
 
-// همون منطق uploadLessonVideo، برای جزوه/PDF - endpoint و فیلد فرم فرق
-// می‌کنن، بقیه (هدر Authorization، مدیریت خطا) یکیه
-export async function uploadLessonAttachment(
-  file: File
-): Promise<UploadedAttachment> {
+// همون منطق uploadLessonVideo، برای جزوه/PDF - endpoint و فیلد فرم فرق می‌کنن
+export function uploadLessonAttachment(file: File): Promise<UploadedAttachment> {
   const formData = new FormData();
   formData.append('attachment', file);
-
-  const headers: Record<string, string> = {};
-  const token = getAuthToken();
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
-  let response: Response;
-  try {
-    response = await fetch(`${API_BASE_URL}/uploads/attachment`, {
-      method: 'POST',
-      headers,
-      body: formData,
-      credentials: 'include',
-    });
-  } catch {
-    throw new ApiError(0, 'اتصال به سرور برقرار نشد');
-  }
-
-  const data = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    const message =
-      (data && typeof data === 'object' && 'error' in data
-        ? String((data as { error?: unknown }).error)
-        : null) ?? `آپلود با خطا مواجه شد (${response.status})`;
-    throw new ApiError(response.status, message, data);
-  }
-
-  return data as UploadedAttachment;
+  return apiMultipartRequest<UploadedAttachment>('/uploads/attachment', formData);
 }

@@ -108,6 +108,35 @@ export function setOnSessionExpired(handler: () => void): void {
   onSessionExpired = handler;
 }
 
+// منطق مشترکِ «بعد از 401»، برای apiRequest و apiMultipartRequest:
+//   true  -> توکن تازه گرفته شد و ذخیره شد؛ فراخواننده باید یک بار retry کند
+//   false -> نشست واقعاً تمام شده (expired)؛ onSessionExpired صدا زده شد و
+//            فراخواننده همان پاسخ 401 را به‌عنوان خطا پرتاب می‌کند
+//   throw -> نتیجه‌ی نشست نامعلوم است (شبکه/۵xx/۴۲۹): logout نمی‌کنیم و
+//            خطای «موقتاً در دسترس نیست» می‌دهیم تا کاربر بعداً دوباره تلاش کند
+async function refreshForRetry(): Promise<boolean> {
+  const outcome = await refreshSession();
+  if (outcome.status === 'ok') {
+    accessToken = outcome.token;
+    return true;
+  }
+  if (outcome.status === 'expired') {
+    onSessionExpired?.();
+    return false;
+  }
+  throw new ApiError(
+    503,
+    'سرور موقتاً در دسترس نیست، چند لحظه‌ی دیگه دوباره تلاش کن'
+  );
+}
+
+// خروجی خطای بک‌اند واقعی همیشه شکل { error: string } ـه (نه message)
+function errorMessageFrom(data: unknown, fallback: string): string {
+  return data && typeof data === 'object' && 'error' in data
+    ? String((data as { error?: unknown }).error)
+    : fallback;
+}
+
 // تابع اصلی و تنها نقطه‌ای که واقعاً fetch صدا می‌زنه. هر api/*.ts فقط
 // یه wrapper نازک دور همینه، مثلاً:
 //   export function getExams() { return apiRequest<Exam[]>('/exams'); }
@@ -155,21 +184,8 @@ export async function apiRequest<T>(
     !isRetryAfterRefresh &&
     path !== '/auth/refresh'
   ) {
-    const outcome = await refreshSession();
-    if (outcome.status === 'ok') {
-      accessToken = outcome.token;
+    if (await refreshForRetry()) {
       return apiRequest<T>(path, options, true);
-    }
-    if (outcome.status === 'expired') {
-      // سرور صریحاً گفته نشست تموم شده
-      onSessionExpired?.();
-    } else {
-      // نتیجه‌ی نشست نامعلومه (سرور/شبکه مشکل داره): logout نمی‌کنیم و
-      // خطای «موقتاً در دسترس نیست» می‌دیم تا کاربر بعداً دوباره تلاش کنه
-      throw new ApiError(
-        503,
-        'سرور موقتاً در دسترس نیست، چند لحظه‌ی دیگه دوباره تلاش کن'
-      );
     }
   }
 
@@ -178,12 +194,71 @@ export async function apiRequest<T>(
   const data = hasBody ? await response.json().catch(() => null) : null;
 
   if (!response.ok) {
-    // خروجی خطای بک‌اند واقعی همیشه شکل { error: string } ـه (نه message)
-    const message =
-      (data && typeof data === 'object' && 'error' in data
-        ? String((data as { error?: unknown }).error)
-        : null) ?? `درخواست با خطا مواجه شد (${response.status})`;
-    throw new ApiError(response.status, message, data);
+    throw new ApiError(
+      response.status,
+      errorMessageFrom(data, `درخواست با خطا مواجه شد (${response.status})`),
+      data
+    );
+  }
+
+  return data as T;
+}
+
+// درخواست multipart/form-data (آپلود فایل). همان منطق refresh/retry مشترکِ
+// apiRequest را دارد، با این تفاوت‌ها:
+//   - بدنه FormData است و Content-Type را عمداً نمی‌گذاریم تا مرورگر خودش
+//     multipart/form-data را با boundary درست بسازد.
+//   - فقط پس از 401 و فقط یک بار (و فقط اگر refresh موفق باشد) دوباره
+//     ارسال می‌شود. خطای شبکه، 429 و 5xx هرگز باعث ارسال دوباره‌ی فایل
+//     نمی‌شوند (آپلود می‌تواند غیرتکرارپذیر یا سنگین باشد).
+// FormData قابل استفاده‌ی مجدد است (File هر بار از نو خوانده می‌شود)، پس retry
+// همان formData را می‌فرستد.
+export type MultipartOptions = {
+  method?: 'POST' | 'PUT' | 'PATCH';
+  signal?: AbortSignal;
+  // پیام پیش‌فرض وقتی بدنه‌ی خطای سرور { error } ندارد
+  fallbackMessage?: (status: number) => string;
+};
+
+export async function apiMultipartRequest<T>(
+  path: string,
+  formData: FormData,
+  options: MultipartOptions = {},
+  isRetryAfterRefresh = false
+): Promise<T> {
+  const { method = 'POST', signal, fallbackMessage } = options;
+
+  const headers: Record<string, string> = {};
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers,
+      body: formData,
+      signal,
+      credentials: 'include',
+    });
+  } catch {
+    throw new ApiError(0, 'اتصال به سرور برقرار نشد');
+  }
+
+  if (response.status === 401 && !isRetryAfterRefresh) {
+    if (await refreshForRetry()) {
+      return apiMultipartRequest<T>(path, formData, options, true);
+    }
+  }
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const fallback = fallbackMessage
+      ? fallbackMessage(response.status)
+      : `آپلود با خطا مواجه شد (${response.status})`;
+    throw new ApiError(response.status, errorMessageFrom(data, fallback), data);
   }
 
   return data as T;

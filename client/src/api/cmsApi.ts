@@ -1,4 +1,4 @@
-import { apiRequest, ApiError, getAuthToken, API_BASE_URL } from '../lib/apiClient';
+import { apiRequest, apiMultipartRequest } from '../lib/apiClient';
 
 // همون لیست server/src/validation/cmsSchemas.ts - اینجا هم باید عیناً
 // سینک بمونه؛ اضافه‌کردنِ section جدید یعنی هر دو طرف آپدیت بشن
@@ -31,37 +31,17 @@ export function updateSiteContentSection(
   });
 }
 
-// multipart، مثل uploadBlogCoverImage تو blogApi.ts
-export async function uploadSiteContentImage(
+// multipart، مثل uploadBlogCoverImage تو blogApi.ts - از apiMultipartRequest
+// (refresh مشترک + یک بار retry بعد از 401) استفاده می‌کنه
+export function uploadSiteContentImage(
   section: SiteContentSection,
   file: File
 ): Promise<{ imageUrl: string }> {
   const formData = new FormData();
   formData.append('file', file);
-
-  const headers: Record<string, string> = {};
-  const token = getAuthToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
-
-  let response: Response;
-  try {
-    response = await fetch(`${API_BASE_URL}/cms/admin/${section}/image`, {
-      method: 'POST',
-      headers,
-      body: formData,
-      credentials: 'include',
-    });
-  } catch {
-    throw new ApiError(0, 'اتصال به سرور برقرار نشد');
-  }
-
-  const data = await response.json().catch(() => null);
-  if (!response.ok) {
-    const message =
-      (data && typeof data === 'object' && 'error' in data
-        ? String((data as { error?: unknown }).error)
-        : null) ?? `آپلود تصویر با خطا مواجه شد (${response.status})`;
-    throw new ApiError(response.status, message, data);
-  }
-  return data as { imageUrl: string };
+  return apiMultipartRequest<{ imageUrl: string }>(
+    `/cms/admin/${section}/image`,
+    formData,
+    { fallbackMessage: (status) => `آپلود تصویر با خطا مواجه شد (${status})` }
+  );
 }

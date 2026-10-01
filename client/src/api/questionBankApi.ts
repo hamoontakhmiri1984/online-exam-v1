@@ -1,5 +1,11 @@
 import type { Category } from '../constants/categories';
-import { apiRequest, ApiError, API_BASE_URL, getAuthToken } from '../lib/apiClient';
+import {
+  apiRequest,
+  apiMultipartRequest,
+  ApiError,
+  API_BASE_URL,
+  getAuthToken,
+} from '../lib/apiClient';
 
 export type QuestionDifficulty = 'Easy' | 'Medium' | 'Hard';
 
@@ -115,10 +121,9 @@ export function deleteBankQuestion(
 
 // ---------------------------------------------------------------------------
 // ایمپورت از اکسل - سرور خودش فایل رو پارس می‌کنه (lib/questionExcel.ts سمت
-// سرور)، پس اینجا فقط فایل رو multipart می‌فرستیم. چون هم آپلود فایل
-// (FormData) هم دانلود باینری (فایل تمپلیت) با apiRequest معمولی (که همیشه
-// JSON فرض می‌کنه) جور در نمیان، این دوتا خودشون مستقیم fetch می‌زنن -
-// همون هدر Authorization/credentials رو دستی تکرار می‌کنیم.
+// سرور)، پس اینجا فقط فایل رو multipart می‌فرستیم (apiMultipartRequest).
+// دانلود باینری تمپلیت با apiRequest (که JSON فرض می‌کنه) جور در نمیاد و
+// مستقیم fetch می‌زنه.
 // ---------------------------------------------------------------------------
 
 export type BankQuestionImportError = {
@@ -131,43 +136,18 @@ export type BankQuestionImportResult = {
   errors: BankQuestionImportError[];
 };
 
-export async function importBankQuestionsFromExcel(
+export function importBankQuestionsFromExcel(
   bankId: string,
   file: File
 ): Promise<BankQuestionImportResult> {
   const formData = new FormData();
   formData.append('file', file);
-
-  const token = getAuthToken();
-  const headers: Record<string, string> = {};
-  if (token) headers.Authorization = `Bearer ${token}`;
-
-  let response: Response;
-  try {
-    response = await fetch(
-      `${API_BASE_URL}/banks/${bankId}/questions/import-excel`,
-      {
-        method: 'POST',
-        headers,
-        body: formData,
-        credentials: 'include',
-      }
-    );
-  } catch {
-    throw new ApiError(0, 'اتصال به سرور برقرار نشد');
-  }
-
-  const data = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    const message =
-      data && typeof data === 'object' && 'error' in data
-        ? String((data as { error?: unknown }).error)
-        : `درخواست با خطا مواجه شد (${response.status})`;
-    throw new ApiError(response.status, message, data);
-  }
-
-  return data as BankQuestionImportResult;
+  // multipart: از apiMultipartRequest (refresh مشترک + یک بار retry بعد از 401)
+  return apiMultipartRequest<BankQuestionImportResult>(
+    `/banks/${bankId}/questions/import-excel`,
+    formData,
+    { fallbackMessage: (status) => `درخواست با خطا مواجه شد (${status})` }
+  );
 }
 
 // فایل رو مستقیم دانلود می‌کنه (به‌جای برگردوندنِ URL) چون این مسیر نیاز به
