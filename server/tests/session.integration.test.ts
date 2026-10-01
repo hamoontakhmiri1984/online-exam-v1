@@ -14,6 +14,7 @@ import {
   rotateSessionWithGrace,
   withSessionStore,
 } from '../src/lib/session';
+import { unavailable } from './helpers/serviceGuard';
 
 let redisAvailable = false;
 
@@ -42,7 +43,7 @@ after(async () => {
 const newUserId = () => `test-user-${crypto.randomUUID()}`;
 
 test('دو refresh هم‌زمان با یک sid قدیمی، هر دو همون sid جدید رو می‌گیرن', async (t) => {
-  if (!redisAvailable) return t.skip('Redis در دسترس نیست');
+  if (!redisAvailable) return unavailable(t, 'Redis در دسترس نیست');
   const userId = newUserId();
   try {
     const s0 = await createSession(userId);
@@ -66,7 +67,7 @@ test('دو refresh هم‌زمان با یک sid قدیمی، هر دو همون
 });
 
 test('sid ناشناخته/باطل rotate نمی‌شه', async (t) => {
-  if (!redisAvailable) return t.skip('Redis در دسترس نیست');
+  if (!redisAvailable) return unavailable(t, 'Redis در دسترس نیست');
   const userId = newUserId();
   try {
     await createSession(userId);
@@ -77,7 +78,7 @@ test('sid ناشناخته/باطل rotate نمی‌شه', async (t) => {
 });
 
 test('لاگین واقعی از دستگاه دیگه، sid قدیمی و sid های rotate شده رو فوری باطل می‌کنه', async (t) => {
-  if (!redisAvailable) return t.skip('Redis در دسترس نیست');
+  if (!redisAvailable) return unavailable(t, 'Redis در دسترس نیست');
   const userId = newUserId();
   try {
     const s0 = await createSession(userId);
@@ -97,7 +98,7 @@ test('لاگین واقعی از دستگاه دیگه، sid قدیمی و sid �
 });
 
 test('بعد از logout هیچ sid ای معتبر یا قابل rotate نیست', async (t) => {
-  if (!redisAvailable) return t.skip('Redis در دسترس نیست');
+  if (!redisAvailable) return unavailable(t, 'Redis در دسترس نیست');
   const userId = newUserId();
   const s0 = await createSession(userId);
   const s1 = await rotateSessionWithGrace(userId, s0);
@@ -111,7 +112,7 @@ test('بعد از logout هیچ sid ای معتبر یا قابل rotate نیس�
 });
 
 test('rotate زنجیره‌ای A→B→C: sid قدیمی A همون sid *فعلی* (C) رو می‌گیره، نه B ی مرده', async (t) => {
-  if (!redisAvailable) return t.skip('Redis در دسترس نیست');
+  if (!redisAvailable) return unavailable(t, 'Redis در دسترس نیست');
   const userId = newUserId();
   try {
     const a = await createSession(userId);
@@ -131,7 +132,7 @@ test('rotate زنجیره‌ای A→B→C: sid قدیمی A همون sid *فع�
 });
 
 test('لاگین جدید هم‌زمان با refresh دستگاه قبلی: sid لاگین جدید هرگز به دستگاه قبلی نمی‌رسه', async (t) => {
-  if (!redisAvailable) return t.skip('Redis در دسترس نیست');
+  if (!redisAvailable) return unavailable(t, 'Redis در دسترس نیست');
   for (let i = 0; i < 50; i++) {
     const userId = newUserId();
     try {
@@ -152,7 +153,7 @@ test('لاگین جدید هم‌زمان با refresh دستگاه قبلی: si
 });
 
 test('logout هم‌زمان با refresh: بعد از logout هیچ sid ای معتبر نمی‌مونه', async (t) => {
-  if (!redisAvailable) return t.skip('Redis در دسترس نیست');
+  if (!redisAvailable) return unavailable(t, 'Redis در دسترس نیست');
   for (let i = 0; i < 50; i++) {
     const userId = newUserId();
     const s0 = await createSession(userId);

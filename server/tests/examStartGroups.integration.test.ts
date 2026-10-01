@@ -12,6 +12,7 @@ import crypto from 'crypto';
 import { prisma } from '../src/lib/prisma';
 import { isStudentInExamGroups } from '../src/lib/examAccess';
 import { lockExamForShare, withExamWriteLock } from '../src/lib/examLock';
+import { unavailable } from './helpers/serviceGuard';
 
 let dbAvailable = false;
 
@@ -96,7 +97,7 @@ async function cleanup(ctx: Awaited<ReturnType<typeof setup>>) {
 }
 
 test('isStudentInExamGroups: عضو گروه آزمون true، بعد از تغییر گروه false', async (t) => {
-  if (!dbAvailable) return t.skip('دیتابیس در دسترس نیست');
+  if (!dbAvailable) return unavailable(t, 'دیتابیس در دسترس نیست');
   const ctx = await setup();
   try {
     assert.equal(
@@ -123,7 +124,7 @@ test('isStudentInExamGroups: عضو گروه آزمون true، بعد از تغ�
 });
 
 test('start هم‌زمان با تغییر گروه‌ها: بعد از FOR SHARE مجوز کهنه دیده نمی‌شه', async (t) => {
-  if (!dbAvailable) return t.skip('دیتابیس در دسترس نیست');
+  if (!dbAvailable) return unavailable(t, 'دیتابیس در دسترس نیست');
   const ctx = await setup();
   try {
     const writerHasLock = deferred();

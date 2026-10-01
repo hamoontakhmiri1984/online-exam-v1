@@ -37,6 +37,8 @@ jobs:
 
     env:
       NODE_ENV: test
+      # نبودِ Postgres/Redis تو CI باید تست رو fail کنه، نه skip (server/tests/helpers/serviceGuard.ts)
+      REQUIRE_SERVICES: '1'
       DATABASE_URL: postgresql://examuser:exampass@localhost:5432/examdb
       REDIS_URL: redis://localhost:6379
       # این‌ها فقط برای CI هستن (نه secret واقعی) - چون envSchema حداقل طول
@@ -72,6 +74,9 @@ jobs:
 
       - name: Lint client
         run: npm run lint -w client
+
+      - name: Run client tests
+        run: npm test -w client
 
       - name: Run server tests
         run: npm test -w server

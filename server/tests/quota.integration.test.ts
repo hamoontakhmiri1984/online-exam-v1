@@ -18,6 +18,7 @@ import {
   type QuotaKind,
 } from '../src/lib/quota';
 import { createExamQuestionsBulk } from '../src/routes/questions/examQuestions.service';
+import { unavailable } from './helpers/serviceGuard';
 
 let dbAvailable = false;
 
@@ -129,7 +130,7 @@ const createHandout = (instructorId: string) =>
   );
 
 test('پلن رایگان (سقف ۱ گروه): ۸ ساخت هم‌زمان → دقیقاً ۱ موفق', async (t) => {
-  if (!dbAvailable) return t.skip('Postgres در دسترس نیست');
+  if (!dbAvailable) return unavailable(t, 'Postgres در دسترس نیست');
   const user = await createInstructor();
   try {
     const outcomes = await settle(
@@ -146,7 +147,7 @@ test('پلن رایگان (سقف ۱ گروه): ۸ ساخت هم‌زمان → 
 });
 
 test('پلن رایگان (سقف ۵ جزوه): ۱۵ ساخت هم‌زمان → دقیقاً ۵ موفق', async (t) => {
-  if (!dbAvailable) return t.skip('Postgres در دسترس نیست');
+  if (!dbAvailable) return unavailable(t, 'Postgres در دسترس نیست');
   const user = await createInstructor();
   try {
     const outcomes = await settle(
@@ -160,7 +161,7 @@ test('پلن رایگان (سقف ۵ جزوه): ۱۵ ساخت هم‌زمان �
 });
 
 test('پلن نامحدود: قفل و سقفی نیست، همه‌ی ساخت‌ها موفق', async (t) => {
-  if (!dbAvailable) return t.skip('Postgres در دسترس نیست');
+  if (!dbAvailable) return unavailable(t, 'Postgres در دسترس نیست');
   const user = await createInstructor({ planId: 'platinum', endDate: new Date(Date.now() + 86_400_000) });
   try {
     const outcomes = await settle(
@@ -173,7 +174,7 @@ test('پلن نامحدود: قفل و سقفی نیست، همه‌ی ساخت�
 });
 
 test('پلن منقضی: همه رد می‌شن با reason=plan_expired', async (t) => {
-  if (!dbAvailable) return t.skip('Postgres در دسترس نیست');
+  if (!dbAvailable) return unavailable(t, 'Postgres در دسترس نیست');
   const user = await createInstructor({ planId: 'gold', endDate: new Date(Date.now() - 1000) });
   try {
     const outcomes = await settle(
@@ -187,7 +188,7 @@ test('پلن منقضی: همه رد می‌شن با reason=plan_expired', asyn
 });
 
 test('سوال آزمون (سقف ۵۰): ۳ ایمپورتِ ۳۰تایی هم‌زمان → فقط یکی جا می‌شه، بدون deadlock', async (t) => {
-  if (!dbAvailable) return t.skip('Postgres در دسترس نیست');
+  if (!dbAvailable) return unavailable(t, 'Postgres در دسترس نیست');
   const user = await createInstructor();
   try {
     const group = await prisma.group.create({

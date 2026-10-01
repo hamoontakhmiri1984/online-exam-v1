@@ -14,6 +14,7 @@ import {
   handlePaymentCallback,
   refundPayment,
 } from '../src/lib/payments';
+import { unavailable } from './helpers/serviceGuard';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const GOLD_DAYS = 30;
@@ -81,7 +82,7 @@ async function cleanup(instructorId: string) {
 }
 
 test('دو پرداختِ هم‌زمانِ یه مدرس برای یه پلن: هر دو ماه حساب می‌شن (۶۰ روز)', async (t) => {
-  if (!dbAvailable) return t.skip('Postgres در دسترس نیست');
+  if (!dbAvailable) return unavailable(t, 'Postgres در دسترس نیست');
   const { instructor, authorities } = await createInstructorWithPendingGold(2);
   try {
     const startedAt = Date.now();
@@ -111,7 +112,7 @@ test('دو پرداختِ هم‌زمانِ یه مدرس برای یه پلن: 
 });
 
 test('callback تکراریِ یه authority فقط یک اشتراک می‌سازه', async (t) => {
-  if (!dbAvailable) return t.skip('Postgres در دسترس نیست');
+  if (!dbAvailable) return unavailable(t, 'Postgres در دسترس نیست');
   const { instructor, authorities } = await createInstructorWithPendingGold(1);
   try {
     const [authority] = authorities;
@@ -131,7 +132,7 @@ test('callback تکراریِ یه authority فقط یک اشتراک می‌س�
 });
 
 test('استرداد هم‌زمان با تسویه‌ی پرداخت بعدی deadlock نمی‌کنه', async (t) => {
-  if (!dbAvailable) return t.skip('Postgres در دسترس نیست');
+  if (!dbAvailable) return unavailable(t, 'Postgres در دسترس نیست');
   const { instructor, authorities } = await createInstructorWithPendingGold(2);
   try {
     assert.equal(
