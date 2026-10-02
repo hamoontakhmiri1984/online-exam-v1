@@ -335,6 +335,37 @@ $env:PG_BASE_URL = 'postgresql://examuser:exampass@localhost:5432'
 
 اسکریپت فقط دیتابیس‌های `migtest_*` را می‌سازد و حذف می‌کند، به `DATABASE_URL` دست نمی‌زند و سرور غیرمحلی را رد می‌کند. خروجی پایانی: خلاصه‌ی PASS/FAIL هر سناریو، ماتریس سناریوی E و `PASS=n FAIL=m`. سناریوها: A نصب تازه، B مسیر ۳ با assert برابری داده، Bc کنترل خطر deploy ساده، C شکست `175323` و فرض rollback، D مسیر ۵، D2/D3 مسیر ۲ با SQL دستی، E رفتار checksum، F باقی‌مانده‌ی جزئی شبیه‌سازی‌شده، G فرض rollback روی `191557`، H تشخیص جدول‌های ناموجود و ایندکس هم‌نامِ نامعتبر.
 
+## نتایج آخرین اجرا
+
+اجرای کامل `test-migration-paths.sh` روی PostgreSQL آزمایشی (2026-10-02، commit `270dce0`): **`PASS=123 FAIL=0`**، کد خروج 0.
+
+محیط: PostgreSQL 16.15، psql 18.6، Prisma و `@prisma/client` هر دو 5.22.0 (ویندوز x64)، node v24.18.0.
+
+| سناریو | pass | fail |
+|---|---|---|
+| A نصب تازه | 9 | 0 |
+| B مسیر ۳ | 12 | 0 |
+| Bc کنترل | 3 | 0 |
+| C | 19 | 0 |
+| D | 16 | 0 |
+| D2 | 15 | 0 |
+| D3 | 12 | 0 |
+| E | 6 | 0 |
+| F | 13 | 0 |
+| G | 11 | 0 |
+| H | 7 | 0 |
+
+سناریوی H: H1 با مسیر `STOP_NO_PRISMA_HISTORY`، H2 با `STOP_NO_EXAM_ATTEMPTS_TABLE` و H3.1 تا H3.4 با `STOP_UNEXPECTED_STRUCTURE` تمام شد.
+
+ماتریس E (کد خروج؛ 0 = موفق):
+
+- E1 (DB=قدیمی، مخزن=فعلی): deploy=0 status=0 dev=1
+- E2 (DB=فعلی، مخزن=قدیمی): deploy=0 status=0 dev=1
+- E3 (DB=LF، مخزن=همان محتوا با CRLF): deploy=0 status=0 dev=0
+
+محدودیت: نسخهٔ قدیمی `191557` در سناریوهای D، D2، D3 و E «شبیه‌سازی‌شده» است (SIMULATED stand-in، نه فایل اجراشدهٔ واقعی). آزمایش با فایل واقعی هنوز انجام نشده است.
+
+پس از اجرا، تعداد جدول‌های `examdb` همان 23 قبل از اجرا بود و هیچ دیتابیس `migtest_*` باقی نماند.
 ## بکاپ دیتابیس و Git
 
 فایل `backup_before_migration.dump` در این بسته هست و محتوایش بررسی/چاپ نشده است. `.gitignore` حالا `*.dump`، `*.dump.*`، `*.backup`، `*.bak`، `backup_*` و `pg_dump*` را نادیده می‌گیرد (`*.sql` عمداً نه: migrationهای Prisma همین پسوند را دارند). `.gitignore` روی فایلِ از قبل tracked اثری ندارد؛ باید از index خارج شود (نسخه‌ی محلی می‌ماند):
