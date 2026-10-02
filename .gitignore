@@ -9,3 +9,12 @@ client/dist/
 client/.test-dist/
 server/dist/
 *.tsbuildinfo
+
+# local database backups (pg_dump etc.): may contain real user data, never commit.
+# (*.sql is intentionally NOT listed: Prisma migrations are .sql files.)
+*.dump
+*.dump.*
+*.backup
+*.bak
+backup_*
+pg_dump*

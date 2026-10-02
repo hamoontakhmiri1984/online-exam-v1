@@ -1,0 +1,3 @@
+# پایان‌خط LF برای اسکریپت‌های Bash مرحله‌ی recovery (در ویندوز با autocrlf، CRLF باعث خطای bash می‌شود).
+# عمداً برای فایل‌های migration قاعده‌ای نوشته نشده: تغییر پایان‌خط آن‌ها checksum ثبت‌شده در _prisma_migrations را عوض می‌کند.
+server/prisma/recovery/*.sh text eol=lf
