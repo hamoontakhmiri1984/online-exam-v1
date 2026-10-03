@@ -18,3 +18,5 @@ server/dist/
 *.bak
 backup_*
 pg_dump*
+
+/client/vite-error.txt
