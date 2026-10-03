@@ -1,3 +1,4 @@
+import ListPagination from '../../components/ListPagination/ListPagination';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Pencil, Plus, Trash2, XCircle } from 'lucide-react';
@@ -28,7 +29,7 @@ function QuestionBanksPage() {
   // مشاهده برای نظارت باقی می‌مونه
   const canManage = getCurrentUser()?.role !== 'SuperAdmin';
 
-  const { banks, loading, error, clearError, addBank, updateBank, deleteBank } =
+  const { banks, loading, error, clearError, addBank, updateBank, deleteBank, page, pageSize, total, q, setPage, setSearch } =
     useQuestionBanks();
 
   const [form, setForm] = useState<QuestionBankInput>(EMPTY_FORM);
@@ -187,6 +188,7 @@ function QuestionBanksPage() {
         )}
 
         <section>
+          <ListPagination {...{ page, pageSize, total, loading, q, setPage, setSearch }} />
           {loading ? (
             <Spinner />
           ) : banks.length === 0 ? (

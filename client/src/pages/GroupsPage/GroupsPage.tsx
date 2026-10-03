@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Users, Plus, XCircle, AlertTriangle } from 'lucide-react';
 import {
-  getGroups,
+  getGroupsPage,
   addGroup,
   updateGroup,
   deleteGroup,
@@ -12,7 +12,8 @@ import { getCurrentUser } from '../../api/authApi';
 import { ApiError } from '../../lib/apiClient';
 import { getStudents, type Student } from '../../api/studentApi';
 import { getRemainingGroupQuota } from '../../api/subscriptionApi';
-import useCrud from '../../hooks/useCrud';
+import usePagedCrud from '../../hooks/usePagedCrud';
+import ListPagination from '../../components/ListPagination/ListPagination';
 import useGroupFormModal from '../../hooks/useGroupFormModal';
 import useInstructorPlanLimit from '../../hooks/useInstructorPlanLimit';
 import AppLayout from '../../components/AppLayout/AppLayout';
@@ -36,8 +37,9 @@ function GroupsPage() {
     updateItem,
     deleteItem,
     patchItem,
-  } = useCrud<Group, Omit<Group, 'id' | 'joinCode'>>({
-    getAll: getGroups,
+    page, pageSize, total, q, setPage, setSearch,
+  } = usePagedCrud<Group, Omit<Group, 'id' | 'joinCode'>>({
+    getPage: getGroupsPage,
     add: addGroup,
     update: updateGroup,
     remove: deleteGroup,
@@ -56,12 +58,9 @@ function GroupsPage() {
       .catch(() => setAllStudents([]));
   }, []);
 
-  const students =
-    currentUser?.role === 'SuperAdmin'
-      ? allStudents
-      : allStudents.filter((s) =>
-          visibleGroups.some((g) => g.studentIds.includes(s.id))
-        );
+  // GET /students already returns all students available to this instructor;
+  // eligibility must not depend on the current groups page or search.
+  const students = allStudents;
 
   const [deleteTarget, setDeleteTarget] = useState<Group | null>(null);
   const [copiedGroupId, setCopiedGroupId] = useState<string | null>(null);
@@ -141,6 +140,7 @@ function GroupsPage() {
         />
       )}
 
+      <ListPagination {...{ page, pageSize, total, loading, q, setPage, setSearch }} />
       {loading ? (
         <Spinner />
       ) : (

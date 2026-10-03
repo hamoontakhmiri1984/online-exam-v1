@@ -1,3 +1,4 @@
+import ListPagination from '../../components/ListPagination/ListPagination';
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowRight, Upload } from 'lucide-react';
@@ -37,6 +38,7 @@ function QuestionBankDetailsPage() {
     addQuestion,
     editQuestion,
     removeQuestion,
+    page, pageSize, total, q, setPage, setSearch,
   } = useBankQuestions(bankId);
 
   const importModal = useImportBankQuestionsModal({
@@ -164,7 +166,7 @@ function QuestionBankDetailsPage() {
           form={form}
           isEditing={editing !== null}
           saving={saving}
-          error={error}
+          error={error ?? ''}
           canSubmit={canSubmit}
           onTextChange={(text) =>
             setForm((current) => ({ ...current, text }))
@@ -182,8 +184,11 @@ function QuestionBankDetailsPage() {
         )}
 
         <section>
+          <ListPagination {...{ page, pageSize, total, loading, q, setPage, setSearch }} />
+          {error && <p role="alert" className="mb-3 text-danger-600">{error}</p>}
           <BankQuestionList
             questions={questions}
+            offset={(page - 1) * pageSize}
             loading={loading}
             onEdit={canManage ? startEdit : undefined}
             onDelete={

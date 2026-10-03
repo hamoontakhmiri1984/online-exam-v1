@@ -1,3 +1,4 @@
+import { collectListPages, listQueryString, type ListQuery, type ListPage } from '../lib/listPagination';
 import type { Category } from '../constants/categories';
 import {
   apiRequest,
@@ -38,8 +39,12 @@ export type BankQuestionInput = {
   difficulty?: QuestionDifficulty;
 };
 
+export function getQuestionBanksPage(query: ListQuery = {}): Promise<ListPage<QuestionBank>> {
+  return apiRequest<ListPage<QuestionBank>>(`/banks${listQueryString(query)}`);
+}
+
 export function getQuestionBanks(): Promise<QuestionBank[]> {
-  return apiRequest<QuestionBank[]>('/banks');
+  return collectListPages(getQuestionBanksPage);
 }
 
 export function getQuestionBankById(bankId: string): Promise<QuestionBank> {
@@ -71,8 +76,12 @@ export function deleteQuestionBank(bankId: string): Promise<void> {
   });
 }
 
+export function getBankQuestionsPage(bankId: string, query: ListQuery = {}): Promise<ListPage<BankQuestion>> {
+  return apiRequest<ListPage<BankQuestion>>(`/banks/${bankId}/questions${listQueryString(query)}`);
+}
+
 export function getBankQuestions(bankId: string): Promise<BankQuestion[]> {
-  return apiRequest<BankQuestion[]>(`/banks/${bankId}/questions`);
+  return collectListPages((query) => getBankQuestionsPage(bankId, query));
 }
 
 export function createBankQuestion(

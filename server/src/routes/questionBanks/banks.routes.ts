@@ -1,3 +1,4 @@
+import { parseListQuery } from '../../lib/listPagination';
 import { Router } from 'express';
 import { prisma } from '../../lib/prisma';
 import { requireAuth, requireRole } from '../../middleware/requireAuth';
@@ -23,12 +24,19 @@ router.get(
     const { role, sub } = req.user!;
     const where = role === 'SuperAdmin' ? {} : { instructorId: sub };
 
-    const banks = await prisma.questionBank.findMany({
-      where,
-      include: { _count: { select: { questions: true } } },
-      orderBy: { createdAt: 'asc' },
-    });
-    res.json(banks.map(serializeBank));
+    const { page, pageSize, skip, search } = parseListQuery(req.query);
+    const filter = { ...where, ...(search ? { name: { contains: search, mode: 'insensitive' as const } } : {}) };
+    const [banks, total] = await prisma.$transaction([
+      prisma.questionBank.findMany({
+        where: filter,
+        include: { _count: { select: { questions: true } } },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        skip,
+        take: pageSize,
+      }),
+      prisma.questionBank.count({ where: filter }),
+    ], { isolationLevel: 'RepeatableRead' });
+    res.json({ items: banks.map(serializeBank), total, page, pageSize });
   })
 );
 

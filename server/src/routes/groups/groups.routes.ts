@@ -1,3 +1,4 @@
+import { parseListQuery } from '../../lib/listPagination';
 import { Router } from 'express';
 import { prisma } from '../../lib/prisma';
 import { requireRole } from '../../middleware/requireAuth';
@@ -27,11 +28,19 @@ router.get(
         ? { instructorId: sub }
         : { students: { some: { id: sub } } };
 
-    const groups = await prisma.group.findMany({
-      where,
-      include: withStudents,
-    });
-    res.json(groups.map(serializeGroup));
+    const { page, pageSize, skip, search } = parseListQuery(req.query);
+    const filter = { ...where, ...(search ? { name: { contains: search, mode: 'insensitive' as const } } : {}) };
+    const [groups, total] = await prisma.$transaction([
+      prisma.group.findMany({
+        where: filter,
+        include: withStudents,
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        skip,
+        take: pageSize,
+      }),
+      prisma.group.count({ where: filter }),
+    ], { isolationLevel: 'RepeatableRead' });
+    res.json({ items: groups.map(serializeGroup), total, page, pageSize });
   })
 );
 

@@ -9,6 +9,7 @@ import type { BankQuestion } from '../../../api/questionBankApi';
 type BankQuestionListProps = {
   questions: BankQuestion[];
   loading: boolean;
+  offset?: number;
   onEdit?: (question: BankQuestion) => void;
   onDelete?: (question: BankQuestion) => void;
 };
@@ -16,6 +17,7 @@ type BankQuestionListProps = {
 function BankQuestionList({
   questions,
   loading,
+  offset = 0,
   onEdit,
   onDelete,
 }: BankQuestionListProps) {
@@ -39,7 +41,7 @@ function BankQuestionList({
         <BankQuestionCard
           key={question.id}
           question={question}
-          order={index + 1}
+          order={offset + index + 1}
           onEdit={onEdit}
           onDelete={onDelete}
         />

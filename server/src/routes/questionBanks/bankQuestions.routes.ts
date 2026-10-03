@@ -1,3 +1,4 @@
+import { parseListQuery } from '../../lib/listPagination';
 import { Router } from 'express';
 import multer from 'multer';
 import { prisma } from '../../lib/prisma';
@@ -31,11 +32,18 @@ router.get(
     if (!bank) throw notFound('بانک سوال یافت نشد');
     if (!allowed) throw forbidden();
 
-    const questions = await prisma.question.findMany({
-      where: { bankId: bank.id },
-      orderBy: { createdAt: 'asc' },
-    });
-    res.json(questions.map(serializeQuestion));
+    const { page, pageSize, skip, search } = parseListQuery(req.query);
+    const filter = { ...{ bankId: bank.id }, ...(search ? { text: { contains: search, mode: 'insensitive' as const } } : {}) };
+    const [questions, total] = await prisma.$transaction([
+      prisma.question.findMany({
+        where: filter,
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        skip,
+        take: pageSize,
+      }),
+      prisma.question.count({ where: filter }),
+    ], { isolationLevel: 'RepeatableRead' });
+    res.json({ items: questions.map(serializeQuestion), total, page, pageSize });
   })
 );
 

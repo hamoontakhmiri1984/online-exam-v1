@@ -1,3 +1,4 @@
+import { collectListPages, listQueryString, type ListQuery, type ListPage } from '../lib/listPagination';
 import type { Category } from '../constants/categories';
 import { apiRequest, ApiError } from '../lib/apiClient';
 
@@ -13,8 +14,12 @@ export type Group = {
 // شکل خروجی سرور (server/src/routes/groups.ts -> serializeGroup) عمداً دقیقاً
 // همین Group ـه، برای همین این فایل فقط یه wrapper نازک دور apiRequest ـه.
 
+export function getGroupsPage(query: ListQuery = {}): Promise<ListPage<Group>> {
+  return apiRequest<ListPage<Group>>(`/groups${listQueryString(query)}`);
+}
+
 export function getGroups(): Promise<Group[]> {
-  return apiRequest<Group[]>('/groups');
+  return collectListPages(getGroupsPage);
 }
 
 // سرور دسترسی رو خودش چک می‌کنه (403 اگه نه مالک/عضو/SuperAdmin باشی) - اینجا
@@ -39,11 +44,11 @@ export async function getGroupById(id: string): Promise<Group | undefined> {
 // یه مدرسِ دیگه رو ببینه، این فرض دیگه درست نیست و باید سرور یه query param
 // جدا (مثلاً ?instructorId=) پشتیبانی کنه.
 export function getGroupsByInstructor(_instructorId: string): Promise<Group[]> {
-  return apiRequest<Group[]>('/groups');
+  return getGroups();
 }
 
 export function getGroupsByStudent(_studentId: string): Promise<Group[]> {
-  return apiRequest<Group[]>('/groups');
+  return getGroups();
 }
 
 // موقع ساخت گروه، joinCode توسط خود سرور تولید می‌شه و instructorId هم از
