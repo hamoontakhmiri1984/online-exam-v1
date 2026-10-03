@@ -1,0 +1,275 @@
+Historical migration source: ca4aa8db705cd79c1cf627515bc395c802a960e2 (Git bytes verified)
+This does not prove the migration executed on your database has the same checksum.
+== محیط
+  psql        : psql (PostgreSQL) 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)
+  PostgreSQL  : 16.15 (Debian 16.15-1.pgdg13+2)
+  node        : v24.21.0
+  prisma      : Environment variables loaded from .env
+  prisma      : prisma                  : 5.22.0
+  prisma      : @prisma/client          : 5.22.0
+  prisma      : Computed binaryTarget   : debian-openssl-3.0.x
+  prisma      : Operating System        : linux
+  prisma      : Architecture            : x64
+  prisma      : Node.js                 : v24.21.0
+  prisma      : Query Engine (Node-API) : libquery-engine 605197351a3c8bdd595af2d2a9bc3025bca48ea2 (at ../node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node)
+  prisma      : Schema Engine           : schema-engine-cli 605197351a3c8bdd595af2d2a9bc3025bca48ea2 (at ../node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x)
+  prisma      : Schema Wasm             : @prisma/prisma-schema-wasm 5.22.0-44.605197351a3c8bdd595af2d2a9bc3025bca48ea2
+  prisma      : Default Engines Hash    : 605197351a3c8bdd595af2d2a9bc3025bca48ea2
+  prisma      : Studio                  : 0.503.0
+  نسخه‌ی قدیمی 191557: HISTORICAL_OR_EXTERNAL از /workspaces/online-exam-v1/server/prisma/recovery/historical-191557.sql (sha256 fc2ebe944aae5125449a258a9e2f1054f408669da4c3d3fe0cf01167d9dccfc5)
+
+== A: نصب تازه روی دیتابیس خالی
+  PASS: A: diagnose روی دیتابیس خالی (diagnose: state=S_NO_TABLE path=PATH_1_FRESH_INSTALL)
+  PASS: A: migrate deploy
+  PASS: A: checksum ثبت‌شده‌ی Prisma = sha256 بایت‌های فایل 191557
+  PASS: A: diagnose = S_FINAL و همه‌ی migrationها اجراشده (diagnose: state=S_FINAL path=NONE_UP_TO_DATE)
+  PASS: A: (بررسی مستقل) expiresAt الزامی، finishedAt nullable
+  PASS: A: (بررسی مستقل) ایندکس یکتای معتبر روی (examId, studentId)
+  PASS: A: migration شکست‌خورده‌ی باقی‌مانده نیست
+  PASS: A: migrate status (up to date)
+  PASS: A: migrate diff بین دیتابیس و schema.prisma تفاوتی ندارد (کل schema)
+
+== B: مسیر ۳ — 133000 اجراشده، 175323 pending، تلاش‌های تمام‌شده؛ داده باید «برابر» بماند
+  PASS: B: مرحله‌ی اولیه تا 133000 (deploy)
+  PASS: B: pending بودن 175323 روی S_FINAL پیش از اجرای مخرب شناسایی شد (diagnose: state=S_FINAL path=PATH_3_RESOLVE_175)
+  PASS: B: diagnose هیچ تغییری در _prisma_migrations نداد
+  PASS: B: migrate resolve --applied 175323
+  PASS: B: migrate deploy بعد از resolve
+  PASS: B: expiresAt، finishedAt و همه‌ی ستون‌های تلاش‌ها قبل/بعد برابرند (ردیف‌ها=2، ستون‌ها=answers,correctCount,endedByTimeout,examId,expiresAt,finishedAt,id,startedAt,studentId,totalQuestions)
+  PASS: B: diagnose = S_FINAL و همه‌ی migrationها اجراشده (diagnose: state=S_FINAL path=NONE_UP_TO_DATE)
+  PASS: B: (بررسی مستقل) expiresAt الزامی، finishedAt nullable
+  PASS: B: (بررسی مستقل) ایندکس یکتای معتبر روی (examId, studentId)
+  PASS: B: migration شکست‌خورده‌ی باقی‌مانده نیست
+  PASS: B: migrate status (up to date)
+  PASS: B: migrate diff بین دیتابیس و schema.prisma تفاوتی ندارد (کل schema)
+
+== Bc: کنترل — deploy ساده (بدون resolve) روی همان حالت باید داده را عوض کند (اثبات خطر مسیر ۳ و حساس‌بودن assert)
+  PASS: Bc: مرحله‌ی اولیه تا 133000 (deploy)
+  PASS: Bc: deploy ساده کامل می‌شود (بی‌صدا)
+  PASS: Bc: deploy ساده داده را تغییر داد (خطر واقعی است و assert آن را می‌گیرد)
+    | 1c1
+    | < a_done|{"id": "a_done", "examId": "e1", "answers": {"q1": "a", "q2": [1, 2]}, "expiresAt": "2026-09-01T10:45:00", "startedAt": "2026-09-01T10:00:00", "studentId": "u1", "finishedAt": "2026-09-01T10:20:00", "correctCount": 7, "endedByTimeout": false, "totalQuestions": 10}
+    | ---
+    | > a_done|{"id": "a_done", "examId": "e1", "answers": {"q1": "a", "q2": [1, 2]}, "expiresAt": "2026-09-01T10:20:00", "startedAt": "2026-09-01T10:00:00", "studentId": "u1", "finishedAt": "2026-09-01T10:20:00", "correctCount": 7, "endedByTimeout": false, "totalQuestions": 10}
+
+== C: مسیر ۴ — تلاش ناتمام: شکست 175323، بررسی باقی‌ماندهٔ جزئی (فرض rollback) و بازیابی بدون حذف داده
+  PASS: C: مرحله‌ی اولیه تا 133000 (deploy)
+  PASS: C: diagnose پیش از اجرا (in_progress>0؛ deploy ساده شکست می‌خورد، مسیر ۳ همین‌جا هم درست است) (diagnose: state=S_FINAL path=PATH_3_RESOLVE_175)
+  PASS: C: انتظار می‌رود deploy روی تلاش ناتمام شکست بخورد (deploy)
+  PASS: C: شکست مربوط به 20260912175323_add_approval_status است
+  PASS: C: [فرض rollback] expiresAt/finishedAt/ایندکس یکتا بعد از شکست دست‌نخورده‌اند
+  PASS: C: [فرض rollback] داده‌ی تلاش‌ها بعد از شکست دست‌نخورده است (ردیف‌ها=3، ستون‌ها=answers,correctCount,endedByTimeout,examId,expiresAt,finishedAt,id,startedAt,studentId,totalQuestions)
+  PASS: C: 175323 در تاریخچه FAILED ثبت شد
+  PASS: C: diagnose بعد از شکست (diagnose: state=S_FINAL path=PATH_4_RESOLVE_175_APPLIED)
+  PASS: C: deploy دوباره تا حل وضعیت شکست‌خورده می‌ماند (deploy)
+  PASS: C: خطای P3009 دیده شد
+  PASS: C: migrate resolve --applied 175323
+  PASS: C: deploy بعد از resolve
+  PASS: C: تلاش ناتمام (finishedAt خالی) و expiresAt واقعی بعد از بازیابی برابرند (ردیف‌ها=3، ستون‌ها=answers,correctCount,endedByTimeout,examId,expiresAt,finishedAt,id,startedAt,studentId,totalQuestions)
+  PASS: C: diagnose = S_FINAL و همه‌ی migrationها اجراشده (diagnose: state=S_FINAL path=NONE_UP_TO_DATE)
+  PASS: C: (بررسی مستقل) expiresAt الزامی، finishedAt nullable
+  PASS: C: (بررسی مستقل) ایندکس یکتای معتبر روی (examId, studentId)
+  PASS: C: migration شکست‌خورده‌ی باقی‌مانده نیست
+  PASS: C: migrate status (up to date)
+  PASS: C: migrate diff بین دیتابیس و schema.prisma تفاوتی ندارد (کل schema)
+
+== D: مسیر ۵ — شکست 191557 (نسخه‌ی اول) روی جدول دارای داده و بازیابی با فایل فعلی [نسخه‌ی اول: HISTORICAL_OR_EXTERNAL]
+  PASS: D: مرحله‌ی اولیه تا 175323 (deploy)
+  PASS: D: نسخه‌ی اول 191557 روی جدول دارای داده شکست می‌خورد (deploy)
+  PASS: D: [فرض rollback] ساختار بعد از شکست دست‌نخورده (S_REVERTED)
+  PASS: D: diagnose بعد از شکست (diagnose: state=S_REVERTED path=PATH_5_RESOLVE_191_ROLLED_BACK)
+  PASS: D: تا resolve نشود deploy جلو نمی‌رود (deploy)
+  PASS: D: migrate resolve --rolled-back
+  PASS: D: deploy بعد از resolve
+  PASS: D: ستون‌های اصلی تلاش‌ها (بدون expiresAt که قبلاً نبود) برابرند (ردیف‌ها=2، ستون‌ها=answers,correctCount,endedByTimeout,examId,finishedAt,id,startedAt,studentId,totalQuestions)
+  PASS: D: expiresAt فقط از finishedAt backfill شد (fallback خود migration)
+  PASS: D: هیچ finishedAt جعل/حذف نشد
+  PASS: D: diagnose = S_FINAL و همه‌ی migrationها اجراشده (diagnose: state=S_FINAL path=NONE_UP_TO_DATE)
+  PASS: D: (بررسی مستقل) expiresAt الزامی، finishedAt nullable
+  PASS: D: (بررسی مستقل) ایندکس یکتای معتبر روی (examId, studentId)
+  PASS: D: migration شکست‌خورده‌ی باقی‌مانده نیست
+  PASS: D: migrate status (up to date)
+  PASS: D: migrate diff بین دیتابیس و schema.prisma تفاوتی ندارد (کل schema)
+
+== D2: مسیر ۷-ب — فایل قدیمی برگردانده‌شده؛ محیط با 191557 شکست‌خورده: SQL دستی + resolve --applied
+  PASS: D2: مرحله‌ی اولیه تا 175323 (deploy)
+  PASS: D2: نسخه‌ی قدیمی روی جدول دارای داده شکست می‌خورد (deploy)
+  PASS: D2: اجرای 01_manual_backfill_191557.sql
+  PASS: D2: diagnose بعد از SQL دستی (ساختار S_FINAL و 191557 شکست‌خورده) (diagnose: state=S_FINAL path=PATH_5B_VERIFIED_RESOLVE_191_APPLIED)
+  PASS: D2: migrate resolve --applied 191557
+  PASS: D2: deploy بعد از resolve (فقط 922100000 باقی است)
+  PASS: D2: checksum ثبت‌شده‌ی 191557 = sha256 فایل برگردانده‌شده
+  PASS: D2: داده‌ی تلاش‌ها برابر است (ردیف‌ها=2، ستون‌ها=answers,correctCount,endedByTimeout,examId,finishedAt,id,startedAt,studentId,totalQuestions)
+  PASS: D2: expiresAt فقط از finishedAt backfill شد
+  PASS: D2: diagnose = S_FINAL و همه‌ی migrationها اجراشده (diagnose: state=S_FINAL path=NONE_UP_TO_DATE)
+  PASS: D2: (بررسی مستقل) expiresAt الزامی، finishedAt nullable
+  PASS: D2: (بررسی مستقل) ایندکس یکتای معتبر روی (examId, studentId)
+  PASS: D2: migration شکست‌خورده‌ی باقی‌مانده نیست
+  PASS: D2: migrate status (up to date)
+  PASS: D2: migrate diff بین دیتابیس و schema.prisma تفاوتی ندارد (کل schema)
+
+== D3: مسیر ۷-ب — فایل قدیمی برگردانده‌شده؛ محیط دارای داده که 191557 هنوز pending است
+  PASS: D3: مرحله‌ی اولیه تا 175323 (deploy)
+  PASS: D3: اجرای 01_manual_backfill_191557.sql
+  PASS: D3: diagnose (S_FINAL؛ 191557 هنوز بدون ردیف) (diagnose: state=S_FINAL path=PATH_2_DEPLOY)
+  PASS: D3: migrate resolve --applied 191557 (پیش از deploy، چون فایل قدیمی ستون موجود را دوباره اضافه می‌کند)
+  PASS: D3: deploy بعد از resolve
+  PASS: D3: داده‌ی تلاش‌ها برابر است (ردیف‌ها=2، ستون‌ها=answers,correctCount,endedByTimeout,examId,finishedAt,id,startedAt,studentId,totalQuestions)
+  PASS: D3: diagnose = S_FINAL و همه‌ی migrationها اجراشده (diagnose: state=S_FINAL path=NONE_UP_TO_DATE)
+  PASS: D3: (بررسی مستقل) expiresAt الزامی، finishedAt nullable
+  PASS: D3: (بررسی مستقل) ایندکس یکتای معتبر روی (examId, studentId)
+  PASS: D3: migration شکست‌خورده‌ی باقی‌مانده نیست
+  PASS: D3: migrate status (up to date)
+  PASS: D3: migrate diff بین دیتابیس و schema.prisma تفاوتی ندارد (کل schema)
+
+== E: رفتار Prisma با checksum متفاوت (ثبت‌شده ≠ فایل مخزن) [نسخه‌ی قدیمی: HISTORICAL_OR_EXTERNAL] — فقط ثبت، بدون assert روی رفتار
+  PASS: E1: مرحله‌ی اولیه تا 175323 (deploy)
+  PASS: E1: نسخه‌ی قدیمی روی جدول خالی موفق است (deploy)
+  INFO: checksum ثبت‌شده: fc2ebe944aae5125449a258a9e2f1054f408669da4c3d3fe0cf01167d9dccfc5
+  INFO: checksum فایل فعلی: 4308268525cf07a899248472a2b83ff3c0afe7b0440cafe66de1c2c4642133ee
+  PASS: E1: checksum واقعاً متفاوت است (پیش‌شرط مشاهده؛ اگر نسخه‌ی واقعی با فایل فعلی بایت‌به‌بایت برابر است FAIL طبیعی است)
+  INFO: E1 (DB=قدیمی، مخزن=فعلی) — migrate deploy: exit=0
+    | Environment variables loaded from .env
+    | Prisma schema loaded from ../../../tmp/tmp.FTbsvJz14d/prisma/schema.prisma
+    | Datasource "db": PostgreSQL database "migtest_6193_e1", schema "public" at "127.0.0.1:55432"
+    | 
+    | 22 migrations found in prisma/migrations
+    | 
+    | Applying migration `20260915120000_add_categories`
+    | Applying migration `20260915140000_add_onboarding_fields`
+    | Applying migration `20260915153000_add_lesson_attachments`
+    | Applying migration `20260915160000_add_question_banks`
+    | Applying migration `20260916205728_exam`
+    | Applying migration `20260916210000_add_payments`
+  INFO: E1 (DB=قدیمی، مخزن=فعلی) — migrate status: exit=0
+    | Environment variables loaded from .env
+    | Prisma schema loaded from ../../../tmp/tmp.FTbsvJz14d/prisma/schema.prisma
+    | Datasource "db": PostgreSQL database "migtest_6193_e1", schema "public" at "127.0.0.1:55432"
+    | 
+    | 22 migrations found in prisma/migrations
+    | 
+    | Database schema is up to date!
+  INFO: E1 (DB=قدیمی، مخزن=فعلی) — migrate dev --create-only (غیرتعاملی): exit=1
+    | Environment variables loaded from .env
+    | Prisma schema loaded from ../../../tmp/tmp.FTbsvJz14d/prisma/schema.prisma
+    | Datasource "db": PostgreSQL database "migtest_6193_e1", schema "public" at "127.0.0.1:55432"
+    | 
+    | Error: Prisma Migrate has detected that the environment is non-interactive, which is not supported.
+    | 
+    | `prisma migrate dev` is an interactive command designed to create new migrations and evolve the database in development.
+    | To apply existing migrations in deployments, use prisma migrate deploy.
+    | See https://www.prisma.io/docs/reference/api-reference/command-reference#migrate-deploy
+  PASS: E2: نصب با فایل فعلی (deploy)
+  INFO: E2 (DB=فعلی، مخزن=قدیمی) — migrate deploy: exit=0
+    | Environment variables loaded from .env
+    | Prisma schema loaded from ../../../tmp/tmp.FTbsvJz14d/prisma/schema.prisma
+    | Datasource "db": PostgreSQL database "migtest_6193_e2", schema "public" at "127.0.0.1:55432"
+    | 
+    | 22 migrations found in prisma/migrations
+    | 
+    | 
+    | No pending migrations to apply.
+  INFO: E2 (DB=فعلی، مخزن=قدیمی) — migrate status: exit=0
+    | Environment variables loaded from .env
+    | Prisma schema loaded from ../../../tmp/tmp.FTbsvJz14d/prisma/schema.prisma
+    | Datasource "db": PostgreSQL database "migtest_6193_e2", schema "public" at "127.0.0.1:55432"
+    | 
+    | 22 migrations found in prisma/migrations
+    | 
+    | Database schema is up to date!
+  INFO: E2 (DB=فعلی، مخزن=قدیمی) — migrate dev --create-only (غیرتعاملی): exit=1
+    | Environment variables loaded from .env
+    | Prisma schema loaded from ../../../tmp/tmp.FTbsvJz14d/prisma/schema.prisma
+    | Datasource "db": PostgreSQL database "migtest_6193_e2", schema "public" at "127.0.0.1:55432"
+    | 
+    | Error: Prisma Migrate has detected that the environment is non-interactive, which is not supported.
+    | 
+    | `prisma migrate dev` is an interactive command designed to create new migrations and evolve the database in development.
+    | To apply existing migrations in deployments, use prisma migrate deploy.
+    | See https://www.prisma.io/docs/reference/api-reference/command-reference#migrate-deploy
+  INFO: E3: sha256 فایل با LF: 4308268525cf07a899248472a2b83ff3c0afe7b0440cafe66de1c2c4642133ee
+  PASS: E3: نصب با فایل LF (deploy)
+  INFO: E3: checksum ثبت‌شده (LF): 4308268525cf07a899248472a2b83ff3c0afe7b0440cafe66de1c2c4642133ee
+  INFO: E3: sha256 همان فایل با CRLF: aef613b9aa1c21db3a08a6df7829222c357e750d678b40f03db4761902b27421
+  PASS: E3: LF و CRLF checksum متفاوت می‌دهند (Prisma بایت خام را hash می‌کند)
+  INFO: E3 (DB=LF، مخزن=همان محتوا با CRLF) — migrate deploy: exit=0
+    | Environment variables loaded from .env
+    | Prisma schema loaded from ../../../tmp/tmp.FTbsvJz14d/prisma/schema.prisma
+    | Datasource "db": PostgreSQL database "migtest_6193_e3", schema "public" at "127.0.0.1:55432"
+    | 
+    | 22 migrations found in prisma/migrations
+    | 
+    | 
+    | No pending migrations to apply.
+  INFO: E3 (DB=LF، مخزن=همان محتوا با CRLF) — migrate status: exit=0
+    | Environment variables loaded from .env
+    | Prisma schema loaded from ../../../tmp/tmp.FTbsvJz14d/prisma/schema.prisma
+    | Datasource "db": PostgreSQL database "migtest_6193_e3", schema "public" at "127.0.0.1:55432"
+    | 
+    | 22 migrations found in prisma/migrations
+    | 
+    | Database schema is up to date!
+  INFO: E3 (DB=LF، مخزن=همان محتوا با CRLF) — migrate dev --create-only (غیرتعاملی): exit=0
+    | Environment variables loaded from .env
+    | Prisma schema loaded from ../../../tmp/tmp.FTbsvJz14d/prisma/schema.prisma
+    | Datasource "db": PostgreSQL database "migtest_6193_e3", schema "public" at "127.0.0.1:55432"
+    | 
+    | Prisma Migrate created the following migration without applying it 20261003071947_probe
+    | 
+    | You can now edit it and apply it by running prisma migrate dev.
+
+== F: (باقیماندهٔ جزئی شبیه‌سازی‌شده) ایندکس یکتا حذف شده + 175323 شکست‌خورده → مسیر ۴ بدون حذف داده
+  PASS: F: مرحله‌ی اولیه تا 133000 (deploy)
+  PASS: F: 175323 شکست می‌خورد (deploy)
+  PASS: F: diagnose (diagnose: state=S_PARTIAL_INDEX_MISSING path=PATH_4_RESOLVE_175_APPLIED)
+  PASS: F: state = S_PARTIAL_INDEX_MISSING
+  PASS: F: migrate resolve --applied 175323
+  PASS: F: deploy بعد از resolve (191557 ایندکس را دوباره می‌سازد)
+  PASS: F: داده‌ها (از جمله تلاش ناتمام) برابرند (ردیف‌ها=3، ستون‌ها=answers,correctCount,endedByTimeout,examId,expiresAt,finishedAt,id,startedAt,studentId,totalQuestions)
+  PASS: F: diagnose = S_FINAL و همه‌ی migrationها اجراشده (diagnose: state=S_FINAL path=NONE_UP_TO_DATE)
+  PASS: F: (بررسی مستقل) expiresAt الزامی، finishedAt nullable
+  PASS: F: (بررسی مستقل) ایندکس یکتای معتبر روی (examId, studentId)
+  PASS: F: migration شکست‌خورده‌ی باقی‌مانده نیست
+  PASS: F: migrate status (up to date)
+  PASS: F: migrate diff بین دیتابیس و schema.prisma تفاوتی ندارد (کل schema)
+
+== G: شکست 191557 فعلی روی ردیف تکراری — آزمون واقعی فرض rollback، بدون حذف داده
+  PASS: G: مرحله‌ی اولیه تا 175323 (deploy)
+  PASS: G: diagnose ردیف تکراری را پیش از deploy می‌بیند و توقف می‌دهد (diagnose: state=S_REVERTED path=STOP_DUPLICATE_ATTEMPTS)
+  INFO: برای آزمودن فرض rollback، فقط روی این دیتابیس آزمایشی عمداً deploy را اجرا می‌کنیم
+  PASS: G: 191557 روی تکراری شکست می‌خورد (deploy)
+  PASS: G: پیام خطا درباره‌ی ردیف تکراری است
+  PASS: G: [فرض rollback] اگر 191557 وسط راه شکست بخورد، هیچ تغییر ساختاری (expiresAt/nullability) نمی‌ماند
+  PASS: G: [فرض rollback] داده‌ها بعد از شکست دست‌نخورده‌اند (backfill نیمه‌کاره نمانده) (ردیف‌ها=3، ستون‌ها=answers,correctCount,endedByTimeout,examId,finishedAt,id,startedAt,studentId,totalQuestions)
+  PASS: G: 191557 در تاریخچه FAILED ثبت شد
+  PASS: G: migrate resolve --rolled-back (فقط برای آزمون تکرار؛ تکراری‌ها هنوز هستند)
+  PASS: G: اجرای دوباره باز هم با همان علت شکست می‌خورد (deploy)
+  PASS: G: بعد از اجرای دوباره هم ساختار دست‌نخورده
+  PASS: G: بعد از اجرای دوباره هم داده دست‌نخورده (ردیف‌ها=3، ستون‌ها=answers,correctCount,endedByTimeout,examId,finishedAt,id,startedAt,studentId,totalQuestions)
+
+== H: تشخیص حالت‌های ناقص و ایندکس هم‌نامِ نامعتبر
+  PASS: H1: جدول هست ولی تاریخچه‌ی Prisma نیست (diagnose: state=S_UNEXPECTED path=STOP_NO_PRISMA_HISTORY)
+  PASS: H2: تاریخچه هست ولی exam_attempts نیست (diagnose: state=S_NO_TABLE path=STOP_NO_EXAM_ATTEMPTS_TABLE)
+  PASS: H3: نصب تازه (deploy)
+  PASS: H3.1: ایندکس هم‌نام ولی نامعتبر (غیریکتا/ستون اشتباه/ترتیب اشتباه/جزئی) معادل معتبر حساب نمی‌شود (diagnose: state=S_UNEXPECTED path=STOP_UNEXPECTED_STRUCTURE)
+  PASS: H3.2: ایندکس هم‌نام ولی نامعتبر (غیریکتا/ستون اشتباه/ترتیب اشتباه/جزئی) معادل معتبر حساب نمی‌شود (diagnose: state=S_UNEXPECTED path=STOP_UNEXPECTED_STRUCTURE)
+  PASS: H3.3: ایندکس هم‌نام ولی نامعتبر (غیریکتا/ستون اشتباه/ترتیب اشتباه/جزئی) معادل معتبر حساب نمی‌شود (diagnose: state=S_UNEXPECTED path=STOP_UNEXPECTED_STRUCTURE)
+  PASS: H3.4: ایندکس هم‌نام ولی نامعتبر (غیریکتا/ستون اشتباه/ترتیب اشتباه/جزئی) معادل معتبر حساب نمی‌شود (diagnose: state=S_UNEXPECTED path=STOP_UNEXPECTED_STRUCTURE)
+
+================ خلاصه ================
+  PASS  A: نصب تازه روی دیتابیس خالی  (pass=9 fail=0)
+  PASS  B: مسیر ۳ — 133000 اجراشده، 175323 pending، تلاش‌های تمام‌شده؛ داده باید «برابر» بماند  (pass=12 fail=0)
+  PASS  Bc: کنترل — deploy ساده (بدون resolve) روی همان حالت باید داده را عوض کند (اثبات خطر مسیر ۳ و حساس‌بودن assert)  (pass=3 fail=0)
+  PASS  C: مسیر ۴ — تلاش ناتمام: شکست 175323، بررسی باقی‌ماندهٔ جزئی (فرض rollback) و بازیابی بدون حذف داده  (pass=19 fail=0)
+  PASS  D: مسیر ۵ — شکست 191557 (نسخه‌ی اول) روی جدول دارای داده و بازیابی با فایل فعلی [نسخه‌ی اول: HISTORICAL_OR_EXTERNAL]  (pass=16 fail=0)
+  PASS  D2: مسیر ۷-ب — فایل قدیمی برگردانده‌شده؛ محیط با 191557 شکست‌خورده: SQL دستی + resolve --applied  (pass=15 fail=0)
+  PASS  D3: مسیر ۷-ب — فایل قدیمی برگردانده‌شده؛ محیط دارای داده که 191557 هنوز pending است  (pass=12 fail=0)
+  PASS  E: رفتار Prisma با checksum متفاوت (ثبت‌شده ≠ فایل مخزن) [نسخه‌ی قدیمی: HISTORICAL_OR_EXTERNAL] — فقط ثبت، بدون assert روی رفتار  (pass=6 fail=0)
+  PASS  F: (باقیماندهٔ جزئی شبیه‌سازی‌شده) ایندکس یکتا حذف شده + 175323 شکست‌خورده → مسیر ۴ بدون حذف داده  (pass=13 fail=0)
+  PASS  G: شکست 191557 فعلی روی ردیف تکراری — آزمون واقعی فرض rollback، بدون حذف داده  (pass=11 fail=0)
+  PASS  H: تشخیص حالت‌های ناقص و ایندکس هم‌نامِ نامعتبر  (pass=7 fail=0)
+  --- ماتریس سناریوی E (کد خروج؛ 0 = موفق)  [نسخه‌ی قدیمی: HISTORICAL_OR_EXTERNAL (not a simulated stand-in)]
+  E1 (DB=قدیمی، مخزن=فعلی) | deploy=0 status=0 dev=1
+  E2 (DB=فعلی، مخزن=قدیمی) | deploy=0 status=0 dev=1
+  E3 (DB=LF، مخزن=همان محتوا با CRLF) | deploy=0 status=0 dev=0
+نتیجه: PASS=123 FAIL=0

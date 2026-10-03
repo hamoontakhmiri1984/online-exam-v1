@@ -1,0 +1,164 @@
+diff --git a/.gitattributes b/.gitattributes
+index 19be3ad..7209dcc 100644
+--- a/.gitattributes
++++ b/.gitattributes
+@@ -1,3 +1,6 @@
+ # پایان‌خط LF برای اسکریپت‌های Bash مرحله‌ی recovery (در ویندوز با autocrlf، CRLF باعث خطای bash می‌شود).
+ # عمداً برای فایل‌های migration قاعده‌ای نوشته نشده: تغییر پایان‌خط آن‌ها checksum ثبت‌شده در _prisma_migrations را عوض می‌کند.
+ server/prisma/recovery/*.sh text eol=lf
++
++# Preserve the exact bytes of the historical test fixture; never deployed as a migration.
++server/prisma/recovery/historical-191557.sql -text
+diff --git a/server/prisma/recovery/README.fa.md b/server/prisma/recovery/README.fa.md
+index 3d3deca..0c3e6c8 100644
+--- a/server/prisma/recovery/README.fa.md
++++ b/server/prisma/recovery/README.fa.md
+@@ -4,10 +4,10 @@
+ 
+ | مورد | وضعیت |
+ |---|---|
+-| `00_diagnose_readonly.sql`، `01_manual_backfill_191557.sql`، `test-migration-paths.sh` | اجرای واقعی اول: ۱۲۱ PASS و ۱ FAIL (سناریوی H1: تشخیص روی جدولی که ستون `examId` ندارد خطا می‌داد؛ اصلاح شد و باید دوباره اجرا شود). سناریوهای D، D2، D3 و E با نسخه‌ی **شبیه‌سازی‌شده** از `191557` اجرا شده‌اند |
++| `00_diagnose_readonly.sql`، `01_manual_backfill_191557.sql`، `test-migration-paths.sh` | اجرای واقعی اول: ۱۲۱ PASS و ۱ FAIL (سناریوی H1: تشخیص روی جدولی که ستون `examId` ندارد خطا می‌داد؛ اصلاح شد؛ اجرای بعدی ثبت‌شده PASS=123 FAIL=0 دارد). سناریوهای D، D2، D3 و E با نسخه‌ی **شبیه‌سازی‌شده** از `191557` اجرا شده‌اند |
+ | فرض «شکست migration همه‌ی تغییرهایش را برمی‌گرداند» | **در یک اجرای واقعی تأیید شد** (PostgreSQL 16.15، Prisma 5.22.0، ویندوز): بعد از شکست `175323` (سناریوی C) و شکست `191557` بعد از چند دستور موفق (سناریوی G)، ساختار و داده‌ی `exam_attempts` دست‌نخورده ماند. فقط همین دو شکست آزموده شده؛ نسخه‌ی دیگر Prisma/PostgreSQL آزموده نشده |
+ | رفتار Prisma با checksum متفاوت | **مشاهده شد (Prisma 5.22.0)**: `migrate deploy` و `migrate status` تفاوت را نمی‌بینند (exit=0)؛ جدول مسیر ۷ را ببینید |
+-| نسخه‌ی دقیق اجراشده‌ی `191557` | **پیدا نشده**: بسته‌ی zip پوشه‌ی `.git` ندارد. دستور پیدا کردن آن در مسیر ۷ آمده و باید روی کلون واقعی اجرا شود |
++| نسخهٔ تاریخی `191557` | از commit `ca4aa8db705cd79c1cf627515bc395c802a960e2` استخراج و در `historical-191557.sql` با بایت‌های اصلی ذخیره شد. تطابق با نسخهٔ اجراشده روی دیتابیس کاربر هنوز نیازمند checksum تشخیص است. |
+ 
+ تا وقتی خروجی واقعی `test-migration-paths.sh` در دست نیست، این راهنما را «رفع‌شده» ندانید.
+ 
+@@ -380,3 +380,39 @@ git commit -m "Stop tracking local DB backup; ignore local backups"
+ ```
+ 
+ (PowerShell: همین دستورها بدون تغییر.) این commit فایل را فقط از نسخه‌های بعدی خارج می‌کند؛ **از تاریخچه‌ی قبلی، کلون‌ها و forkها حذف نمی‌شود.** اگر احتمال دادهٔ واقعی (کاربر، تلفن، ایمیل، هش رمز) در آن هست، آن را «افشاشده» فرض کنید: رمزها/توکن‌های مرتبط را عوض کنید و تصمیم درباره‌ی پاک‌سازی تاریخچه (`git filter-repo` یا BFG و سپس force push) را فقط بعد از هماهنگی با همه‌ی کسانی که کلون دارند بگیرید؛ این بسته تاریخچه را بازنویسی نمی‌کند و force push نمی‌زند.
++
++## بررسی جدید نسخهٔ تاریخی از Git
++
++فایل `historical-191557.sql` مستقیماً با `git show` از commit
++`ca4aa8db705cd79c1cf627515bc395c802a960e2` و مسیر
++`server/prisma/migrations/20260914191557_add_exam_attempt_unique_constraint/migration.sql`
++استخراج شده؛ migrationهای اجرایی تغییر نکرده‌اند. SHA-256 بایت‌های آن:
++
++```text
++fc2ebe944aae5125449a258a9e2f1054f408669da4c3d3fe0cf01167d9dccfc5
++```
++
++اسکریپت اکنون به‌طور پیش‌فرض همین فایل را پس از تأیید checksum استفاده می‌کند.
++`ORIG_191_SQL` همچنان برای نسخهٔ دقیق متعلق به یک محیط دیگر قابل تنظیم است.
++داشتن فایل تاریخی اثبات نمی‌کند همین بایت‌ها روی دیتابیس شما اجرا شده‌اند؛
++پیش از انتخاب مسیر checksum، با خروجی تشخیص فقط‌خواندنی مقایسه کنید.
++گزارش قبلی `migtest-output.txt` متعلق به اجرای شبیه‌سازی‌شده است و اثبات اجرای fixture جدید نیست.
++
++PowerShell (در ریشهٔ پروژه؛ PostgreSQL آزمایشی محلی، psql و Git Bash در PATH):
++
++```powershell
++$env:PG_BASE_URL = 'postgresql://TEST_USER:TEST_PASSWORD@127.0.0.1:5432'
++bash -o pipefail -c 'bash server/prisma/recovery/test-migration-paths.sh 2>&1 | tee migtest-historical-output.txt'
++if ($LASTEXITCODE -ne 0) { throw 'Migration tests failed; inspect the report.' }
++```
++
++بکاپ از index این شاخه خارج شده و فایل محلی حفظ شده است؛ پس از commit نیز
++نسخه‌های قدیمی Git همچنان بکاپ را دارند. تاریخچه بازنویسی نشده است.
++
++### وضعیت اجرای این تغییر (2026-10-03)
++
++برابری بایت‌های fixture با `git show`، SHA-256، نحو Bash و `git diff --check`
++بررسی شدند. PostgreSQL در محیط اصلاح نصب نبود و آماده‌سازی آن با خطای
++دسترسی نوشتن بسته‌های سیستم متوقف شد؛ بنابراین آزمون دیتابیس با فایل
++تاریخی جدید **اجرا نشده** و این تغییر هنوز رفع کامل migration محسوب نمی‌شود.
++گزارش قبلی PASS=123 FAIL=0 بدون تغییر حفظ شده است.
+diff --git a/server/prisma/recovery/historical-191557.sql b/server/prisma/recovery/historical-191557.sql
+new file mode 100644
+index 0000000..0fb8804
+--- /dev/null
++++ b/server/prisma/recovery/historical-191557.sql
+@@ -0,0 +1,13 @@
++/*
++  Warnings:
++
++  - A unique constraint covering the columns `[examId,studentId]` on the table `exam_attempts` will be added. If there are existing duplicate values, this will fail.
++  - Added the required column `expiresAt` to the `exam_attempts` table without a default value. This is not possible if the table is not empty.
++
++*/
++-- AlterTable
++ALTER TABLE "exam_attempts" ADD COLUMN     "expiresAt" TIMESTAMP(3) NOT NULL,
++ALTER COLUMN "finishedAt" DROP NOT NULL;
++
++-- CreateIndex
++CREATE UNIQUE INDEX "exam_attempts_examId_studentId_key" ON "exam_attempts"("examId", "studentId");
+diff --git a/server/prisma/recovery/test-migration-paths.sh b/server/prisma/recovery/test-migration-paths.sh
+index 7357bc1..1e19217 100644
+--- a/server/prisma/recovery/test-migration-paths.sh
++++ b/server/prisma/recovery/test-migration-paths.sh
+@@ -21,8 +21,8 @@
+ # اختیاری:
+ #   ORIG_191_SQL=/path/to/exact-executed-191557.sql
+ #       نسخه‌ی دقیق اجراشده‌ی migration 191557 که از تاریخچه‌ی Git بیرون کشیده‌اید (README، بخش «پیدا کردن نسخه‌ی اجراشده»).
+-#       اگر داده نشود، سناریوهای D/D2/D3/E از یک «نمونه‌ی شبیه‌سازی‌شده» استفاده می‌کنند که نسخه‌ی واقعی نیست
+-#       و خروجی این را صریح چاپ می‌کند.
++#       اگر داده نشود، فایل historical-191557.sql استخراج‌شده از Git استفاده می‌شود.
++#       این فایل نسخهٔ تاریخی واقعی است؛ تطابق با دیتابیس شما نیازمند مقایسهٔ checksum است.
+ #   KEEP_WORK=1   پوشه‌ی موقت (لاگ‌ها و migrationهای کپی‌شده) پاک نشود
+ #
+ # سناریوها:
+@@ -61,6 +61,17 @@ REPO_MIGRATIONS="$SERVER_DIR/prisma/migrations"
+ REPO_SCHEMA="$SERVER_DIR/prisma/schema.prisma"
+ DIAG_SQL="$HERE/00_diagnose_readonly.sql"
+ MANUAL_SQL="$HERE/01_manual_backfill_191557.sql"
++# نسخهٔ تاریخی را از بایت‌های Git نگه می‌داریم؛ پایان‌خط fixture نباید تغییر کند.
++if [ -z "$ORIG_191_SQL" ]; then
++  ORIG_191_SQL="$HERE/historical-191557.sql"
++  historical_hash="$(sha256sum "$ORIG_191_SQL" | cut -d' ' -f1)" || exit 2
++  if [ "$historical_hash" != "fc2ebe944aae5125449a258a9e2f1054f408669da4c3d3fe0cf01167d9dccfc5" ]; then
++    echo "Historical migration checksum mismatch; restore the exact Git bytes before testing." >&2
++    exit 2
++  fi
++  echo "Historical migration source: ca4aa8db705cd79c1cf627515bc395c802a960e2 (Git bytes verified)"
++  echo "This does not prove the migration executed on your database has the same checksum."
++fi
+ WORK="$(mktemp -d)"
+ LOG="$WORK/last.log"
+ RUN_ID="$$"
+@@ -69,7 +80,7 @@ CUR=""; CUR_P=0; CUR_F=0
+ SUMMARY_LINES=(); E_RESULTS=()
+ CREATED_DBS=()
+ ORIG_KIND=""
+-if [ -n "$ORIG_191_SQL" ]; then ORIG_TAG=REAL; else ORIG_TAG=SIMULATED; fi
++ORIG_TAG=HISTORICAL_OR_EXTERNAL
+ 
+ M_133="20260912133000_exam_attempt_server_timing"
+ M_175="20260912175323_add_approval_status"
+@@ -136,21 +147,11 @@ build_dir() {
+   done
+ }
+ 
+-# نسخه‌ی «قدیمی» 191557 را داخل پوشه‌ی موقت می‌گذارد (جایگزین فایل فعلی).
+-# اگر ORIG_191_SQL داده شده نسخه‌ی واقعی است؛ وگرنه یک نمونه‌ی شبیه‌سازی‌شده (نسخه‌ی واقعی اجراشده نیست).
++# نسخهٔ واقعی از Git (یا فایل خارجی صریحاً انتخاب‌شده) فقط داخل پوشهٔ تست کپی می‌شود.
+ put_orig_191() {
+   mkdir -p "$WORK/prisma/migrations/$M_191"
+-  if [ -n "$ORIG_191_SQL" ]; then
+-    cp "$ORIG_191_SQL" "$WORK/prisma/migrations/$M_191/migration.sql"
+-    ORIG_KIND="REAL (ORIG_191_SQL)"
+-  else
+-    cat > "$WORK/prisma/migrations/$M_191/migration.sql" <<'SQL'
+-ALTER TABLE "exam_attempts" ADD COLUMN "expiresAt" TIMESTAMP(3) NOT NULL;
+-ALTER TABLE "exam_attempts" ALTER COLUMN "finishedAt" DROP NOT NULL;
+-CREATE UNIQUE INDEX "exam_attempts_examId_studentId_key" ON "exam_attempts"("examId", "studentId");
+-SQL
+-    ORIG_KIND="SIMULATED stand-in (NOT the executed file)"
+-  fi
++  cp "$ORIG_191_SQL" "$WORK/prisma/migrations/$M_191/migration.sql" || exit 2
++  ORIG_KIND="HISTORICAL_OR_EXTERNAL (not a simulated stand-in)"
+ }
+ 
+ # ---- مشاهده‌ی وضعیت ----
+@@ -267,8 +268,7 @@ echo "  psql        : $(psql --version 2>&1 | head -n1)"
+ echo "  PostgreSQL  : $(psql "$PG_BASE_URL/postgres" -X -tA -c 'SHOW server_version' 2>&1 | head -n1)"
+ echo "  node        : $(node --version 2>&1 | head -n1)"
+ ( cd "$SERVER_DIR" && npx --no-install prisma --version ) 2>&1 | sed 's/^/  prisma      : /' | head -n 12
+-if [ -n "$ORIG_191_SQL" ]; then echo "  نسخه‌ی قدیمی 191557: REAL از $ORIG_191_SQL (sha256 $(sha256sum "$ORIG_191_SQL" | cut -d' ' -f1))"
+-else echo "  نسخه‌ی قدیمی 191557: SIMULATED (ORIG_191_SQL داده نشده؛ سناریوهای D/D2/D3/E نمونه‌ی شبیه‌سازی‌شده‌اند)"; fi
++echo "  نسخه‌ی قدیمی 191557: HISTORICAL_OR_EXTERNAL از $ORIG_191_SQL (sha256 $(sha256sum "$ORIG_191_SQL" | cut -d' ' -f1))"
+ 
+ scenario "A: نصب تازه روی دیتابیس خالی"
+ new_db a; db="$DB"; build_dir ALL

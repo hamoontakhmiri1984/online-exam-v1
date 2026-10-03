@@ -21,8 +21,8 @@
 # اختیاری:
 #   ORIG_191_SQL=/path/to/exact-executed-191557.sql
 #       نسخه‌ی دقیق اجراشده‌ی migration 191557 که از تاریخچه‌ی Git بیرون کشیده‌اید (README، بخش «پیدا کردن نسخه‌ی اجراشده»).
-#       اگر داده نشود، سناریوهای D/D2/D3/E از یک «نمونه‌ی شبیه‌سازی‌شده» استفاده می‌کنند که نسخه‌ی واقعی نیست
-#       و خروجی این را صریح چاپ می‌کند.
+#       اگر داده نشود، فایل historical-191557.sql استخراج‌شده از Git استفاده می‌شود.
+#       این فایل نسخهٔ تاریخی واقعی است؛ تطابق با دیتابیس شما نیازمند مقایسهٔ checksum است.
 #   KEEP_WORK=1   پوشه‌ی موقت (لاگ‌ها و migrationهای کپی‌شده) پاک نشود
 #
 # سناریوها:
@@ -61,6 +61,17 @@ REPO_MIGRATIONS="$SERVER_DIR/prisma/migrations"
 REPO_SCHEMA="$SERVER_DIR/prisma/schema.prisma"
 DIAG_SQL="$HERE/00_diagnose_readonly.sql"
 MANUAL_SQL="$HERE/01_manual_backfill_191557.sql"
+# نسخهٔ تاریخی را از بایت‌های Git نگه می‌داریم؛ پایان‌خط fixture نباید تغییر کند.
+if [ -z "$ORIG_191_SQL" ]; then
+  ORIG_191_SQL="$HERE/historical-191557.sql"
+  historical_hash="$(sha256sum "$ORIG_191_SQL" | cut -d' ' -f1)" || exit 2
+  if [ "$historical_hash" != "fc2ebe944aae5125449a258a9e2f1054f408669da4c3d3fe0cf01167d9dccfc5" ]; then
+    echo "Historical migration checksum mismatch; restore the exact Git bytes before testing." >&2
+    exit 2
+  fi
+  echo "Historical migration source: ca4aa8db705cd79c1cf627515bc395c802a960e2 (Git bytes verified)"
+  echo "This does not prove the migration executed on your database has the same checksum."
+fi
 WORK="$(mktemp -d)"
 LOG="$WORK/last.log"
 RUN_ID="$$"
@@ -69,7 +80,7 @@ CUR=""; CUR_P=0; CUR_F=0
 SUMMARY_LINES=(); E_RESULTS=()
 CREATED_DBS=()
 ORIG_KIND=""
-if [ -n "$ORIG_191_SQL" ]; then ORIG_TAG=REAL; else ORIG_TAG=SIMULATED; fi
+ORIG_TAG=HISTORICAL_OR_EXTERNAL
 
 M_133="20260912133000_exam_attempt_server_timing"
 M_175="20260912175323_add_approval_status"
@@ -136,21 +147,11 @@ build_dir() {
   done
 }
 
-# نسخه‌ی «قدیمی» 191557 را داخل پوشه‌ی موقت می‌گذارد (جایگزین فایل فعلی).
-# اگر ORIG_191_SQL داده شده نسخه‌ی واقعی است؛ وگرنه یک نمونه‌ی شبیه‌سازی‌شده (نسخه‌ی واقعی اجراشده نیست).
+# نسخهٔ واقعی از Git (یا فایل خارجی صریحاً انتخاب‌شده) فقط داخل پوشهٔ تست کپی می‌شود.
 put_orig_191() {
   mkdir -p "$WORK/prisma/migrations/$M_191"
-  if [ -n "$ORIG_191_SQL" ]; then
-    cp "$ORIG_191_SQL" "$WORK/prisma/migrations/$M_191/migration.sql"
-    ORIG_KIND="REAL (ORIG_191_SQL)"
-  else
-    cat > "$WORK/prisma/migrations/$M_191/migration.sql" <<'SQL'
-ALTER TABLE "exam_attempts" ADD COLUMN "expiresAt" TIMESTAMP(3) NOT NULL;
-ALTER TABLE "exam_attempts" ALTER COLUMN "finishedAt" DROP NOT NULL;
-CREATE UNIQUE INDEX "exam_attempts_examId_studentId_key" ON "exam_attempts"("examId", "studentId");
-SQL
-    ORIG_KIND="SIMULATED stand-in (NOT the executed file)"
-  fi
+  cp "$ORIG_191_SQL" "$WORK/prisma/migrations/$M_191/migration.sql" || exit 2
+  ORIG_KIND="HISTORICAL_OR_EXTERNAL (not a simulated stand-in)"
 }
 
 # ---- مشاهده‌ی وضعیت ----
@@ -267,8 +268,7 @@ echo "  psql        : $(psql --version 2>&1 | head -n1)"
 echo "  PostgreSQL  : $(psql "$PG_BASE_URL/postgres" -X -tA -c 'SHOW server_version' 2>&1 | head -n1)"
 echo "  node        : $(node --version 2>&1 | head -n1)"
 ( cd "$SERVER_DIR" && npx --no-install prisma --version ) 2>&1 | sed 's/^/  prisma      : /' | head -n 12
-if [ -n "$ORIG_191_SQL" ]; then echo "  نسخه‌ی قدیمی 191557: REAL از $ORIG_191_SQL (sha256 $(sha256sum "$ORIG_191_SQL" | cut -d' ' -f1))"
-else echo "  نسخه‌ی قدیمی 191557: SIMULATED (ORIG_191_SQL داده نشده؛ سناریوهای D/D2/D3/E نمونه‌ی شبیه‌سازی‌شده‌اند)"; fi
+echo "  نسخه‌ی قدیمی 191557: HISTORICAL_OR_EXTERNAL از $ORIG_191_SQL (sha256 $(sha256sum "$ORIG_191_SQL" | cut -d' ' -f1))"
 
 scenario "A: نصب تازه روی دیتابیس خالی"
 new_db a; db="$DB"; build_dir ALL
