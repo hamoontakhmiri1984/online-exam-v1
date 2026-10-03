@@ -1,4 +1,5 @@
-import test from 'node:test';
+import test, { before } from 'node:test';
+import sharp from 'sharp';
 import assert from 'node:assert/strict';
 import fs from 'fs';
 import os from 'os';
@@ -26,9 +27,9 @@ import { MAX_ZIP_ENTRY_BYTES, validateXlsxArchive } from '../src/lib/spreadsheet
 const pad = (head: number[] | Buffer, total = 64) =>
   Buffer.concat([Buffer.from(head), Buffer.alloc(Math.max(0, total - head.length))]);
 
-const JPEG = pad([0xff, 0xd8, 0xff, 0xe0]);
-const PNG = pad([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-const WEBP = pad(Buffer.concat([Buffer.from('RIFF'), Buffer.from([1, 0, 0, 0]), Buffer.from('WEBP')]));
+let JPEG = pad([0xff, 0xd8, 0xff, 0xe0]);
+let PNG = pad([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+let WEBP = pad(Buffer.concat([Buffer.from('RIFF'), Buffer.from([1, 0, 0, 0]), Buffer.from('WEBP')]));
 const PDF = Buffer.from('%PDF-1.7\n1 0 obj\n<<>>\nendobj\n%%EOF\n');
 const ftyp = (major: string, ...compat: string[]) => {
   const body = Buffer.concat([Buffer.from(major), Buffer.alloc(4), ...compat.map((c) => Buffer.from(c))]);
@@ -46,6 +47,13 @@ const OGG_THEORA = pad(Buffer.concat([Buffer.from('OggS'), Buffer.alloc(24), Buf
 const OGG_VORBIS = pad(Buffer.concat([Buffer.from('OggS'), Buffer.alloc(24), Buffer.from('\x01vorbis')]));
 const FAKE_HTML = Buffer.from('<html><script>alert(1)</script></html>');
 const EXE = pad([0x4d, 0x5a, 0x90, 0x00]);
+
+before(async () => {
+  const create = () => sharp({ create: { width: 8, height: 6, channels: 4, background: { r: 40, g: 80, b: 120, alpha: 0.5 } } });
+  JPEG = await create().jpeg().toBuffer();
+  PNG = await create().png().toBuffer();
+  WEBP = await create().webp().toBuffer();
+});
 
 const isBadRequest = (e: unknown) => e instanceof AppError && e.statusCode === 400;
 

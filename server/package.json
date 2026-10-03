@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
-    "test": "node --require ts-node/register/transpile-only --test tests/examTiming.test.ts tests/session.integration.test.ts tests/payments.integration.test.ts tests/quota.integration.test.ts tests/examStartGroups.integration.test.ts tests/otp.integration.test.ts tests/otp.test.cjs tests/sessionAccess.test.cjs tests/adminSuperAdmin.test.cjs tests/questionExcel.test.ts tests/uploadValidation.test.ts tests/questionBankAccess.test.cjs tests/listPagination.test.cjs tests/blogAdmin.test.cjs tests/adminInstructorContent.test.cjs tests/redisRateLimit.test.cjs",
+    "test": "node --require ts-node/register/transpile-only --test tests/examTiming.test.ts tests/session.integration.test.ts tests/payments.integration.test.ts tests/quota.integration.test.ts tests/examStartGroups.integration.test.ts tests/otp.integration.test.ts tests/otp.test.cjs tests/sessionAccess.test.cjs tests/adminSuperAdmin.test.cjs tests/questionExcel.test.ts tests/uploadValidation.test.ts tests/questionBankAccess.test.cjs tests/listPagination.test.cjs tests/blogAdmin.test.cjs tests/adminInstructorContent.test.cjs tests/redisRateLimit.test.cjs tests/imageContent.test.ts",
     "start": "node dist/server.js",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
@@ -32,6 +32,7 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.3.0",
     "redis": "^6.2.1",
+    "sharp": "0.35.4",
     "socket.io": "^4.8.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^3.25.76"
