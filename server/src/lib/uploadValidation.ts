@@ -2,6 +2,7 @@ import fs from 'fs';
 import type { NextFunction, Request, Response } from 'express';
 import { badRequest } from './errors';
 import { validateImageContent } from './imageContent';
+import { validatePdfContent } from './pdfContent';
 import {
   HEADER_BYTES,
   detectImage,
@@ -62,6 +63,10 @@ export async function detectUploadedMime(
   if (kind === 'image') {
     if (!file.buffer) throw badRequest('تصویر آپلودشده قابل‌خواندن نیست');
     return validateImageContent(file.buffer);
+  }
+  if (kind === 'pdf') {
+    if (!file.buffer) throw badRequest('PDF آپلودشده قابل‌خواندن نیست');
+    await validatePdfContent(file.buffer);
   }
   return mime;
 }
