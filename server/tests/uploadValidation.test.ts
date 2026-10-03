@@ -1,4 +1,5 @@
 import test, { before } from 'node:test';
+import { execFileSync } from 'node:child_process';
 import sharp from 'sharp';
 import assert from 'node:assert/strict';
 import fs from 'fs';
@@ -37,7 +38,7 @@ const ftyp = (major: string, ...compat: string[]) => {
   size.writeUInt32BE(8 + body.length);
   return pad(Buffer.concat([size, Buffer.from('ftyp'), body]));
 };
-const MP4 = ftyp('isom', 'isom', 'mp42');
+let MP4 = ftyp('isom', 'isom', 'mp42');
 const MOV = ftyp('qt  ', 'qt  ');
 const HEIC = ftyp('heic', 'mif1', 'heic');
 const M4A = ftyp('M4A ', 'M4A ');
@@ -50,6 +51,12 @@ const EXE = pad([0x4d, 0x5a, 0x90, 0x00]);
 
 before(async () => {
   const create = () => sharp({ create: { width: 8, height: 6, channels: 4, background: { r: 40, g: 80, b: 120, alpha: 0.5 } } });
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'video-fixture-'));
+  try {
+    const file = path.join(dir, 'sample.mp4');
+    execFileSync('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'color=c=blue:s=64x64:r=5', '-t', '0.4', '-c:v', 'mpeg4', '-movflags', '+faststart', file]);
+    MP4 = fs.readFileSync(file);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
   JPEG = await create().jpeg().toBuffer();
   PNG = await create().png().toBuffer();
   WEBP = await create().webp().toBuffer();
@@ -236,12 +243,16 @@ function tempVideo(head: Buffer, totalBytes: number): string {
   const file = path.join(os.tmpdir(), `upload-validation-${process.pid}-${Math.random().toString(16).slice(2)}.tmp`);
   const fd = fs.openSync(file, 'w');
   fs.writeSync(fd, head);
+  if (totalBytes >= head.length + 8) {
+    const free = Buffer.alloc(8); free.writeUInt32BE(totalBytes - head.length); free.write('free', 4);
+    fs.writeSync(fd, free);
+  }
   fs.ftruncateSync(fd, totalBytes); // بقیه‌ی فایل sparse/صفر
   fs.closeSync(fd);
   return file;
 }
 
-test('ویدیوی بزرگ: فقط ابتدای فایل خوانده می‌شود، نه کل فایل', async () => {
+test('ویدیوی بزرگ: Node فقط هدر را در حافظه می‌خواند؛ نمونه با ffprobe بررسی می‌شود', async () => {
   const size = 60 * 1024 * 1024;
   const file = tempVideo(MP4, size);
   const reads: number[] = [];
