@@ -1,8 +1,10 @@
+import { isStructuredWorkbook } from './spreadsheetStructure';
+
 // تشخیص «نوع واقعی» فایل از روی محتوا (نه از روی file.mimetype که کلاینت
 // می‌فرسته و قابل جعله). هر فرمت روش مناسب خودش رو داره:
 //   تصویر/PDF/ویدیو  -> امضای باینری (magic bytes) در ابتدای فایل
-//   xlsx             -> امضای ZIP + وجود ساختار پکیج اکسل (xl/workbook.xml)
-//   xls              -> امضای OLE2
+//   xlsx             -> ساختار ZIP، صحت محتوا و حجم بازشده + workbook قابل‌خواندن
+//   xls              -> محفظهٔ OLE2 با stream واقعی workbook
 //   CSV              -> امضا ندارد؛ اعتبارسنجی متن (UTF-8، بدون کاراکتر کنترلی/
 //                       باینری) و ساختار (جداکننده، کوتیشن متوازن)
 // همه‌ی توابع خالص‌اند (فقط Buffer می‌گیرن) تا بدون دیتابیس/شبکه تست بشن.
@@ -129,14 +131,14 @@ export function checkCsv(buffer: Buffer): SpreadsheetCheck {
 // xlsx/xls با امضای باینری؛ در غیر این‌صورت به‌عنوان CSV متنی بررسی می‌شه
 export function detectSpreadsheet(buffer: Buffer): SpreadsheetCheck {
   if (startsWith(buffer, ZIP_MAGIC)) {
-    // نام فایل‌های داخل ZIP تو هدرها بدون فشرده‌سازی ذخیره می‌شن
-    const isWorkbook =
-      buffer.includes('[Content_Types].xml', 0, 'latin1') &&
-      buffer.includes('xl/workbook.xml', 0, 'latin1');
-    return isWorkbook
+    return isStructuredWorkbook(buffer, 'xlsx')
       ? { mime: MIME_XLSX }
-      : { error: 'فایل ZIP است ولی یک فایل اکسل (xlsx) معتبر نیست' };
+      : { error: 'ساختار فایل اکسل (xlsx) نامعتبر یا حجم بازشدهٔ آن بیش از حد مجاز است' };
   }
-  if (startsWith(buffer, OLE_MAGIC)) return { mime: MIME_XLS };
+  if (startsWith(buffer, OLE_MAGIC)) {
+    return isStructuredWorkbook(buffer, 'xls')
+      ? { mime: MIME_XLS }
+      : { error: 'فایل یک workbook اکسل (xls) معتبر نیست' };
+  }
   return checkCsv(buffer);
 }
