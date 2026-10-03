@@ -1,3 +1,4 @@
+import instructorContentRoutes from './instructorContent.routes';
 import { Router } from 'express';
 import type { Prisma } from '@prisma/client';
 
@@ -33,6 +34,8 @@ router.use(
   })
 );
 
+router.use('/', instructorContentRoutes);
+
 // پروفایل و تایید: مشخصات، اشتراک فعلی، آمار و تاریخچهٔ اقدامات مدیر
 router.get(
   '/',
@@ -58,7 +61,7 @@ router.get(
       loadCurrentPlans([id]),
       prisma.adminAuditLog.findMany({
         where: { targetType: 'User', targetId: id },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: 20,
         select: {
           id: true,
@@ -101,7 +104,7 @@ router.get(
           createdAt: true,
           _count: { select: { students: true, exams: true } },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: paging.skip,
         take: paging.take,
       }),
@@ -142,7 +145,7 @@ router.get(
             orderBy: { name: 'asc' },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: paging.skip,
         take: paging.take,
       }),
@@ -189,7 +192,7 @@ router.get(
           },
           _count: { select: { attachments: true } },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: paging.skip,
         take: paging.take,
       }),
@@ -227,7 +230,7 @@ router.get(
           createdAt: true,
           group: { select: { id: true, name: true } },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: paging.skip,
         take: paging.take,
       }),
@@ -262,7 +265,7 @@ router.get(
           createdAt: true,
           _count: { select: { questions: true } },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: paging.skip,
         take: paging.take,
       }),
@@ -299,10 +302,10 @@ router.get(
           status: true,
           scheduledAt: true,
           durationMinutes: true,
-          groups: { select: { id: true, name: true } },
+          groups: { where: { instructorId: res.locals.instructorId }, select: { id: true, name: true } },
           _count: { select: { attempts: true, questions: true } },
         },
-        orderBy: { scheduledAt: 'desc' },
+        orderBy: [{ scheduledAt: 'desc' }, { id: 'desc' }],
         skip: paging.skip,
         take: paging.take,
       }),
@@ -341,7 +344,7 @@ router.get(
           exam: { select: { id: true, title: true } },
           student: { select: { id: true, name: true } },
         },
-        orderBy: { startedAt: 'desc' },
+        orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
         skip: paging.skip,
         take: paging.take,
       }),
@@ -376,7 +379,7 @@ router.get(
           status: true,
           createdAt: true,
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: paging.skip,
         take: paging.take,
       }),

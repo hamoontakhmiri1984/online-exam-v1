@@ -13,7 +13,7 @@ function positiveInt(value: unknown, fallback: number): number {
     throw badRequest('پارامتر صفحه‌بندی نامعتبره');
   }
   const n = Number(value);
-  if (n < 1) throw badRequest('پارامتر صفحه‌بندی نامعتبره');
+  if (!Number.isSafeInteger(n) || n < 1 || n > 1_000_000) throw badRequest('پارامتر صفحه‌بندی نامعتبره');
   return n;
 }
 

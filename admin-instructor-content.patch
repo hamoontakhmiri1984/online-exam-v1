@@ -1,0 +1,806 @@
+diff --git a/client/src/api/adminInstructorApi.ts b/client/src/api/adminInstructorApi.ts
+new file mode 100644
+index 0000000..fa0ea71
+--- /dev/null
++++ b/client/src/api/adminInstructorApi.ts
+@@ -0,0 +1,53 @@
++import { apiRequest } from '../lib/apiClient';
++import { listQueryString, type ListPage, type ListQuery } from '../lib/listPagination';
++import type { InstructorApprovalStatus } from './adminApi';
++
++export type InstructorSummary = {
++  id: string;
++  name: string | null;
++  username: string | null;
++  email: string | null;
++  phone: string | null;
++  organizationName: string | null;
++  approvalStatus: InstructorApprovalStatus;
++  stats?: { groups: number; students: number; lessons: number; banks: number; exams: number; handouts: number };
++  plan?: { planId: string; startDate: string | null; endDate: string | null };
++};
++export type ContentTab = 'groups' | 'students' | 'lessons' | 'handouts' | 'attachments' | 'banks' | 'questions' | 'exams' | 'results';
++export type ContentItem = {
++  id: string;
++  name?: string | null;
++  title?: string;
++  text?: string;
++  username?: string | null;
++  category?: string;
++  status?: string;
++  difficulty?: string;
++  joinCode?: string;
++  fileName?: string;
++  fileSize?: number;
++  groups?: { id: string; name: string }[];
++  group?: { id: string; name: string } | null;
++  bank?: { id: string; name: string };
++  session?: { id: string; title: string; groups: { id: string; name: string }[] };
++  options?: string[];
++  correctOptionIndex?: number;
++  correctCount?: number;
++  totalQuestions?: number;
++  finishedAt?: string | null;
++  exam?: { id: string; title: string };
++  student?: { id: string; name: string | null };
++  _count?: { students?: number; exams?: number; questions?: number; attachments?: number; attempts?: number };
++};
++const base = '/admin/users/instructors';
++export function getAdminInstructors(query: ListQuery, status = ''): Promise<ListPage<InstructorSummary>> {
++  const suffix = status ? `&status=${encodeURIComponent(status)}` : '';
++  return apiRequest(`${base}${listQueryString(query)}${suffix}`);
++}
++export function getAdminInstructor(id: string): Promise<InstructorSummary> {
++  return apiRequest(`${base}/${encodeURIComponent(id)}`);
++}
++export function getInstructorContent(id: string, tab: ContentTab, query: ListQuery, bankId = ''): Promise<ListPage<ContentItem>> {
++  const suffix = tab === 'questions' && bankId ? `&bankId=${encodeURIComponent(bankId)}` : '';
++  return apiRequest(`${base}/${encodeURIComponent(id)}/${tab}${listQueryString(query)}${suffix}`);
++}
+diff --git a/client/src/components/AppLayout/SideBar.tsx b/client/src/components/AppLayout/SideBar.tsx
+index 927f2d3..f7a091c 100644
+--- a/client/src/components/AppLayout/SideBar.tsx
++++ b/client/src/components/AppLayout/SideBar.tsx
+@@ -25,7 +25,10 @@ function Sidebar({
+ 
+   const visibleItems = navigationItems.filter((item) =>
+     user ? item.roles.includes(user.role) : false
+-  );
++  ).map(item => ({
++    ...item,
++    label: user?.role === 'SuperAdmin' ? item.adminLabel ?? item.label : item.label,
++  }));
+ 
+   function handleNavClick(event: React.MouseEvent, to: string) {
+     event.preventDefault();
+diff --git a/client/src/components/AppLayout/navigationItems.ts b/client/src/components/AppLayout/navigationItems.ts
+index f91e5d6..b795f87 100644
+--- a/client/src/components/AppLayout/navigationItems.ts
++++ b/client/src/components/AppLayout/navigationItems.ts
+@@ -23,6 +23,7 @@ import { ALL_ROLES, MANAGEMENT_ROLES } from '../../constants/roles';
+ 
+ export type NavigationItem = {
+   label: string;
++  adminLabel?: string;
+   to: string;
+   icon: LucideIcon;
+   roles: Role[];
+@@ -37,12 +38,14 @@ export const navigationItems: NavigationItem[] = [
+   },
+   {
+     label: 'آزمون‌ها',
++    adminLabel: 'همهٔ آزمون‌ها',
+     to: '/exams',
+     icon: FileText,
+     roles: ALL_ROLES,
+   },
+   {
+     label: 'بانک سوال',
++    adminLabel: 'همهٔ بانک‌های سوال',
+     to: '/question-banks',
+     icon: LibraryBig,
+     roles: MANAGEMENT_ROLES,
+@@ -58,12 +61,14 @@ export const navigationItems: NavigationItem[] = [
+   },
+   {
+     label: 'گروه‌ها',
++    adminLabel: 'همهٔ گروه‌ها',
+     to: '/groups',
+     icon: Layers,
+     roles: MANAGEMENT_ROLES,
+   },
+   {
+     label: 'درس‌ها',
++    adminLabel: 'همهٔ درس‌ها',
+     to: '/lessons',
+     icon: PlayCircle,
+     roles: ALL_ROLES,
+@@ -105,8 +110,8 @@ export const navigationItems: NavigationItem[] = [
+     roles: ['SuperAdmin'],
+   },
+   {
+-    label: 'مدرس‌ها و دانشجوها',
+-    to: '/instructor-students',
++    label: 'مدرس‌ها و محتوا',
++    to: '/instructors',
+     icon: GraduationCap,
+     roles: ['SuperAdmin'],
+   },
+diff --git a/client/src/components/ListPagination/ListPagination.tsx b/client/src/components/ListPagination/ListPagination.tsx
+index 95f9be3..d01f222 100644
+--- a/client/src/components/ListPagination/ListPagination.tsx
++++ b/client/src/components/ListPagination/ListPagination.tsx
+@@ -1,12 +1,13 @@
+ type Props = {
++  maxSearchLength?: number;
+   page: number; pageSize: number; total: number; loading: boolean;
+   q: string; setPage: (page: number) => void; setSearch: (q: string) => void;
+ };
+-export default function ListPagination({ page, pageSize, total, loading, q, setPage, setSearch }: Props) {
++export default function ListPagination({ page, pageSize, total, loading, q, setPage, setSearch, maxSearchLength = 200 }: Props) {
+   const pages = Math.max(1, Math.ceil(total / pageSize));
+   return (
+     <div className="mb-4 flex flex-wrap items-center gap-3 text-sm dark:text-gray-200">
+-      <input type="search" aria-label="جست‌وجو" placeholder="جست‌وجو..." maxLength={200}
++      <input type="search" aria-label="جست‌وجو" placeholder="جست‌وجو..." maxLength={maxSearchLength}
+         value={q} onChange={event => setSearch(event.target.value)}
+         className="rounded-lg border border-gray-300 bg-transparent px-3 py-2 dark:border-gray-600" />
+       <span aria-live="polite">{total} مورد — صفحه {page} از {pages}</span>
+diff --git a/client/src/hooks/usePagedList.ts b/client/src/hooks/usePagedList.ts
+index 2b6d9fa..933125d 100644
+--- a/client/src/hooks/usePagedList.ts
++++ b/client/src/hooks/usePagedList.ts
+@@ -18,6 +18,9 @@ export default function usePagedList<T extends { id: string }>(
+   const [error, setError] = useState<string | null>(null);
+   const [revision, setRevision] = useState(0);
+   const pageSize = 25;
++  const requestKey = JSON.stringify([scopeKey, page, q, revision]);
++  const [loadedKey, setLoadedKey] = useState('');
++  const isCurrent = loadedKey === requestKey;
+   const reload = useCallback(() => setRevision(value => value + 1), []);
+ 
+   useEffect(() => {
+@@ -46,23 +49,26 @@ export default function usePagedList<T extends { id: string }>(
+           if (active) setError(err instanceof ApiError ? err.message : 'دریافت اطلاعات با خطا مواجه شد');
+         })
+         .finally(() => {
+-          if (active) setLoading(false);
++          if (active) {
++            setLoading(false);
++            setLoadedKey(requestKey);
++          }
+         });
+     }, q ? 250 : 0);
+     return () => {
+       active = false;
+       clearTimeout(timer);
+     };
+-  }, [scopeKey, enabled, page, q, revision]);
++  }, [scopeKey, enabled, page, q, revision, requestKey]);
+ 
+   return {
+-    items,
+-    total,
++    items: enabled && isCurrent ? items : [],
++    total: enabled && isCurrent ? total : 0,
+     page,
+     pageSize,
+     q,
+-    loading,
+-    error,
++    loading: enabled && (loading || !isCurrent),
++    error: isCurrent ? error : null,
+     reload,
+     setError,
+     clearError: () => setError(null),
+diff --git a/client/src/pages/AdminInstructorsPage/AdminInstructorDetailPage.tsx b/client/src/pages/AdminInstructorsPage/AdminInstructorDetailPage.tsx
+new file mode 100644
+index 0000000..e620436
+--- /dev/null
++++ b/client/src/pages/AdminInstructorsPage/AdminInstructorDetailPage.tsx
+@@ -0,0 +1,59 @@
++import { useEffect, useState } from 'react';
++import { Link, useParams } from 'react-router-dom';
++import AppLayout from '../../components/AppLayout/AppLayout';
++import ListPagination from '../../components/ListPagination/ListPagination';
++import Spinner from '../../components/Spinner/Spinner';
++import { ApiError } from '../../lib/apiClient';
++import usePagedList from '../../hooks/usePagedList';
++import { getAdminInstructor, getInstructorContent, type ContentTab, type InstructorSummary } from '../../api/adminInstructorApi';
++import InstructorContentList from './components/InstructorContentList';
++
++const tabs: { key: ContentTab; label: string }[] = [
++  { key: 'groups', label: 'گروه‌ها' }, { key: 'students', label: 'دانشجوها' },
++  { key: 'lessons', label: 'درس‌ها' }, { key: 'handouts', label: 'جزوه‌ها' },
++  { key: 'attachments', label: 'پیوست‌های درس' }, { key: 'banks', label: 'بانک سوال' },
++  { key: 'questions', label: 'سوال‌ها' }, { key: 'exams', label: 'آزمون‌ها' },
++  { key: 'results', label: 'نتایج' },
++];
++export default function AdminInstructorDetailPage() {
++  const { instructorId = '' } = useParams();
++  const [profile, setProfile] = useState<InstructorSummary | null>(null);
++  const [profileError, setProfileError] = useState('');
++  const [tab, setTab] = useState<ContentTab>('groups');
++  const [bank, setBank] = useState<{ id: string; name: string } | null>(null);
++  useEffect(() => {
++    let active = true;
++    setProfile(null); setProfileError(''); setTab('groups'); setBank(null);
++    getAdminInstructor(instructorId)
++      .then(result => { if (active) setProfile(result); })
++      .catch(error => { if (active) setProfileError(error instanceof ApiError ? error.message : 'دریافت مدرس با خطا مواجه شد'); });
++    return () => { active = false; };
++  }, [instructorId]);
++  const list = usePagedList(
++    query => getInstructorContent(instructorId, tab, query, bank?.id),
++    `${instructorId}:${tab}:${bank?.id ?? ''}`,
++    profile?.id === instructorId,
++  );
++  const name = profile?.name || profile?.username || profile?.email || instructorId;
++  return (
++    <AppLayout title="اطلاعات مدرس">
++      <Link to="/instructors" className="mb-4 inline-block text-brand-600">بازگشت به مدرس‌ها</Link>
++      {profileError ? <p role="alert" className="text-danger-600">{profileError}</p> : !profile || profile.id !== instructorId ? <Spinner /> : (
++        <>
++          <h1 className="mb-2 text-2xl font-bold dark:text-white">{name}</h1>
++          <p className="mb-5 text-sm text-gray-500">{profile.username || profile.email || profile.id} · اطلاعات زیر فقط مربوط به این مدرس است.</p>
++          <div role="tablist" aria-label="بخش‌های مدرس" className="mb-5 flex flex-wrap gap-2">
++            {tabs.map(item => <button key={item.key} type="button" role="tab" aria-selected={tab === item.key}
++              onClick={() => { setTab(item.key); setBank(null); }}
++              className={`rounded-lg border px-4 py-2 text-sm ${tab === item.key ? 'bg-brand-600 text-white' : 'dark:text-gray-200'}`}>{item.label}</button>)}
++          </div>
++          {bank && <p className="mb-3 dark:text-gray-200">بانک: {bank.name} <button type="button" onClick={() => setBank(null)} className="ms-3 text-brand-600">همهٔ سوال‌های این مدرس</button></p>}
++          <ListPagination {...list} maxSearchLength={100} />
++          {list.error && <p role="alert" className="mb-3 text-danger-600">{list.error}</p>}
++          {list.loading ? <Spinner /> : <InstructorContentList items={list.items} tab={tab}
++            onOpenBank={selected => { setBank(selected); setTab('questions'); }} />}
++        </>
++      )}
++    </AppLayout>
++  );
++}
+diff --git a/client/src/pages/AdminInstructorsPage/AdminInstructorsPage.tsx b/client/src/pages/AdminInstructorsPage/AdminInstructorsPage.tsx
+new file mode 100644
+index 0000000..ceab1cd
+--- /dev/null
++++ b/client/src/pages/AdminInstructorsPage/AdminInstructorsPage.tsx
+@@ -0,0 +1,45 @@
++import { useState } from 'react';
++import { Link } from 'react-router-dom';
++import AppLayout from '../../components/AppLayout/AppLayout';
++import ListPagination from '../../components/ListPagination/ListPagination';
++import Spinner from '../../components/Spinner/Spinner';
++import usePagedList from '../../hooks/usePagedList';
++import { getAdminInstructors } from '../../api/adminInstructorApi';
++
++export default function AdminInstructorsPage() {
++  const [status, setStatus] = useState('');
++  const list = usePagedList(query => getAdminInstructors(query, status), status);
++  return (
++    <AppLayout title="مدرس‌ها">
++      <h1 className="mb-2 text-2xl font-bold dark:text-white">مدرس‌ها</h1>
++      <p className="mb-5 text-sm text-gray-500">برای مشاهدهٔ گروه‌ها، درس‌ها، فایل‌ها، سوال‌ها و آزمون‌ها، مدرس را انتخاب کن.</p>
++      <div className="mb-4 flex gap-3">
++        <select aria-label="وضعیت مدرس" value={status} onChange={event => setStatus(event.target.value)}
++          className="rounded border bg-transparent px-3 py-2 dark:text-gray-200">
++          <option value="">همهٔ مدرس‌ها</option>
++          <option value="Approved">تأییدشده</option>
++          <option value="Pending">در انتظار تأیید</option>
++          <option value="Rejected">ردشده</option>
++        </select>
++        <Link to="/instructor-students" className="text-brand-600">نمای دانشجوها</Link>
++      </div>
++      <ListPagination {...list} maxSearchLength={100} />
++      {list.error && <p role="alert" className="mb-3 text-danger-600">{list.error}</p>}
++      {list.loading ? <Spinner /> : (
++        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
++          {list.items.map(instructor => (
++            <Link key={instructor.id} to={`/instructors/${instructor.id}`}
++              className="rounded-xl border border-gray-200 bg-white p-5 hover:border-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
++              <h2 className="font-bold">{instructor.name || instructor.username || instructor.email || instructor.id}</h2>
++              <p className="mt-2 text-sm text-gray-500">{instructor.username || instructor.email || instructor.phone || instructor.id}</p>
++              <p className="my-2 text-sm text-gray-500">{instructor.organizationName || 'بدون نام مجموعه'}</p>
++              <p className="text-sm">{instructor.stats?.groups ?? 0} گروه · {instructor.stats?.students ?? 0} دانشجو · {instructor.stats?.banks ?? 0} بانک · {instructor.stats?.exams ?? 0} آزمون</p>
++              <span className="mt-3 block text-sm text-brand-600">مشاهدهٔ اطلاعات این مدرس</span>
++            </Link>
++          ))}
++          {!list.items.length && <p className="text-gray-500">مدرسی با این شرایط پیدا نشد.</p>}
++        </div>
++      )}
++    </AppLayout>
++  );
++}
+diff --git a/client/src/pages/AdminInstructorsPage/components/InstructorContentList.tsx b/client/src/pages/AdminInstructorsPage/components/InstructorContentList.tsx
+new file mode 100644
+index 0000000..c051272
+--- /dev/null
++++ b/client/src/pages/AdminInstructorsPage/components/InstructorContentList.tsx
+@@ -0,0 +1,27 @@
++import type { ContentItem, ContentTab } from '../../../api/adminInstructorApi';
++
++type Props = { items: ContentItem[]; tab: ContentTab; onOpenBank: (bank: { id: string; name: string }) => void };
++export default function InstructorContentList({ items, tab, onOpenBank }: Props) {
++  if (!items.length) return <p className="text-gray-500">موردی پیدا نشد.</p>;
++  return (
++    <div className="space-y-3">
++      {items.map(item => (
++        <article key={item.id} className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
++          <h3 className="whitespace-pre-wrap font-semibold">{item.text || item.title || item.name || item.fileName || item.exam?.title || item.id}</h3>
++          <p className="mt-2 text-sm text-gray-500">{item.category || item.username || item.difficulty}</p>
++          {item.groups && <p className="text-sm">گروه‌ها: {item.groups.map(group => group.name).join('، ') || 'بدون گروه'}</p>}
++          {item.group && <p className="text-sm">گروه: {item.group.name}</p>}
++          {item.session && <p className="text-sm">درس: {item.session.title}</p>}
++          {item.bank && <p className="text-sm">بانک: {item.bank.name}</p>}
++          {item.joinCode && <p className="text-sm">کد عضویت: {item.joinCode}</p>}
++          {item.fileSize !== undefined && <p className="text-sm">حجم: {Math.ceil(item.fileSize / 1024)} کیلوبایت</p>}
++          {item._count && <p className="text-sm">{Object.entries(item._count).map(([key, value]) => `${({ students: 'دانشجو', exams: 'آزمون', questions: 'سوال', attachments: 'پیوست', attempts: 'تلاش' } as Record<string, string>)[key]}: ${value}`).join(' · ')}</p>}
++          {item.status && <p className="text-sm">{item.status === 'Published' ? 'منتشرشده' : item.status === 'Draft' ? 'پیش‌نویس' : item.status}</p>}
++          {item.options && <ol className="mt-3 list-inside list-decimal space-y-1">{item.options.map((option, index) => <li key={index} className={index === item.correctOptionIndex ? 'font-bold text-brand-600' : ''}>{option}{index === item.correctOptionIndex ? ' — پاسخ صحیح' : ''}</li>)}</ol>}
++          {tab === 'results' && <p className="mt-2 text-sm">دانشجو: {item.student?.name || item.student?.id} · {item.correctCount} از {item.totalQuestions} · {item.finishedAt ? 'تمام‌شده' : 'ناتمام'}</p>}
++          {tab === 'banks' && <button type="button" onClick={() => onOpenBank({ id: item.id, name: item.name ?? item.id })} className="mt-3 text-sm text-brand-600">مشاهدهٔ سوال‌های این بانک</button>}
++        </article>
++      ))}
++    </div>
++  );
++}
+diff --git a/client/src/routes/routeConfig.tsx b/client/src/routes/routeConfig.tsx
+index 7a74a51..502baf4 100644
+--- a/client/src/routes/routeConfig.tsx
++++ b/client/src/routes/routeConfig.tsx
+@@ -79,6 +79,9 @@ const AdminCategoriesPage = lazy(() =>
+   import('../pages/AdminCategoriesPage/AdminCategoriesPage')
+ );
+ 
++const AdminInstructorsPage = lazy(() => import('../pages/AdminInstructorsPage/AdminInstructorsPage'));
++const AdminInstructorDetailPage = lazy(() => import('../pages/AdminInstructorsPage/AdminInstructorDetailPage'));
++
+ const InstructorStudentsPage = lazy(() =>
+   import('../pages/InstructorStudentsPage/InstructorStudentsPage')
+ );
+@@ -100,6 +103,8 @@ const BlogPage = lazy(() => import('../pages/BlogPage/BlogPage'));
+ const BlogPostPage = lazy(() => import('../pages/BlogPage/BlogPostPage'));
+ 
+ export const routes: RouteConfig[] = [
++  { path: '/instructors', Component: AdminInstructorsPage, protected: true, allowedRoles: ['SuperAdmin'] },
++  { path: '/instructors/:instructorId', Component: AdminInstructorDetailPage, protected: true, allowedRoles: ['SuperAdmin'] },
+   {
+     path: '/',
+     Component: LandingPage,
+diff --git a/client/tests/adminInstructorContent.test.ts b/client/tests/adminInstructorContent.test.ts
+new file mode 100644
+index 0000000..b278f5c
+--- /dev/null
++++ b/client/tests/adminInstructorContent.test.ts
+@@ -0,0 +1,56 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createElement } from 'react';
++import { renderToString } from 'react-dom/server';
++import { getAdminInstructor, getAdminInstructors, getInstructorContent } from '../src/api/adminInstructorApi';
++import InstructorContentList from '../src/pages/AdminInstructorsPage/components/InstructorContentList';
++import { navigationItems } from '../src/components/AppLayout/navigationItems';
++import { routes } from '../src/routes/routeConfig';
++
++test('admin requests keep instructor, tab, page, search and bank filter scoped in the URL', async () => {
++  const original = globalThis.fetch;
++  const urls: URL[] = [];
++  globalThis.fetch = (async input => {
++    urls.push(new URL(String(input)));
++    return new Response('{}', { status: 200 });
++  }) as typeof fetch;
++  try {
++    await getAdminInstructors({ page: 2, q: 'Teacher A' }, 'Approved');
++    await getAdminInstructor('A');
++    await getInstructorContent('A', 'questions', { page: 2, q: 'question' }, 'bankA');
++    await getInstructorContent('B', 'questions', { page: 1 });
++    assert.equal(urls[0].searchParams.get('status'), 'Approved');
++    assert.equal(urls[0].searchParams.get('q'), 'Teacher A');
++    assert.equal(urls[1].pathname, '/admin/users/instructors/A');
++    assert.equal(urls[2].pathname, '/admin/users/instructors/A/questions');
++    assert.equal(urls[2].searchParams.get('page'), '2');
++    assert.equal(urls[2].searchParams.get('bankId'), 'bankA');
++    assert.equal(urls[3].pathname, '/admin/users/instructors/B/questions');
++    assert.equal(urls[3].searchParams.has('bankId'), false);
++  } finally { globalThis.fetch = original; }
++});
++test('scoped content renders question text, bank, options and the correct answer', () => {
++  const html = renderToString(createElement(InstructorContentList, {
++    tab: 'questions', onOpenBank: () => {},
++    items: [{ id: 'qA', text: 'Question A', bank: { id: 'bA', name: 'Bank A' }, options: ['One', 'Two'], correctOptionIndex: 1 }],
++  }));
++  assert.match(html, /Question A/); assert.match(html, /Bank A/);
++  assert.match(html, /Two/); assert.match(html, /پاسخ صحیح/); assert.doesNotMatch(html, /Question B/);
++});
++test('bank action preserves the selected bank identity', () => {
++  let selected: unknown;
++  const tree = InstructorContentList({ tab: 'banks', items: [{ id: 'bA', name: 'Bank A' }], onOpenBank: bank => { selected = bank; } });
++  const article = tree.props.children[0];
++  const button = article.props.children.find((child: { type?: string } | null) => child && child.type === 'button');
++  button.props.onClick();
++  assert.deepEqual(selected, { id: 'bA', name: 'Bank A' });
++});
++test('instructor directory and detail routes are protected for SuperAdmin only', () => {
++  for (const path of ['/instructors', '/instructors/:instructorId']) {
++    const route = routes.find(item => item.path === path);
++    assert.equal(route?.protected, true); assert.deepEqual(route?.allowedRoles, ['SuperAdmin']);
++  }
++  const entry = navigationItems.find(item => item.to === '/instructors');
++  assert.deepEqual(entry?.roles, ['SuperAdmin']);
++  assert.equal(navigationItems.find(item => item.to === '/question-banks')?.adminLabel, 'همهٔ بانک‌های سوال');
++});
+diff --git a/server/package.json b/server/package.json
+index 93d9b22..edf563f 100644
+--- a/server/package.json
++++ b/server/package.json
+@@ -5,7 +5,7 @@
+   "scripts": {
+     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+     "build": "tsc",
+-    "test": "node --require ts-node/register/transpile-only --test tests/examTiming.test.ts tests/session.integration.test.ts tests/payments.integration.test.ts tests/quota.integration.test.ts tests/examStartGroups.integration.test.ts tests/otp.integration.test.ts tests/otp.test.cjs tests/sessionAccess.test.cjs tests/adminSuperAdmin.test.cjs tests/questionExcel.test.ts tests/uploadValidation.test.ts tests/questionBankAccess.test.cjs tests/listPagination.test.cjs",
++    "test": "node --require ts-node/register/transpile-only --test tests/examTiming.test.ts tests/session.integration.test.ts tests/payments.integration.test.ts tests/quota.integration.test.ts tests/examStartGroups.integration.test.ts tests/otp.integration.test.ts tests/otp.test.cjs tests/sessionAccess.test.cjs tests/adminSuperAdmin.test.cjs tests/questionExcel.test.ts tests/uploadValidation.test.ts tests/questionBankAccess.test.cjs tests/listPagination.test.cjs tests/adminInstructorContent.test.cjs",
+     "start": "node dist/server.js",
+     "postinstall": "prisma generate",
+     "prisma:generate": "prisma generate",
+diff --git a/server/src/lib/adminPaging.ts b/server/src/lib/adminPaging.ts
+index 5607864..1d46780 100644
+--- a/server/src/lib/adminPaging.ts
++++ b/server/src/lib/adminPaging.ts
+@@ -13,7 +13,7 @@ function positiveInt(value: unknown, fallback: number): number {
+     throw badRequest('پارامتر صفحه‌بندی نامعتبره');
+   }
+   const n = Number(value);
+-  if (n < 1) throw badRequest('پارامتر صفحه‌بندی نامعتبره');
++  if (!Number.isSafeInteger(n) || n < 1 || n > 1_000_000) throw badRequest('پارامتر صفحه‌بندی نامعتبره');
+   return n;
+ }
+ 
+diff --git a/server/src/routes/admin/instructorContent.routes.ts b/server/src/routes/admin/instructorContent.routes.ts
+new file mode 100644
+index 0000000..dd8053b
+--- /dev/null
++++ b/server/src/routes/admin/instructorContent.routes.ts
+@@ -0,0 +1,60 @@
++import { Router } from 'express';
++import type { Prisma } from '@prisma/client';
++import { prisma } from '../../lib/prisma';
++import { asyncHandler } from '../../lib/asyncHandler';
++import { optionalString, pagedResult, parsePaging } from '../../lib/adminPaging';
++
++// Mounted after instructor existence/role validation in instructorDetail.routes.
++// Both list and total are constrained to that instructor inside the database.
++const router = Router();
++
++router.get('/questions', asyncHandler(async (req, res) => {
++  const paging = parsePaging(req.query);
++  const bankId = optionalString(req.query.bankId);
++  const where: Prisma.QuestionWhereInput = {
++    bank: { instructorId: res.locals.instructorId },
++    ...(bankId ? { bankId } : {}),
++    ...(paging.q ? { text: { contains: paging.q, mode: 'insensitive' } } : {}),
++  };
++  const [items, total] = await prisma.$transaction([
++    prisma.question.findMany({
++      where,
++      select: {
++        id: true, text: true, options: true, correctOptionIndex: true,
++        difficulty: true, createdAt: true,
++        bank: { select: { id: true, name: true } },
++      },
++      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
++      skip: paging.skip, take: paging.take,
++    }),
++    prisma.question.count({ where }),
++  ], { isolationLevel: 'RepeatableRead' });
++  res.json(pagedResult(items, total, paging));
++}));
++
++router.get('/attachments', asyncHandler(async (req, res) => {
++  const paging = parsePaging(req.query);
++  const instructorId: string = res.locals.instructorId;
++  const where: Prisma.LessonAttachmentWhereInput = {
++    session: { groups: { some: { instructorId } } },
++    ...(paging.q ? { fileName: { contains: paging.q, mode: 'insensitive' } } : {}),
++  };
++  const [items, total] = await prisma.$transaction([
++    prisma.lessonAttachment.findMany({
++      where,
++      select: {
++        id: true, fileName: true, fileSize: true, createdAt: true,
++        session: { select: {
++          id: true, title: true,
++          groups: { where: { instructorId }, select: { id: true, name: true } },
++        } },
++      },
++      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
++      skip: paging.skip, take: paging.take,
++    }),
++    prisma.lessonAttachment.count({ where }),
++  ], { isolationLevel: 'RepeatableRead' });
++  res.json(pagedResult(items, total, paging));
++}));
++
++export default router;
+diff --git a/server/src/routes/admin/instructorDetail.routes.ts b/server/src/routes/admin/instructorDetail.routes.ts
+index cdb4867..b395bb7 100644
+--- a/server/src/routes/admin/instructorDetail.routes.ts
++++ b/server/src/routes/admin/instructorDetail.routes.ts
+@@ -1,3 +1,4 @@
++import instructorContentRoutes from './instructorContent.routes';
+ import { Router } from 'express';
+ import type { Prisma } from '@prisma/client';
+ 
+@@ -33,6 +34,8 @@ router.use(
+   })
+ );
+ 
++router.use('/', instructorContentRoutes);
++
+ // پروفایل و تایید: مشخصات، اشتراک فعلی، آمار و تاریخچهٔ اقدامات مدیر
+ router.get(
+   '/',
+@@ -58,7 +61,7 @@ router.get(
+       loadCurrentPlans([id]),
+       prisma.adminAuditLog.findMany({
+         where: { targetType: 'User', targetId: id },
+-        orderBy: { createdAt: 'desc' },
++        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+         take: 20,
+         select: {
+           id: true,
+@@ -101,7 +104,7 @@ router.get(
+           createdAt: true,
+           _count: { select: { students: true, exams: true } },
+         },
+-        orderBy: { createdAt: 'desc' },
++        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+         skip: paging.skip,
+         take: paging.take,
+       }),
+@@ -142,7 +145,7 @@ router.get(
+             orderBy: { name: 'asc' },
+           },
+         },
+-        orderBy: { createdAt: 'desc' },
++        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+         skip: paging.skip,
+         take: paging.take,
+       }),
+@@ -189,7 +192,7 @@ router.get(
+           },
+           _count: { select: { attachments: true } },
+         },
+-        orderBy: { createdAt: 'desc' },
++        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+         skip: paging.skip,
+         take: paging.take,
+       }),
+@@ -227,7 +230,7 @@ router.get(
+           createdAt: true,
+           group: { select: { id: true, name: true } },
+         },
+-        orderBy: { createdAt: 'desc' },
++        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+         skip: paging.skip,
+         take: paging.take,
+       }),
+@@ -262,7 +265,7 @@ router.get(
+           createdAt: true,
+           _count: { select: { questions: true } },
+         },
+-        orderBy: { createdAt: 'desc' },
++        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+         skip: paging.skip,
+         take: paging.take,
+       }),
+@@ -299,10 +302,10 @@ router.get(
+           status: true,
+           scheduledAt: true,
+           durationMinutes: true,
+-          groups: { select: { id: true, name: true } },
++          groups: { where: { instructorId: res.locals.instructorId }, select: { id: true, name: true } },
+           _count: { select: { attempts: true, questions: true } },
+         },
+-        orderBy: { scheduledAt: 'desc' },
++        orderBy: [{ scheduledAt: 'desc' }, { id: 'desc' }],
+         skip: paging.skip,
+         take: paging.take,
+       }),
+@@ -341,7 +344,7 @@ router.get(
+           exam: { select: { id: true, title: true } },
+           student: { select: { id: true, name: true } },
+         },
+-        orderBy: { startedAt: 'desc' },
++        orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
+         skip: paging.skip,
+         take: paging.take,
+       }),
+@@ -376,7 +379,7 @@ router.get(
+           status: true,
+           createdAt: true,
+         },
+-        orderBy: { createdAt: 'desc' },
++        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+         skip: paging.skip,
+         take: paging.take,
+       }),
+diff --git a/server/src/routes/admin/users.routes.ts b/server/src/routes/admin/users.routes.ts
+index 88e8360..aba0807 100644
+--- a/server/src/routes/admin/users.routes.ts
++++ b/server/src/routes/admin/users.routes.ts
+@@ -51,7 +51,7 @@ router.get(
+       prisma.user.findMany({
+         where,
+         select: instructorSelect,
+-        orderBy: { createdAt: 'desc' },
++        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+         skip: paging.skip,
+         take: paging.take,
+       }),
+@@ -166,7 +166,7 @@ router.get(
+       prisma.user.findMany({
+         where,
+         select: { ...studentBaseSelect, ...studentGroupsSelect },
+-        orderBy: { createdAt: 'desc' },
++        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+         skip: paging.skip,
+         take: paging.take,
+       }),
+diff --git a/server/tests/adminInstructorContent.test.cjs b/server/tests/adminInstructorContent.test.cjs
+new file mode 100644
+index 0000000..a34d7b1
+--- /dev/null
++++ b/server/tests/adminInstructorContent.test.cjs
+@@ -0,0 +1,49 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { withAdminApi } = require('./helpers/adminInstructorApi.cjs');
++
++const tabs = ['groups', 'students', 'lessons', 'handouts', 'attachments', 'banks', 'questions', 'exams', 'results'];
++test('HTTP admin: list includes both teachers and profiles have the selected teacher identity', t => withAdminApi(t, async request => {
++  const list = await (await request('?pageSize=1')).json();
++  assert.equal(list.total, 2); assert.equal(list.items.length, 1);
++  for (const id of ['A', 'B']) {
++    const profile = await request(`/${id}`); assert.equal(profile.status, 200);
++    assert.equal((await profile.json()).id, id);
++  }
++}));
++for (const tab of tabs) {
++  test(`HTTP admin ${tab}: A/B data and total are isolated`, t => withAdminApi(t, async request => {
++    for (const id of ['A', 'B']) {
++      const res = await request(`/${id}/${tab}?pageSize=1`); assert.equal(res.status, 200);
++      const result = await res.json();
++      assert.equal(result.total, 1); assert.equal(result.items.length, 1);
++      const row = result.items[0];
++      if (tab === 'students') assert.deepEqual(row.groups.map(group => group.id), [`g${id}`]);
++      else assert.ok(row.id.endsWith(id), `${tab}: other teacher content leaked`);
++      if (tab === 'exams') assert.deepEqual(row.groups.map(group => group.id), [`g${id}`]);
++      const secondPage = await (await request(`/${id}/${tab}?pageSize=1&page=2`)).json();
++      assert.equal(secondPage.total, 1); assert.equal(secondPage.items.length, 0);
++    }
++  }));
++}
++test('HTTP admin: foreign bank filter and search never include another teacher questions', t => withAdminApi(t, async request => {
++  for (const query of ['bankId=bB', 'q=Question%20B']) {
++    const result = await (await request(`/A/questions?${query}`)).json();
++    assert.equal(result.total, 0); assert.deepEqual(result.items, []);
++  }
++  assert.equal((await (await request('/A/questions?bankId=bA')).json()).total, 1);
++}));
++test('HTTP admin: non-admin roles, anonymous, unknown and Student IDs are rejected', t => withAdminApi(t, async request => {
++  for (const role of ['Student:student', 'Instructor:A', null]) {
++    for (const endpoint of ['', '/A', ...tabs.map(tab => `/A/${tab}`)]) {
++      assert.equal((await request(endpoint, role)).status, role ? 403 : 401);
++    }
++  }
++  for (const id of ['unknown', 'student']) assert.equal((await request(`/${id}/questions`)).status, 404);
++}));
++test('HTTP admin: new content routes are read-only and reject invalid paging', t => withAdminApi(t, async request => {
++  for (const tab of ['questions', 'attachments']) {
++    assert.equal((await request(`/A/${tab}`, 'SuperAdmin:admin', 'POST')).status, 404);
++    assert.equal((await request(`/A/${tab}?page=999999999999999999`)).status, 400);
++  }
++}));
+diff --git a/server/tests/helpers/adminInstructorApi.cjs b/server/tests/helpers/adminInstructorApi.cjs
+new file mode 100644
+index 0000000..01d67fd
+--- /dev/null
++++ b/server/tests/helpers/adminInstructorApi.cjs
+@@ -0,0 +1,99 @@
++const fs = require('node:fs');
++const path = require('node:path');
++const vm = require('node:vm');
++const ts = require('typescript');
++const express = require('express');
++
++function matches(row, where = {}) {
++  return Object.entries(where).every(([key, value]) => {
++    if (key === 'OR') return value.some(filter => matches(row, filter));
++    if (value && typeof value === 'object') {
++      if ('some' in value) return (row[key] || []).some(item => matches(item, value.some));
++      if ('contains' in value) return String(row[key] || '').toLowerCase().includes(value.contains.toLowerCase());
++      return matches(row[key] || {}, value);
++    }
++    return row[key] === value;
++  });
++}
++function project(row, select) {
++  if (!select) return row;
++  return Object.fromEntries(Object.entries(select).filter(([, value]) => value).map(([key, value]) => {
++    if (value === true) return [key, row[key]];
++    const item = row[key];
++    return [key, Array.isArray(item)
++      ? item.filter(record => matches(record, value.where)).map(record => project(record, value.select))
++      : item ? project(item, value.select) : null];
++  }));
++}
++async function withAdminApi(t, run) {
++  const teachers = ['A', 'B'].map(id => ({ id, role: 'Instructor', approvalStatus: 'Approved', name: `Teacher ${id}`, username: id }));
++  const groups = teachers.map(teacher => ({ id: `g${teacher.id}`, instructorId: teacher.id, name: `Group ${teacher.id}` }));
++  const banks = teachers.map(teacher => ({ id: `b${teacher.id}`, instructorId: teacher.id, name: `Bank ${teacher.id}` }));
++  const rows = {};
++  rows.user = [...teachers, { id: 'student', role: 'Student', name: 'Shared student', groupsMember: groups }];
++  rows.group = groups;
++  rows.questionBank = banks;
++  rows.lessonSession = teachers.map((teacher, index) => ({ id: `l${teacher.id}`, title: `Lesson ${teacher.id}`, groups: [groups[index]], _count: { attachments: 1 } }));
++  rows.handout = teachers.map((teacher, index) => ({ id: `h${teacher.id}`, instructorId: teacher.id, title: `Handout ${teacher.id}`, group: groups[index] }));
++  rows.question = teachers.map((teacher, index) => ({ id: `q${teacher.id}`, bankId: banks[index].id, bank: banks[index], text: `Question ${teacher.id}`, options: ['one', 'two'], correctOptionIndex: 0 }));
++  rows.exam = teachers.map(teacher => ({ id: `e${teacher.id}`, instructorId: teacher.id, title: `Exam ${teacher.id}`, groups }));
++  rows.examAttempt = teachers.map((teacher, index) => ({ id: `r${teacher.id}`, exam: rows.exam[index], student: rows.user[2], correctCount: 1, totalQuestions: 2 }));
++  rows.lessonAttachment = teachers.map((teacher, index) => ({ id: `a${teacher.id}`, fileName: `File ${teacher.id}`, session: rows.lessonSession[index], fileSize: 10 }));
++  rows.adminAuditLog = [];
++  const prisma = { $transaction: async operations => Promise.all(operations) };
++  for (const [model, records] of Object.entries(rows)) {
++    prisma[model] = {
++      findMany: async ({ where, select, skip = 0, take = 100 }) => records.filter(row => matches(row, where)).slice(skip, skip + take).map(row => project(row, select)),
++      findFirst: async ({ where, select }) => {
++        const row = records.find(record => matches(record, where));
++        return row ? project(row, select) : null;
++      },
++      findUnique: async ({ where }) => records.find(row => matches(row, where)),
++      findUniqueOrThrow: async ({ where, select }) => project(records.find(row => matches(row, where)), select),
++      count: async ({ where }) => records.filter(row => matches(row, where)).length,
++      groupBy: async () => [{ approvalStatus: 'Approved', _count: { _all: 2 } }],
++    };
++  }
++  const src = path.resolve(__dirname, '../../src');
++  const cache = new Map();
++  const doubles = {
++    'lib/prisma.ts': { prisma },
++    'lib/jwt.ts': { verifyAccessToken: token => {
++      const [role, sub] = token.split(':');
++      if (!role || !sub) throw new Error('invalid');
++      return { role, sub, sid: 'test' };
++    } },
++    'lib/session.ts': { isSessionValid: async () => true },
++    'lib/adminStats.ts': {
++      loadInstructorStats: async ids => new Map(ids.map(id => [id, { groups: 1, students: 1, banks: 1, exams: 1, lessons: 1, handouts: 1 }])),
++      loadCurrentPlans: async ids => new Map(ids.map(id => [id, { planId: 'free' }])),
++    },
++    'routes/admin/instructors.routes.ts': { __esModule: true, default: express.Router() },
++    'routes/admin/categories.routes.ts': { __esModule: true, default: express.Router() },
++  };
++  function load(filename) {
++    const relative = path.relative(src, filename).split(path.sep).join('/');
++    if (doubles[relative]) return doubles[relative];
++    if (cache.has(filename)) return cache.get(filename).exports;
++    const module = { exports: {} }; cache.set(filename, module);
++    const code = ts.transpileModule(fs.readFileSync(filename, 'utf8'), { compilerOptions: {
++      module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true,
++    } }).outputText;
++    vm.runInNewContext(code, { module, exports: module.exports, console,
++      require: name => name.startsWith('.') ? load(path.resolve(path.dirname(filename), name + '.ts')) : require(name),
++    }, { filename });
++    return module.exports;
++  }
++  const app = express();
++  app.use('/admin', load(path.join(src, 'routes/admin.ts')).default);
++  app.use((error, _req, res, _next) => res.status(error.statusCode || 500).json({ error: error.message }));
++  const server = app.listen(0, '127.0.0.1');
++  await new Promise(resolve => server.once('listening', resolve));
++  t.after(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }));
++  const request = async (endpoint, role = 'SuperAdmin:admin', method = 'GET') => fetch(
++    `http://127.0.0.1:${server.address().port}/admin/users/instructors${endpoint}`,
++    { method, headers: role ? { Authorization: `Bearer ${role}` } : {} },
++  );
++  await run(request);
++}
++module.exports = { withAdminApi };

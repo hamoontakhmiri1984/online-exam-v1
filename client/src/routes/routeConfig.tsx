@@ -79,6 +79,9 @@ const AdminCategoriesPage = lazy(() =>
   import('../pages/AdminCategoriesPage/AdminCategoriesPage')
 );
 
+const AdminInstructorsPage = lazy(() => import('../pages/AdminInstructorsPage/AdminInstructorsPage'));
+const AdminInstructorDetailPage = lazy(() => import('../pages/AdminInstructorsPage/AdminInstructorDetailPage'));
+
 const InstructorStudentsPage = lazy(() =>
   import('../pages/InstructorStudentsPage/InstructorStudentsPage')
 );
@@ -100,6 +103,8 @@ const BlogPage = lazy(() => import('../pages/BlogPage/BlogPage'));
 const BlogPostPage = lazy(() => import('../pages/BlogPage/BlogPostPage'));
 
 export const routes: RouteConfig[] = [
+  { path: '/instructors', Component: AdminInstructorsPage, protected: true, allowedRoles: ['SuperAdmin'] },
+  { path: '/instructors/:instructorId', Component: AdminInstructorDetailPage, protected: true, allowedRoles: ['SuperAdmin'] },
   {
     path: '/',
     Component: LandingPage,

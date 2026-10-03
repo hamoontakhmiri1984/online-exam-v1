@@ -51,7 +51,7 @@ router.get(
       prisma.user.findMany({
         where,
         select: instructorSelect,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: paging.skip,
         take: paging.take,
       }),
@@ -166,7 +166,7 @@ router.get(
       prisma.user.findMany({
         where,
         select: { ...studentBaseSelect, ...studentGroupsSelect },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: paging.skip,
         take: paging.take,
       }),

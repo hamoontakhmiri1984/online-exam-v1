@@ -18,6 +18,9 @@ export default function usePagedList<T extends { id: string }>(
   const [error, setError] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
   const pageSize = 25;
+  const requestKey = JSON.stringify([scopeKey, page, q, revision]);
+  const [loadedKey, setLoadedKey] = useState('');
+  const isCurrent = loadedKey === requestKey;
   const reload = useCallback(() => setRevision(value => value + 1), []);
 
   useEffect(() => {
@@ -46,23 +49,26 @@ export default function usePagedList<T extends { id: string }>(
           if (active) setError(err instanceof ApiError ? err.message : 'دریافت اطلاعات با خطا مواجه شد');
         })
         .finally(() => {
-          if (active) setLoading(false);
+          if (active) {
+            setLoading(false);
+            setLoadedKey(requestKey);
+          }
         });
     }, q ? 250 : 0);
     return () => {
       active = false;
       clearTimeout(timer);
     };
-  }, [scopeKey, enabled, page, q, revision]);
+  }, [scopeKey, enabled, page, q, revision, requestKey]);
 
   return {
-    items,
-    total,
+    items: enabled && isCurrent ? items : [],
+    total: enabled && isCurrent ? total : 0,
     page,
     pageSize,
     q,
-    loading,
-    error,
+    loading: enabled && (loading || !isCurrent),
+    error: isCurrent ? error : null,
     reload,
     setError,
     clearError: () => setError(null),

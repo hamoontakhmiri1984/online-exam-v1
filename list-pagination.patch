@@ -1,0 +1,1118 @@
+diff --git a/client/src/api/groupApi.ts b/client/src/api/groupApi.ts
+index b85f241..816781d 100644
+--- a/client/src/api/groupApi.ts
++++ b/client/src/api/groupApi.ts
+@@ -1,3 +1,4 @@
++import { collectListPages, listQueryString, type ListQuery, type ListPage } from '../lib/listPagination';
+ import type { Category } from '../constants/categories';
+ import { apiRequest, ApiError } from '../lib/apiClient';
+ 
+@@ -13,8 +14,12 @@ export type Group = {
+ // شکل خروجی سرور (server/src/routes/groups.ts -> serializeGroup) عمداً دقیقاً
+ // همین Group ـه، برای همین این فایل فقط یه wrapper نازک دور apiRequest ـه.
+ 
++export function getGroupsPage(query: ListQuery = {}): Promise<ListPage<Group>> {
++  return apiRequest<ListPage<Group>>(`/groups${listQueryString(query)}`);
++}
++
+ export function getGroups(): Promise<Group[]> {
+-  return apiRequest<Group[]>('/groups');
++  return collectListPages(getGroupsPage);
+ }
+ 
+ // سرور دسترسی رو خودش چک می‌کنه (403 اگه نه مالک/عضو/SuperAdmin باشی) - اینجا
+@@ -39,11 +44,11 @@ export async function getGroupById(id: string): Promise<Group | undefined> {
+ // یه مدرسِ دیگه رو ببینه، این فرض دیگه درست نیست و باید سرور یه query param
+ // جدا (مثلاً ?instructorId=) پشتیبانی کنه.
+ export function getGroupsByInstructor(_instructorId: string): Promise<Group[]> {
+-  return apiRequest<Group[]>('/groups');
++  return getGroups();
+ }
+ 
+ export function getGroupsByStudent(_studentId: string): Promise<Group[]> {
+-  return apiRequest<Group[]>('/groups');
++  return getGroups();
+ }
+ 
+ // موقع ساخت گروه، joinCode توسط خود سرور تولید می‌شه و instructorId هم از
+diff --git a/client/src/api/questionBankApi.ts b/client/src/api/questionBankApi.ts
+index babd4e8..b83a470 100644
+--- a/client/src/api/questionBankApi.ts
++++ b/client/src/api/questionBankApi.ts
+@@ -1,3 +1,4 @@
++import { collectListPages, listQueryString, type ListQuery, type ListPage } from '../lib/listPagination';
+ import type { Category } from '../constants/categories';
+ import {
+   apiRequest,
+@@ -38,8 +39,12 @@ export type BankQuestionInput = {
+   difficulty?: QuestionDifficulty;
+ };
+ 
++export function getQuestionBanksPage(query: ListQuery = {}): Promise<ListPage<QuestionBank>> {
++  return apiRequest<ListPage<QuestionBank>>(`/banks${listQueryString(query)}`);
++}
++
+ export function getQuestionBanks(): Promise<QuestionBank[]> {
+-  return apiRequest<QuestionBank[]>('/banks');
++  return collectListPages(getQuestionBanksPage);
+ }
+ 
+ export function getQuestionBankById(bankId: string): Promise<QuestionBank> {
+@@ -71,8 +76,12 @@ export function deleteQuestionBank(bankId: string): Promise<void> {
+   });
+ }
+ 
++export function getBankQuestionsPage(bankId: string, query: ListQuery = {}): Promise<ListPage<BankQuestion>> {
++  return apiRequest<ListPage<BankQuestion>>(`/banks/${bankId}/questions${listQueryString(query)}`);
++}
++
+ export function getBankQuestions(bankId: string): Promise<BankQuestion[]> {
+-  return apiRequest<BankQuestion[]>(`/banks/${bankId}/questions`);
++  return collectListPages((query) => getBankQuestionsPage(bankId, query));
+ }
+ 
+ export function createBankQuestion(
+diff --git a/client/src/components/ListPagination/ListPagination.tsx b/client/src/components/ListPagination/ListPagination.tsx
+new file mode 100644
+index 0000000..95f9be3
+--- /dev/null
++++ b/client/src/components/ListPagination/ListPagination.tsx
+@@ -0,0 +1,19 @@
++type Props = {
++  page: number; pageSize: number; total: number; loading: boolean;
++  q: string; setPage: (page: number) => void; setSearch: (q: string) => void;
++};
++export default function ListPagination({ page, pageSize, total, loading, q, setPage, setSearch }: Props) {
++  const pages = Math.max(1, Math.ceil(total / pageSize));
++  return (
++    <div className="mb-4 flex flex-wrap items-center gap-3 text-sm dark:text-gray-200">
++      <input type="search" aria-label="جست‌وجو" placeholder="جست‌وجو..." maxLength={200}
++        value={q} onChange={event => setSearch(event.target.value)}
++        className="rounded-lg border border-gray-300 bg-transparent px-3 py-2 dark:border-gray-600" />
++      <span aria-live="polite">{total} مورد — صفحه {page} از {pages}</span>
++      <button type="button" disabled={loading || page <= 1} onClick={() => setPage(page - 1)}
++        className="rounded border px-3 py-2 disabled:opacity-40">قبلی</button>
++      <button type="button" disabled={loading || page >= pages} onClick={() => setPage(page + 1)}
++        className="rounded border px-3 py-2 disabled:opacity-40">بعدی</button>
++    </div>
++  );
++}
+diff --git a/client/src/hooks/useBankQuestions.ts b/client/src/hooks/useBankQuestions.ts
+index 86654d8..c598769 100644
+--- a/client/src/hooks/useBankQuestions.ts
++++ b/client/src/hooks/useBankQuestions.ts
+@@ -1,121 +1,17 @@
+-import { useCallback, useEffect, useState } from 'react';
+-
++import usePagedCrud from './usePagedCrud';
+ import {
+-  createBankQuestion,
+-  deleteBankQuestion,
+-  getBankQuestions,
+-  updateBankQuestion,
+-  type BankQuestion,
+-  type BankQuestionInput,
++  createBankQuestion, deleteBankQuestion, getBankQuestionsPage, updateBankQuestion,
++  type BankQuestion, type BankQuestionInput,
+ } from '../api/questionBankApi';
+-import { ApiError } from '../lib/apiClient';
+ 
+-// پیام خطای سرور (مثلاً «سقف پلن پر شده») رو نشون می‌ده؛ برای خطای شبکه و
+-// بقیه، همون پیام پیش‌فرض
+-function errorMessageOf(err: unknown, fallback: string): string {
+-  return err instanceof ApiError ? err.message : fallback;
++export default function useBankQuestions(bankId?: string) {
++  const id = bankId ?? '';
++  const list = usePagedCrud<BankQuestion, BankQuestionInput>({
++    getPage: query => getBankQuestionsPage(id, query),
++    add: input => createBankQuestion(id, input),
++    update: (questionId, input) => updateBankQuestion(id, questionId, input),
++    remove: questionId => deleteBankQuestion(id, questionId),
++  }, id, Boolean(bankId));
++  return { ...list, questions: list.items, addQuestion: list.addItem,
++    editQuestion: list.updateItem, removeQuestion: list.deleteItem };
+ }
+-
+-function useBankQuestions(bankId?: string) {
+-  const [questions, setQuestions] = useState<BankQuestion[]>([]);
+-  // اگه bankId هست، از همون اول لودینگ باشه تا یه لحظه «هنوز سوالی وجود ندارد» چشمک نزنه
+-  const [loading, setLoading] = useState(Boolean(bankId));
+-  const [error, setError] = useState('');
+-
+-  const loadQuestions = useCallback(async () => {
+-    if (!bankId) {
+-      setQuestions([]);
+-      return;
+-    }
+-
+-    setLoading(true);
+-    setError('');
+-
+-    try {
+-      const data = await getBankQuestions(bankId);
+-      setQuestions(data);
+-    } catch {
+-      setError('دریافت سوال‌های بانک با خطا مواجه شد');
+-    } finally {
+-      setLoading(false);
+-    }
+-  }, [bankId]);
+-
+-  useEffect(() => {
+-    void loadQuestions();
+-  }, [loadQuestions]);
+-
+-  // add/edit/remove خطا رو خودشون می‌گیرن و تو error می‌ذارن؛ موقع خطا
+-  // null (یا false برای حذف) برمی‌گردونن تا صفحه فرم رو پاک نکنه
+-  const addQuestion = async (input: BankQuestionInput) => {
+-    if (!bankId) return null;
+-
+-    setError('');
+-
+-    try {
+-      const created = await createBankQuestion(bankId, input);
+-
+-      setQuestions((current) => [...current, created]);
+-
+-      return created;
+-    } catch (err) {
+-      setError(errorMessageOf(err, 'افزودن سوال با خطا مواجه شد'));
+-
+-      return null;
+-    }
+-  };
+-
+-  const editQuestion = async (questionId: string, input: BankQuestionInput) => {
+-    if (!bankId) return null;
+-
+-    setError('');
+-
+-    try {
+-      const updated = await updateBankQuestion(bankId, questionId, input);
+-
+-      setQuestions((current) =>
+-        current.map((question) =>
+-          question.id === questionId ? updated : question
+-        )
+-      );
+-
+-      return updated;
+-    } catch (err) {
+-      setError(errorMessageOf(err, 'ذخیره‌ی سوال با خطا مواجه شد'));
+-
+-      return null;
+-    }
+-  };
+-
+-  const removeQuestion = async (questionId: string) => {
+-    if (!bankId) return false;
+-
+-    setError('');
+-
+-    try {
+-      await deleteBankQuestion(bankId, questionId);
+-
+-      setQuestions((current) =>
+-        current.filter((question) => question.id !== questionId)
+-      );
+-
+-      return true;
+-    } catch (err) {
+-      setError(errorMessageOf(err, 'حذف سوال با خطا مواجه شد'));
+-
+-      return false;
+-    }
+-  };
+-
+-  return {
+-    questions,
+-    loading,
+-    error,
+-    reload: loadQuestions,
+-    addQuestion,
+-    editQuestion,
+-    removeQuestion,
+-  };
+-}
+-
+-export default useBankQuestions;
+diff --git a/client/src/hooks/usePagedCrud.ts b/client/src/hooks/usePagedCrud.ts
+new file mode 100644
+index 0000000..d8ed262
+--- /dev/null
++++ b/client/src/hooks/usePagedCrud.ts
+@@ -0,0 +1,40 @@
++import { ApiError } from '../lib/apiClient';
++import type { ListPage, ListQuery } from '../lib/listPagination';
++import usePagedList from './usePagedList';
++
++type PageApi<T, Input> = {
++  getPage: (query: ListQuery) => Promise<ListPage<T>>;
++  add: (input: Input) => Promise<T>;
++  update: (id: string, input: Input) => Promise<T>;
++  remove: (id: string) => Promise<void>;
++};
++export default function usePagedCrud<T extends { id: string }, Input>(
++  api: PageApi<T, Input>,
++  scopeKey = '',
++  enabled = true,
++) {
++  const list = usePagedList(api.getPage, scopeKey, enabled);
++  async function mutate<R>(operation: () => Promise<R>, fallback: string): Promise<R | undefined> {
++    list.clearError();
++    try {
++      const result = await operation();
++      list.reload();
++      return result;
++    } catch (err) {
++      list.setError(err instanceof ApiError ? err.message : fallback);
++      return undefined;
++    }
++  }
++  return {
++    ...list,
++    addItem: (input: Input) => mutate(() => api.add(input), 'افزودن مورد با خطا مواجه شد'),
++    updateItem: (id: string, input: Input) => mutate(() => api.update(id, input), 'ذخیره تغییرات با خطا مواجه شد'),
++    deleteItem: async (id: string) => {
++      const result = await mutate(async () => {
++        await api.remove(id);
++        return true;
++      }, 'حذف با خطا مواجه شد');
++      return result === true;
++    },
++  };
++}
+diff --git a/client/src/hooks/usePagedList.ts b/client/src/hooks/usePagedList.ts
+new file mode 100644
+index 0000000..2b6d9fa
+--- /dev/null
++++ b/client/src/hooks/usePagedList.ts
+@@ -0,0 +1,74 @@
++import { useCallback, useEffect, useRef, useState } from 'react';
++import type { ListPage, ListQuery } from '../lib/listPagination';
++import { ApiError } from '../lib/apiClient';
++
++export default function usePagedList<T extends { id: string }>(
++  fetchPage: (query: ListQuery) => Promise<ListPage<T>>,
++  scopeKey = '',
++  enabled = true,
++) {
++  const fetchRef = useRef(fetchPage);
++  fetchRef.current = fetchPage;
++  const [selection, setSelection] = useState({ scopeKey, page: 1, q: '' });
++  const page = selection.scopeKey === scopeKey ? selection.page : 1;
++  const q = selection.scopeKey === scopeKey ? selection.q : '';
++  const [items, setItems] = useState<T[]>([]);
++  const [total, setTotal] = useState(0);
++  const [loading, setLoading] = useState(enabled);
++  const [error, setError] = useState<string | null>(null);
++  const [revision, setRevision] = useState(0);
++  const pageSize = 25;
++  const reload = useCallback(() => setRevision(value => value + 1), []);
++
++  useEffect(() => {
++    let active = true;
++    setItems([]);
++    setError(null);
++    if (!enabled) {
++      setTotal(0);
++      setLoading(false);
++      return;
++    }
++    setLoading(true);
++    const timer = setTimeout(() => {
++      fetchRef.current({ page, pageSize, q })
++        .then(result => {
++          if (!active) return;
++          const lastPage = Math.max(1, Math.ceil(result.total / pageSize));
++          if (page > lastPage) {
++            setSelection({ scopeKey, page: lastPage, q });
++            return;
++          }
++          setItems(result.items);
++          setTotal(result.total);
++        })
++        .catch(err => {
++          if (active) setError(err instanceof ApiError ? err.message : 'دریافت اطلاعات با خطا مواجه شد');
++        })
++        .finally(() => {
++          if (active) setLoading(false);
++        });
++    }, q ? 250 : 0);
++    return () => {
++      active = false;
++      clearTimeout(timer);
++    };
++  }, [scopeKey, enabled, page, q, revision]);
++
++  return {
++    items,
++    total,
++    page,
++    pageSize,
++    q,
++    loading,
++    error,
++    reload,
++    setError,
++    clearError: () => setError(null),
++    setPage: (next: number) => setSelection({ scopeKey, page: Math.max(1, next), q }),
++    setSearch: (next: string) => setSelection({ scopeKey, page: 1, q: next }),
++    patchItem: (updated: T) => setItems(current => current.map(item =>
++      item.id === updated.id ? updated : item)),
++  };
++}
+diff --git a/client/src/hooks/useQuestionBanks.ts b/client/src/hooks/useQuestionBanks.ts
+index d28d5e2..d4312c1 100644
+--- a/client/src/hooks/useQuestionBanks.ts
++++ b/client/src/hooks/useQuestionBanks.ts
+@@ -1,49 +1,14 @@
+-import useCrud from './useCrud';
+-
++import usePagedCrud from './usePagedCrud';
+ import {
+-  createQuestionBank,
+-  deleteQuestionBank,
+-  getQuestionBanks,
+-  updateQuestionBank,
+-  type QuestionBank,
+-  type QuestionBankInput,
++  createQuestionBank, deleteQuestionBank, getQuestionBanksPage, updateQuestionBank,
++  type QuestionBank, type QuestionBankInput,
+ } from '../api/questionBankApi';
+ 
+-function useQuestionBanks() {
+-  const {
+-    items: banks,
+-    loading,
+-    error,
+-    clearError,
+-    addItem,
+-    updateItem,
+-    deleteItem,
+-    patchItem,
+-  } = useCrud<QuestionBank, QuestionBankInput>(
+-    {
+-      getAll: getQuestionBanks,
+-      add: createQuestionBank,
+-      update: updateQuestionBank,
+-      remove: deleteQuestionBank,
+-    },
+-    {
+-      fetch: 'دریافت بانک‌های سوال با خطا مواجه شد',
+-      add: 'ساخت بانک سوال با خطا مواجه شد',
+-      update: 'ویرایش بانک سوال با خطا مواجه شد',
+-      remove: 'حذف بانک سوال با خطا مواجه شد',
+-    },
+-  );
+-
+-  return {
+-    banks,
+-    loading,
+-    error,
+-    clearError,
+-    addBank: addItem,
+-    updateBank: updateItem,
+-    deleteBank: deleteItem,
+-    patchBank: patchItem,
+-  };
++export default function useQuestionBanks() {
++  const list = usePagedCrud<QuestionBank, QuestionBankInput>({
++    getPage: getQuestionBanksPage,
++    add: createQuestionBank, update: updateQuestionBank, remove: deleteQuestionBank,
++  });
++  return { ...list, banks: list.items, addBank: list.addItem, updateBank: list.updateItem,
++    deleteBank: list.deleteItem, patchBank: list.patchItem };
+ }
+-
+-export default useQuestionBanks;
+\ No newline at end of file
+diff --git a/client/src/lib/listPagination.ts b/client/src/lib/listPagination.ts
+new file mode 100644
+index 0000000..eb0e334
+--- /dev/null
++++ b/client/src/lib/listPagination.ts
+@@ -0,0 +1,29 @@
++export type ListQuery = { page?: number; pageSize?: number; q?: string };
++export type ListPage<T> = { items: T[]; total: number; page: number; pageSize: number };
++
++export function listQueryString(query: ListQuery = {}): string {
++  const params = new URLSearchParams();
++  params.set('page', String(query.page ?? 1));
++  params.set('pageSize', String(query.pageSize ?? 25));
++  if (query.q?.trim()) params.set('q', query.q.trim());
++  return `?${params.toString()}`;
++}
++
++// Selectors and aggregate views explicitly traverse every page; list screens
++// use the page API instead. A failed later request never returns a partial list.
++export async function collectListPages<T extends { id: string }>(
++  fetchPage: (query: ListQuery) => Promise<ListPage<T>>,
++): Promise<T[]> {
++  const items = new Map<string, T>();
++  for (let page = 1; ; page++) {
++    const result = await fetchPage({ page, pageSize: 100 });
++    if (result.page !== page || result.pageSize <= 0) {
++      throw new Error('پاسخ صفحه‌بندی نامعتبر است');
++    }
++    for (const item of result.items) items.set(item.id, item);
++    if (result.page * result.pageSize >= result.total) return [...items.values()];
++    if (result.items.length === 0) {
++      throw new Error('پاسخ صفحه‌بندی ناقص است');
++    }
++  }
++}
+diff --git a/client/src/pages/GroupsPage/GroupsPage.tsx b/client/src/pages/GroupsPage/GroupsPage.tsx
+index 7109bcd..9a8373e 100644
+--- a/client/src/pages/GroupsPage/GroupsPage.tsx
++++ b/client/src/pages/GroupsPage/GroupsPage.tsx
+@@ -1,7 +1,7 @@
+ import { useEffect, useState } from 'react';
+ import { Users, Plus, XCircle, AlertTriangle } from 'lucide-react';
+ import {
+-  getGroups,
++  getGroupsPage,
+   addGroup,
+   updateGroup,
+   deleteGroup,
+@@ -12,7 +12,8 @@ import { getCurrentUser } from '../../api/authApi';
+ import { ApiError } from '../../lib/apiClient';
+ import { getStudents, type Student } from '../../api/studentApi';
+ import { getRemainingGroupQuota } from '../../api/subscriptionApi';
+-import useCrud from '../../hooks/useCrud';
++import usePagedCrud from '../../hooks/usePagedCrud';
++import ListPagination from '../../components/ListPagination/ListPagination';
+ import useGroupFormModal from '../../hooks/useGroupFormModal';
+ import useInstructorPlanLimit from '../../hooks/useInstructorPlanLimit';
+ import AppLayout from '../../components/AppLayout/AppLayout';
+@@ -36,8 +37,9 @@ function GroupsPage() {
+     updateItem,
+     deleteItem,
+     patchItem,
+-  } = useCrud<Group, Omit<Group, 'id' | 'joinCode'>>({
+-    getAll: getGroups,
++    page, pageSize, total, q, setPage, setSearch,
++  } = usePagedCrud<Group, Omit<Group, 'id' | 'joinCode'>>({
++    getPage: getGroupsPage,
+     add: addGroup,
+     update: updateGroup,
+     remove: deleteGroup,
+@@ -56,12 +58,9 @@ function GroupsPage() {
+       .catch(() => setAllStudents([]));
+   }, []);
+ 
+-  const students =
+-    currentUser?.role === 'SuperAdmin'
+-      ? allStudents
+-      : allStudents.filter((s) =>
+-          visibleGroups.some((g) => g.studentIds.includes(s.id))
+-        );
++  // GET /students already returns all students available to this instructor;
++  // eligibility must not depend on the current groups page or search.
++  const students = allStudents;
+ 
+   const [deleteTarget, setDeleteTarget] = useState<Group | null>(null);
+   const [copiedGroupId, setCopiedGroupId] = useState<string | null>(null);
+@@ -141,6 +140,7 @@ function GroupsPage() {
+         />
+       )}
+ 
++      <ListPagination {...{ page, pageSize, total, loading, q, setPage, setSearch }} />
+       {loading ? (
+         <Spinner />
+       ) : (
+diff --git a/client/src/pages/QuestionBanksPage/QuestionBankDetailsPage.tsx b/client/src/pages/QuestionBanksPage/QuestionBankDetailsPage.tsx
+index 38b8eb8..dc4c1cd 100644
+--- a/client/src/pages/QuestionBanksPage/QuestionBankDetailsPage.tsx
++++ b/client/src/pages/QuestionBanksPage/QuestionBankDetailsPage.tsx
+@@ -1,3 +1,4 @@
++import ListPagination from '../../components/ListPagination/ListPagination';
+ import { useMemo, useState } from 'react';
+ import { useNavigate, useParams } from 'react-router-dom';
+ import { ArrowRight, Upload } from 'lucide-react';
+@@ -37,6 +38,7 @@ function QuestionBankDetailsPage() {
+     addQuestion,
+     editQuestion,
+     removeQuestion,
++    page, pageSize, total, q, setPage, setSearch,
+   } = useBankQuestions(bankId);
+ 
+   const importModal = useImportBankQuestionsModal({
+@@ -164,7 +166,7 @@ function QuestionBankDetailsPage() {
+           form={form}
+           isEditing={editing !== null}
+           saving={saving}
+-          error={error}
++          error={error ?? ''}
+           canSubmit={canSubmit}
+           onTextChange={(text) =>
+             setForm((current) => ({ ...current, text }))
+@@ -182,8 +184,11 @@ function QuestionBankDetailsPage() {
+         )}
+ 
+         <section>
++          <ListPagination {...{ page, pageSize, total, loading, q, setPage, setSearch }} />
++          {error && <p role="alert" className="mb-3 text-danger-600">{error}</p>}
+           <BankQuestionList
+             questions={questions}
++            offset={(page - 1) * pageSize}
+             loading={loading}
+             onEdit={canManage ? startEdit : undefined}
+             onDelete={
+diff --git a/client/src/pages/QuestionBanksPage/QuestionBanksPage.tsx b/client/src/pages/QuestionBanksPage/QuestionBanksPage.tsx
+index 3a31ca9..54e7f20 100644
+--- a/client/src/pages/QuestionBanksPage/QuestionBanksPage.tsx
++++ b/client/src/pages/QuestionBanksPage/QuestionBanksPage.tsx
+@@ -1,3 +1,4 @@
++import ListPagination from '../../components/ListPagination/ListPagination';
+ import { useState } from 'react';
+ import { useNavigate } from 'react-router-dom';
+ import { BookOpen, Pencil, Plus, Trash2, XCircle } from 'lucide-react';
+@@ -28,7 +29,7 @@ function QuestionBanksPage() {
+   // مشاهده برای نظارت باقی می‌مونه
+   const canManage = getCurrentUser()?.role !== 'SuperAdmin';
+ 
+-  const { banks, loading, error, clearError, addBank, updateBank, deleteBank } =
++  const { banks, loading, error, clearError, addBank, updateBank, deleteBank, page, pageSize, total, q, setPage, setSearch } =
+     useQuestionBanks();
+ 
+   const [form, setForm] = useState<QuestionBankInput>(EMPTY_FORM);
+@@ -187,6 +188,7 @@ function QuestionBanksPage() {
+         )}
+ 
+         <section>
++          <ListPagination {...{ page, pageSize, total, loading, q, setPage, setSearch }} />
+           {loading ? (
+             <Spinner />
+           ) : banks.length === 0 ? (
+diff --git a/client/src/pages/QuestionBanksPage/components/BankQuestionList.tsx b/client/src/pages/QuestionBanksPage/components/BankQuestionList.tsx
+index ae334ad..c265d6e 100644
+--- a/client/src/pages/QuestionBanksPage/components/BankQuestionList.tsx
++++ b/client/src/pages/QuestionBanksPage/components/BankQuestionList.tsx
+@@ -9,6 +9,7 @@ import type { BankQuestion } from '../../../api/questionBankApi';
+ type BankQuestionListProps = {
+   questions: BankQuestion[];
+   loading: boolean;
++  offset?: number;
+   onEdit?: (question: BankQuestion) => void;
+   onDelete?: (question: BankQuestion) => void;
+ };
+@@ -16,6 +17,7 @@ type BankQuestionListProps = {
+ function BankQuestionList({
+   questions,
+   loading,
++  offset = 0,
+   onEdit,
+   onDelete,
+ }: BankQuestionListProps) {
+@@ -39,7 +41,7 @@ function BankQuestionList({
+         <BankQuestionCard
+           key={question.id}
+           question={question}
+-          order={index + 1}
++          order={offset + index + 1}
+           onEdit={onEdit}
+           onDelete={onDelete}
+         />
+diff --git a/client/src/pages/QuestionsPage/QuestionsPage.tsx b/client/src/pages/QuestionsPage/QuestionsPage.tsx
+index 3a31ca9..54e7f20 100644
+--- a/client/src/pages/QuestionsPage/QuestionsPage.tsx
++++ b/client/src/pages/QuestionsPage/QuestionsPage.tsx
+@@ -1,3 +1,4 @@
++import ListPagination from '../../components/ListPagination/ListPagination';
+ import { useState } from 'react';
+ import { useNavigate } from 'react-router-dom';
+ import { BookOpen, Pencil, Plus, Trash2, XCircle } from 'lucide-react';
+@@ -28,7 +29,7 @@ function QuestionBanksPage() {
+   // مشاهده برای نظارت باقی می‌مونه
+   const canManage = getCurrentUser()?.role !== 'SuperAdmin';
+ 
+-  const { banks, loading, error, clearError, addBank, updateBank, deleteBank } =
++  const { banks, loading, error, clearError, addBank, updateBank, deleteBank, page, pageSize, total, q, setPage, setSearch } =
+     useQuestionBanks();
+ 
+   const [form, setForm] = useState<QuestionBankInput>(EMPTY_FORM);
+@@ -187,6 +188,7 @@ function QuestionBanksPage() {
+         )}
+ 
+         <section>
++          <ListPagination {...{ page, pageSize, total, loading, q, setPage, setSearch }} />
+           {loading ? (
+             <Spinner />
+           ) : banks.length === 0 ? (
+diff --git a/client/tests/listPagination.test.ts b/client/tests/listPagination.test.ts
+new file mode 100644
+index 0000000..4aff73a
+--- /dev/null
++++ b/client/tests/listPagination.test.ts
+@@ -0,0 +1,70 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { collectListPages, listQueryString, type ListQuery } from '../src/lib/listPagination';
++import { getGroups, getGroupsByInstructor, getGroupsByStudent } from '../src/api/groupApi';
++import { getQuestionBanks, getBankQuestions } from '../src/api/questionBankApi';
++
++test('selectors collect every page and deduplicate IDs across changing pages', async () => {
++  const calls: ListQuery[] = [];
++  const result = await collectListPages(async query => {
++    calls.push(query);
++    return { page: query.page!, pageSize: 100, total: 205,
++      items: Array.from({ length: query.page === 3 ? 5 : 100 }, (_, i) => ({ id: String((query.page! - 1) * 100 + i) })) };
++  });
++  assert.equal(result.length, 205); assert.equal(result[204].id, '204');
++  assert.deepEqual(calls.map(call => call.page), [1, 2, 3]);
++  const duplicate = await collectListPages(async query => ({ page: query.page!, pageSize: 100, total: 101, items: [{ id: 'same' }] }));
++  assert.equal(duplicate.length, 1);
++});
++test('later page errors and empty unfinished pages never silently return partial data', async () => {
++  await assert.rejects(collectListPages(async query => {
++    if (query.page === 2) throw new Error('offline');
++    return { items: [{ id: 'first' }], total: 101, page: 1, pageSize: 100 };
++  }), /offline/);
++  await assert.rejects(collectListPages(async query => ({ items: [], total: 101, page: query.page!, pageSize: 100 })), /ناقص/);
++});
++test('query encodes search and page independently', () => {
++  const params = new URLSearchParams(listQueryString({ page: 2, q: ' test & name ' }));
++  assert.equal(params.get('q'), 'test & name'); assert.equal(params.get('page'), '2');
++});
++test('all group selectors and bank import APIs traverse later pages', async () => {
++  const originalFetch = globalThis.fetch;
++  const urls: string[] = [];
++  globalThis.fetch = (async input => {
++    const url = new URL(String(input)); urls.push(url.pathname + url.search);
++    const page = Number(url.searchParams.get('page'));
++    return new Response(JSON.stringify({ page, pageSize: 100, total: 101,
++      items: page === 1 ? [{ id: 'first' }] : [{ id: 'last' }] }), { status: 200 });
++  }) as typeof fetch;
++  try {
++    for (const load of [getGroups, () => getGroupsByInstructor('owner'), () => getGroupsByStudent('student'), getQuestionBanks, () => getBankQuestions('b1')]) {
++      assert.deepEqual((await load()).map(item => item.id), ['first', 'last']);
++    }
++    assert.equal(urls.length, 10);
++    assert.ok(urls.some(url => url.startsWith('/banks/b1/questions?') && url.includes('page=2')));
++  } finally { globalThis.fetch = originalFetch; }
++});
++
++test('pagination controls show total records and disable navigation at boundaries', async () => {
++  const { createElement } = await import('react');
++  const { renderToString } = await import('react-dom/server');
++  const { default: ListPagination } = await import('../src/components/ListPagination/ListPagination');
++  const html = renderToString(createElement(ListPagination, {
++    page: 2, pageSize: 25, total: 51, q: '', loading: false,
++    setPage: () => {}, setSearch: () => {},
++  }));
++  assert.match(html, /51/); assert.match(html, /صفحه/); assert.match(html, /از/);
++  const tree = ListPagination({ page: 1, pageSize: 25, total: 26, loading: false, q: '', setPage: () => {}, setSearch: () => {} });
++  const buttons = tree.props.children.filter((child: { type: string }) => child.type === 'button');
++  assert.equal(buttons[0].props.disabled, true); assert.equal(buttons[1].props.disabled, false);
++});
++test('pagination actions request another page and forward the search text', async () => {
++  const { default: ListPagination } = await import('../src/components/ListPagination/ListPagination');
++  let page = 1; let q = '';
++  const tree = ListPagination({ page: 1, pageSize: 25, total: 51, loading: false, q,
++    setPage: value => { page = value; }, setSearch: value => { q = value; } });
++  const buttons = tree.props.children.filter((child: { type: string }) => child.type === 'button');
++  buttons[1].props.onClick(); assert.equal(page, 2);
++  const input = tree.props.children.find((child: { type: string }) => child.type === 'input');
++  input.props.onChange({ target: { value: 'Question 106' } }); assert.equal(q, 'Question 106');
++});
+diff --git a/server/package.json b/server/package.json
+index 09e891a..93d9b22 100644
+--- a/server/package.json
++++ b/server/package.json
+@@ -5,7 +5,7 @@
+   "scripts": {
+     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+     "build": "tsc",
+-    "test": "node --require ts-node/register/transpile-only --test tests/examTiming.test.ts tests/session.integration.test.ts tests/payments.integration.test.ts tests/quota.integration.test.ts tests/examStartGroups.integration.test.ts tests/otp.integration.test.ts tests/otp.test.cjs tests/sessionAccess.test.cjs tests/adminSuperAdmin.test.cjs tests/questionExcel.test.ts tests/uploadValidation.test.ts tests/questionBankAccess.test.cjs",
++    "test": "node --require ts-node/register/transpile-only --test tests/examTiming.test.ts tests/session.integration.test.ts tests/payments.integration.test.ts tests/quota.integration.test.ts tests/examStartGroups.integration.test.ts tests/otp.integration.test.ts tests/otp.test.cjs tests/sessionAccess.test.cjs tests/adminSuperAdmin.test.cjs tests/questionExcel.test.ts tests/uploadValidation.test.ts tests/questionBankAccess.test.cjs tests/listPagination.test.cjs",
+     "start": "node dist/server.js",
+     "postinstall": "prisma generate",
+     "prisma:generate": "prisma generate",
+diff --git a/server/src/lib/listPagination.ts b/server/src/lib/listPagination.ts
+new file mode 100644
+index 0000000..9268684
+--- /dev/null
++++ b/server/src/lib/listPagination.ts
+@@ -0,0 +1,18 @@
++import { badRequest } from './errors';
++
++export const MAX_PAGE_SIZE = 100;
++export function parseListQuery(query: Record<string, unknown>) {
++  function integer(key: string, fallback: number, max: number) {
++    const raw = query[key];
++    if (raw === undefined) return fallback;
++    if (typeof raw !== 'string' || !/^[1-9]\d*$/.test(raw)) throw badRequest(`${key} باید عدد صحیح مثبت باشد`);
++    const value = Number(raw);
++    if (!Number.isSafeInteger(value) || value > max) throw badRequest(`${key} خارج از محدوده است`);
++    return value;
++  }
++  const page = integer('page', 1, 1_000_000);
++  const pageSize = integer('pageSize', 25, MAX_PAGE_SIZE);
++  const rawSearch = query.q;
++  if (rawSearch !== undefined && (typeof rawSearch !== 'string' || rawSearch.length > 200)) throw badRequest('جست‌وجو نامعتبر است');
++  return { page, pageSize, skip: (page - 1) * pageSize, search: typeof rawSearch === 'string' ? rawSearch.trim() : '' };
++}
+diff --git a/server/src/routes/groups/groups.routes.ts b/server/src/routes/groups/groups.routes.ts
+index fe67eea..8cd87b1 100644
+--- a/server/src/routes/groups/groups.routes.ts
++++ b/server/src/routes/groups/groups.routes.ts
+@@ -1,3 +1,4 @@
++import { parseListQuery } from '../../lib/listPagination';
+ import { Router } from 'express';
+ import { prisma } from '../../lib/prisma';
+ import { requireRole } from '../../middleware/requireAuth';
+@@ -27,11 +28,19 @@ router.get(
+         ? { instructorId: sub }
+         : { students: { some: { id: sub } } };
+ 
+-    const groups = await prisma.group.findMany({
+-      where,
+-      include: withStudents,
+-    });
+-    res.json(groups.map(serializeGroup));
++    const { page, pageSize, skip, search } = parseListQuery(req.query);
++    const filter = { ...where, ...(search ? { name: { contains: search, mode: 'insensitive' as const } } : {}) };
++    const [groups, total] = await prisma.$transaction([
++      prisma.group.findMany({
++        where: filter,
++        include: withStudents,
++        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
++        skip,
++        take: pageSize,
++      }),
++      prisma.group.count({ where: filter }),
++    ], { isolationLevel: 'RepeatableRead' });
++    res.json({ items: groups.map(serializeGroup), total, page, pageSize });
+   })
+ );
+ 
+diff --git a/server/src/routes/questionBanks/bankQuestions.routes.ts b/server/src/routes/questionBanks/bankQuestions.routes.ts
+index f8cd626..33a1dca 100644
+--- a/server/src/routes/questionBanks/bankQuestions.routes.ts
++++ b/server/src/routes/questionBanks/bankQuestions.routes.ts
+@@ -1,3 +1,4 @@
++import { parseListQuery } from '../../lib/listPagination';
+ import { Router } from 'express';
+ import multer from 'multer';
+ import { prisma } from '../../lib/prisma';
+@@ -31,11 +32,18 @@ router.get(
+     if (!bank) throw notFound('بانک سوال یافت نشد');
+     if (!allowed) throw forbidden();
+ 
+-    const questions = await prisma.question.findMany({
+-      where: { bankId: bank.id },
+-      orderBy: { createdAt: 'asc' },
+-    });
+-    res.json(questions.map(serializeQuestion));
++    const { page, pageSize, skip, search } = parseListQuery(req.query);
++    const filter = { ...{ bankId: bank.id }, ...(search ? { text: { contains: search, mode: 'insensitive' as const } } : {}) };
++    const [questions, total] = await prisma.$transaction([
++      prisma.question.findMany({
++        where: filter,
++        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
++        skip,
++        take: pageSize,
++      }),
++      prisma.question.count({ where: filter }),
++    ], { isolationLevel: 'RepeatableRead' });
++    res.json({ items: questions.map(serializeQuestion), total, page, pageSize });
+   })
+ );
+ 
+diff --git a/server/src/routes/questionBanks/banks.routes.ts b/server/src/routes/questionBanks/banks.routes.ts
+index 132ce70..48ebdf3 100644
+--- a/server/src/routes/questionBanks/banks.routes.ts
++++ b/server/src/routes/questionBanks/banks.routes.ts
+@@ -1,3 +1,4 @@
++import { parseListQuery } from '../../lib/listPagination';
+ import { Router } from 'express';
+ import { prisma } from '../../lib/prisma';
+ import { requireAuth, requireRole } from '../../middleware/requireAuth';
+@@ -23,12 +24,19 @@ router.get(
+     const { role, sub } = req.user!;
+     const where = role === 'SuperAdmin' ? {} : { instructorId: sub };
+ 
+-    const banks = await prisma.questionBank.findMany({
+-      where,
+-      include: { _count: { select: { questions: true } } },
+-      orderBy: { createdAt: 'asc' },
+-    });
+-    res.json(banks.map(serializeBank));
++    const { page, pageSize, skip, search } = parseListQuery(req.query);
++    const filter = { ...where, ...(search ? { name: { contains: search, mode: 'insensitive' as const } } : {}) };
++    const [banks, total] = await prisma.$transaction([
++      prisma.questionBank.findMany({
++        where: filter,
++        include: { _count: { select: { questions: true } } },
++        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
++        skip,
++        take: pageSize,
++      }),
++      prisma.questionBank.count({ where: filter }),
++    ], { isolationLevel: 'RepeatableRead' });
++    res.json({ items: banks.map(serializeBank), total, page, pageSize });
+   })
+ );
+ 
+diff --git a/server/tests/helpers/questionBankApi.cjs b/server/tests/helpers/questionBankApi.cjs
+new file mode 100644
+index 0000000..e0022fe
+--- /dev/null
++++ b/server/tests/helpers/questionBankApi.cjs
+@@ -0,0 +1,81 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const fs = require('node:fs');
++const path = require('node:path');
++const vm = require('node:vm');
++const ts = require('typescript');
++const express = require('express');
++
++// Exercise real Express routing, authentication/role guards, ownership checks,
++// validation and handlers over HTTP. Only storage, JWT/session and quota IO are doubled.
++function fixture(overrides = {}) {
++  let writes = 0;
++  const bank = { id: 'b1', name: 'Bank', category: 'General', instructorId: 'owner', _count: { questions: 1 } };
++  const question = { id: 'q1', bankId: 'b1', text: 'Question?', options: ['A', 'B'], correctOptionIndex: 0, difficulty: 'Easy' };
++  const prisma = {
++    $transaction: async operations => Promise.all(operations),
++    user: { findUnique: async () => ({ role: 'Instructor', approvalStatus: 'Approved' }) },
++    questionBank: {
++      count: async ({ where }) => !where.instructorId || where.instructorId === bank.instructorId ? 1 : 0,
++      findUnique: async ({ where }) => where.id === bank.id ? bank : null,
++      findMany: async ({ where }) => !where.instructorId || where.instructorId === bank.instructorId ? [bank] : [],
++      create: async ({ data }) => { writes++; return { ...bank, ...data }; },
++      update: async ({ data }) => { writes++; return { ...bank, ...data }; },
++      delete: async () => { writes++; return bank; },
++    },
++    question: {
++      count: async () => 1,
++      findUnique: async ({ where }) => where.id === question.id ? question : where.id === 'foreign-question' ? { ...question, bankId: 'b2' } : null,
++      findMany: async () => [question],
++      create: async ({ data }) => { writes++; return { ...question, ...data }; },
++      update: async ({ data }) => { writes++; return { ...question, ...data }; },
++      delete: async () => { writes++; return question; },
++    },
++  };
++  Object.assign(prisma, overrides);
++  const src = path.resolve(__dirname, '../../src');
++  const cache = new Map();
++  const doubles = {
++    'lib/prisma.ts': { prisma },
++    'lib/jwt.ts': { verifyAccessToken: token => {
++      const [role, sub] = token.split(':');
++      if (!['Student', 'Instructor', 'SuperAdmin'].includes(role) || !sub) throw new Error('invalid token');
++      return { role, sub, sid: 'test-session' };
++    } },
++    'lib/session.ts': { isSessionValid: async () => true },
++    'lib/quota.ts': { withQuotaForRole: async (_role, _sub, _kind, _count, run) => run(prisma) },
++  };
++  function load(filename) {
++    const rel = path.relative(src, filename).split(path.sep).join('/');
++    if (doubles[rel]) return doubles[rel];
++    if (cache.has(filename)) return cache.get(filename).exports;
++    const module = { exports: {} }; cache.set(filename, module);
++    const code = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
++      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
++    }).outputText;
++    vm.runInNewContext(code, { module, exports: module.exports, Buffer, TextDecoder, console,
++      require: name => name.startsWith('.') ? load(path.resolve(path.dirname(filename), name + '.ts')) : require(name),
++    }, { filename });
++    return module.exports;
++  }
++  const app = express(); app.use(express.json());
++  app.use('/question-banks', load(path.join(src, 'routes/questionBanks.ts')).default);
++  app.use('/groups', load(path.join(src, 'middleware/requireAuth.ts')).requireAuth, load(path.join(src, 'routes/groups/groups.routes.ts')).default);
++  app.use((err, _req, res, _next) => res.status(err.statusCode || 500).json({ error: err.message }));
++  return { app, writes: () => writes, question };
++}
++async function withApi(t, run, overrides = {}) {
++  const f = fixture(overrides); const server = f.app.listen(0, '127.0.0.1');
++  await new Promise(resolve => server.once('listening', resolve));
++  t.after(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }));
++  async function request(role, method, endpoint, body) {
++    const headers = role ? { Authorization: `Bearer ${role}` } : {};
++    if (body !== undefined && !(body instanceof FormData)) headers['Content-Type'] = 'application/json';
++    return fetch(`http://127.0.0.1:${server.address().port}${endpoint.startsWith('/groups') ? endpoint : `/question-banks${endpoint}`}`, {
++      method, headers, body: body instanceof FormData ? body : body === undefined ? undefined : JSON.stringify(body),
++    });
++  }
++  await run(request, f);
++}
++
++module.exports = { fixture, withApi };
+diff --git a/server/tests/listPagination.test.cjs b/server/tests/listPagination.test.cjs
+new file mode 100644
+index 0000000..1b0a96d
+--- /dev/null
++++ b/server/tests/listPagination.test.cjs
+@@ -0,0 +1,76 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { withApi } = require('./helpers/questionBankApi.cjs');
++
++function storage(model) {
++  const reads = [];
++  const rows = Array.from({ length: 109 }, (_, index) => ({
++    id: `id${String(index).padStart(3, '0')}`, name: `Name ${index}`, text: `Question ${index}`,
++    category: 'General', instructorId: index < 107 ? 'owner' : 'other',
++    bankId: index < 107 ? 'b1' : 'b2', createdAt: new Date('2026-01-01'),
++    students: [{ id: index < 107 ? 'student' : 'outsider' }], joinCode: 'ABCDEF',
++    _count: { questions: 500 }, options: ['A', 'B'], correctOptionIndex: 0, difficulty: 'Easy',
++  }));
++  function filter(where) {
++    return rows.filter(row => (!where.instructorId || where.instructorId === row.instructorId)
++      && (!where.bankId || where.bankId === row.bankId)
++      && (!where.students || row.students.some(s => s.id === where.students.some.id))
++      && (!where.name || row.name.toLowerCase().includes(where.name.contains.toLowerCase()))
++      && (!where.text || row.text.toLowerCase().includes(where.text.contains.toLowerCase())));
++  }
++  return { reads, adapter: {
++    findUnique: async ({ where }) => where.id === 'b1' ? { ...rows[0], id: 'b1' } : null,
++    findMany: async args => { reads.push({ operation: 'list', args }); return filter(args.where).slice(args.skip, args.skip + args.take); },
++    count: async args => { reads.push({ operation: 'count', args }); return filter(args.where).length; },
++  }, model };
++}
++const lists = [
++  { model: 'group', endpoint: '/groups' },
++  { model: 'questionBank', endpoint: '/' },
++  { model: 'question', endpoint: '/b1/questions' },
++];
++for (const { model, endpoint } of lists) {
++  test(`HTTP ${model}: bounded pages, scoped total, deterministic order and search`, async t => {
++    const data = storage(model);
++    await withApi(t, async request => {
++      const first = await request('Instructor:owner', 'GET', endpoint);
++      assert.equal(first.status, 200);
++      const page1 = await first.json();
++      assert.equal(page1.items.length, 25); assert.equal(page1.total, 107); assert.equal(page1.page, 1);
++      const second = await (await request('Instructor:owner', 'GET', `${endpoint}?page=2&pageSize=25`)).json();
++      assert.equal(second.items.length, 25); assert.equal(second.items[0].id, 'id025');
++      assert.equal(second.total, 107); assert.equal(second.page, 2);
++      const firstIds = new Set(page1.items.map(item => item.id));
++      assert.ok(second.items.every(item => !firstIds.has(item.id)));
++      const beyond = await (await request('Instructor:owner', 'GET', `${endpoint}?page=99`)).json();
++      assert.equal(beyond.items.length, 0); assert.equal(beyond.total, 107);
++      const search = await (await request('Instructor:owner', 'GET', `${endpoint}?q=106`)).json();
++      assert.equal(search.total, 1); assert.equal(search.items[0].id, 'id106');
++      for (let i = 0; i < data.reads.length; i += 2) {
++        assert.deepEqual(data.reads[i].args.where, data.reads[i + 1].args.where, 'count uses the same access/search filter');
++        assert.deepEqual(JSON.parse(JSON.stringify(data.reads[i].args.orderBy)), [{ createdAt: 'asc' }, { id: 'asc' }]);
++        assert.ok(data.reads[i].args.take <= 100);
++      }
++      if (model === 'questionBank') assert.equal(page1.items[0].questionCount, 500, 'bank count is not this page length');
++    }, { [model]: data.adapter });
++  });
++  test(`HTTP ${model}: rejects malformed and oversized pagination`, async t => {
++    const data = storage(model);
++    await withApi(t, async request => {
++      for (const query of ['page=0', 'page=-1', 'page=1.5', 'page=abc', 'page=1000001', 'pageSize=101', 'pageSize=0', 'page=1&page=2', 'q=' + 'a'.repeat(201)]) {
++        assert.equal((await request('Instructor:owner', 'GET', `${endpoint}?${query}`)).status, 400, query);
++      }
++      assert.equal(data.reads.length, 0, 'invalid query must not execute the list/count queries');
++    }, { [model]: data.adapter });
++  });
++}
++test('HTTP groups: Student pages and totals include only membership groups', async t => {
++  const data = storage('group');
++  await withApi(t, async request => {
++    const res = await request('Student:student', 'GET', '/groups?pageSize=100&page=2');
++    assert.equal(res.status, 200);
++    const result = await res.json();
++    assert.equal(result.total, 107); assert.equal(result.items.length, 7);
++    assert.ok(result.items.every(group => group.studentIds.includes('student')));
++  }, { group: data.adapter });
++});
+diff --git a/server/tests/questionBankAccess.test.cjs b/server/tests/questionBankAccess.test.cjs
+index 4ef14c2..d308c9c 100644
+--- a/server/tests/questionBankAccess.test.cjs
++++ b/server/tests/questionBankAccess.test.cjs
+@@ -1,77 +1,7 @@
+ const test = require('node:test');
+ const assert = require('node:assert/strict');
+-const fs = require('node:fs');
+-const path = require('node:path');
+-const vm = require('node:vm');
+-const ts = require('typescript');
+-const express = require('express');
++const { withApi } = require('./helpers/questionBankApi.cjs');
+ 
+-// Exercise real Express routing, authentication/role guards, ownership checks,
+-// validation and handlers over HTTP. Only storage, JWT/session and quota IO are doubled.
+-function fixture() {
+-  let writes = 0;
+-  const bank = { id: 'b1', name: 'Bank', category: 'General', instructorId: 'owner', _count: { questions: 1 } };
+-  const question = { id: 'q1', bankId: 'b1', text: 'Question?', options: ['A', 'B'], correctOptionIndex: 0, difficulty: 'Easy' };
+-  const prisma = {
+-    user: { findUnique: async () => ({ role: 'Instructor', approvalStatus: 'Approved' }) },
+-    questionBank: {
+-      findUnique: async ({ where }) => where.id === bank.id ? bank : null,
+-      findMany: async ({ where }) => !where.instructorId || where.instructorId === bank.instructorId ? [bank] : [],
+-      create: async ({ data }) => { writes++; return { ...bank, ...data }; },
+-      update: async ({ data }) => { writes++; return { ...bank, ...data }; },
+-      delete: async () => { writes++; return bank; },
+-    },
+-    question: {
+-      findUnique: async ({ where }) => where.id === question.id ? question : where.id === 'foreign-question' ? { ...question, bankId: 'b2' } : null,
+-      findMany: async () => [question],
+-      create: async ({ data }) => { writes++; return { ...question, ...data }; },
+-      update: async ({ data }) => { writes++; return { ...question, ...data }; },
+-      delete: async () => { writes++; return question; },
+-    },
+-  };
+-  const src = path.resolve(__dirname, '../src');
+-  const cache = new Map();
+-  const doubles = {
+-    'lib/prisma.ts': { prisma },
+-    'lib/jwt.ts': { verifyAccessToken: token => {
+-      const [role, sub] = token.split(':');
+-      if (!['Student', 'Instructor', 'SuperAdmin'].includes(role) || !sub) throw new Error('invalid token');
+-      return { role, sub, sid: 'test-session' };
+-    } },
+-    'lib/session.ts': { isSessionValid: async () => true },
+-    'lib/quota.ts': { withQuotaForRole: async (_role, _sub, _kind, _count, run) => run(prisma) },
+-  };
+-  function load(filename) {
+-    const rel = path.relative(src, filename).split(path.sep).join('/');
+-    if (doubles[rel]) return doubles[rel];
+-    if (cache.has(filename)) return cache.get(filename).exports;
+-    const module = { exports: {} }; cache.set(filename, module);
+-    const code = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
+-      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
+-    }).outputText;
+-    vm.runInNewContext(code, { module, exports: module.exports, Buffer, TextDecoder, console,
+-      require: name => name.startsWith('.') ? load(path.resolve(path.dirname(filename), name + '.ts')) : require(name),
+-    }, { filename });
+-    return module.exports;
+-  }
+-  const app = express(); app.use(express.json());
+-  app.use('/question-banks', load(path.join(src, 'routes/questionBanks.ts')).default);
+-  app.use((err, _req, res, _next) => res.status(err.statusCode || 500).json({ error: err.message }));
+-  return { app, writes: () => writes, question };
+-}
+-async function withApi(t, run) {
+-  const f = fixture(); const server = f.app.listen(0, '127.0.0.1');
+-  await new Promise(resolve => server.once('listening', resolve));
+-  t.after(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }));
+-  async function request(role, method, endpoint, body) {
+-    const headers = role ? { Authorization: `Bearer ${role}` } : {};
+-    if (body !== undefined && !(body instanceof FormData)) headers['Content-Type'] = 'application/json';
+-    return fetch(`http://127.0.0.1:${server.address().port}/question-banks${endpoint}`, {
+-      method, headers, body: body instanceof FormData ? body : body === undefined ? undefined : JSON.stringify(body),
+-    });
+-  }
+-  await run(request, f);
+-}
+ function csvForm() {
+   const form = new FormData();
+   form.append('file', new Blob(['text,o1,o2,o3,o4,o5,o6,correct,difficulty\nQuestion?,A,B,,,,,1,Easy\n'], { type: 'text/csv' }), 'questions.csv');
+@@ -106,7 +36,7 @@ test('HTTP: Student cannot read or mutate any bank endpoint', t => withApi(t, as
+   assert.equal(f.writes(), 0);
+ }));
+ test('HTTP: another Instructor cannot read or mutate the owner bank', t => withApi(t, async (request, f) => {
+-  assert.deepEqual(await (await request('Instructor:other', 'GET', '/')).json(), []);
++  assert.deepEqual((await (await request('Instructor:other', 'GET', '/')).json()).items, []);
+   for (const endpoint of ['/b1', '/b1/questions']) assert.equal((await request('Instructor:other', 'GET', endpoint)).status, 403);
+   for (const [method, endpoint, body] of mutations.slice(1).filter(([, p]) => !p.endsWith('import-excel'))) {
+     const data = endpoint.endsWith('/bulk') ? [f.question] : body ?? f.question;

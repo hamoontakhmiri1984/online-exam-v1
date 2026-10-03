@@ -23,6 +23,7 @@ import { ALL_ROLES, MANAGEMENT_ROLES } from '../../constants/roles';
 
 export type NavigationItem = {
   label: string;
+  adminLabel?: string;
   to: string;
   icon: LucideIcon;
   roles: Role[];
@@ -37,12 +38,14 @@ export const navigationItems: NavigationItem[] = [
   },
   {
     label: 'آزمون‌ها',
+    adminLabel: 'همهٔ آزمون‌ها',
     to: '/exams',
     icon: FileText,
     roles: ALL_ROLES,
   },
   {
     label: 'بانک سوال',
+    adminLabel: 'همهٔ بانک‌های سوال',
     to: '/question-banks',
     icon: LibraryBig,
     roles: MANAGEMENT_ROLES,
@@ -58,12 +61,14 @@ export const navigationItems: NavigationItem[] = [
   },
   {
     label: 'گروه‌ها',
+    adminLabel: 'همهٔ گروه‌ها',
     to: '/groups',
     icon: Layers,
     roles: MANAGEMENT_ROLES,
   },
   {
     label: 'درس‌ها',
+    adminLabel: 'همهٔ درس‌ها',
     to: '/lessons',
     icon: PlayCircle,
     roles: ALL_ROLES,
@@ -105,8 +110,8 @@ export const navigationItems: NavigationItem[] = [
     roles: ['SuperAdmin'],
   },
   {
-    label: 'مدرس‌ها و دانشجوها',
-    to: '/instructor-students',
+    label: 'مدرس‌ها و محتوا',
+    to: '/instructors',
     icon: GraduationCap,
     roles: ['SuperAdmin'],
   },

@@ -1,12 +1,13 @@
 type Props = {
+  maxSearchLength?: number;
   page: number; pageSize: number; total: number; loading: boolean;
   q: string; setPage: (page: number) => void; setSearch: (q: string) => void;
 };
-export default function ListPagination({ page, pageSize, total, loading, q, setPage, setSearch }: Props) {
+export default function ListPagination({ page, pageSize, total, loading, q, setPage, setSearch, maxSearchLength = 200 }: Props) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
   return (
     <div className="mb-4 flex flex-wrap items-center gap-3 text-sm dark:text-gray-200">
-      <input type="search" aria-label="جست‌وجو" placeholder="جست‌وجو..." maxLength={200}
+      <input type="search" aria-label="جست‌وجو" placeholder="جست‌وجو..." maxLength={maxSearchLength}
         value={q} onChange={event => setSearch(event.target.value)}
         className="rounded-lg border border-gray-300 bg-transparent px-3 py-2 dark:border-gray-600" />
       <span aria-live="polite">{total} مورد — صفحه {page} از {pages}</span>

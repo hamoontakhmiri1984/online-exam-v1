@@ -25,7 +25,10 @@ function Sidebar({
 
   const visibleItems = navigationItems.filter((item) =>
     user ? item.roles.includes(user.role) : false
-  );
+  ).map(item => ({
+    ...item,
+    label: user?.role === 'SuperAdmin' ? item.adminLabel ?? item.label : item.label,
+  }));
 
   function handleNavClick(event: React.MouseEvent, to: string) {
     event.preventDefault();
