@@ -14,9 +14,10 @@ function useAdminBlogPosts() {
 
   const load = useCallback(() => {
     setLoading(true);
+    setError(null);
     getAllBlogPosts()
       .then(setPosts)
-      .catch(() => setError('دریافتِ لیستِ پست‌ها با خطا مواجه شد'))
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'دریافتِ لیستِ پست‌ها با خطا مواجه شد'))
       .finally(() => setLoading(false));
   }, []);
 

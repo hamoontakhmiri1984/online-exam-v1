@@ -47,6 +47,11 @@ app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 
+// API entry point; dependency readiness is reported separately by /health.
+app.get('/', (_req, res) => {
+  res.json({ service: 'online-exam-api', health: '/health' });
+});
+
 app.get(
   '/health',
   asyncHandler(async (_req, res) => {

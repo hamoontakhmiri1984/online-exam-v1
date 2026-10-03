@@ -41,18 +41,6 @@ router.get(
   })
 );
 
-router.get(
-  '/:slug',
-  asyncHandler(async (req, res) => {
-    const post = await prisma.blogPost.findUnique({
-      where: { slug: req.params.slug },
-      include: authorSelect,
-    });
-    if (!post || !post.published) throw notFound('پست بلاگ یافت نشد');
-    res.json(serializeDetail(post));
-  })
-);
-
 // ---------------------------------------------------------------------------
 // ادمین - فقط SuperAdmin (فعلاً بلاگ یه محتوای سراسریِ سایته، نه چیزی که
 // هر مدرس مالِ خودش رو داشته باشه - برخلاف Handout/QuestionBank)
@@ -200,6 +188,19 @@ router.post(
       include: authorSelect,
     });
     res.json(serializeAdmin(post));
+  })
+);
+
+// Keep the public slug matcher after the protected admin routes.
+router.get(
+  '/:slug',
+  asyncHandler(async (req, res) => {
+    const post = await prisma.blogPost.findUnique({
+      where: { slug: req.params.slug },
+      include: authorSelect,
+    });
+    if (!post || !post.published) throw notFound('پست بلاگ یافت نشد');
+    res.json(serializeDetail(post));
   })
 );
 

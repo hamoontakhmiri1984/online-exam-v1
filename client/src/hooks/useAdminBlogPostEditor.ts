@@ -59,7 +59,7 @@ function useAdminBlogPostEditor(postId: string | undefined) {
         setContentMarkdown(p.contentMarkdown);
         setPublished(p.published);
       })
-      .catch(() => setError('دریافتِ پست با خطا مواجه شد'))
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'دریافتِ پست با خطا مواجه شد'))
       .finally(() => setLoading(false));
   }, [postId]);
 
