@@ -1,4 +1,3 @@
-import { useOtpCaptcha } from '../../hooks/useOtpCaptcha';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../Button/Button';
@@ -11,6 +10,7 @@ import {
   verifyResetPasswordOtp,
   resetPassword,
 } from '../../api/authApi';
+import { useOtpCaptcha } from '../../hooks/useOtpCaptcha';
 import { OTP_CODE_LENGTH, RESEND_COOLDOWN_SECONDS } from '../../constants/otp';
 
 type Step = 'identifier' | 'code' | 'newPassword' | 'done';
@@ -18,6 +18,7 @@ type Step = 'identifier' | 'code' | 'newPassword' | 'done';
 const STEP_LABELS = ['شناسه', 'کد تایید', 'رمز جدید'];
 const STEP_ORDER: Step[] = ['identifier', 'code', 'newPassword'];
 const MIN_PASSWORD_LENGTH = 6;
+
 function ForgotPasswordForm() {
   const [step, setStep] = useState<Step>('identifier');
   const [identifier, setIdentifier] = useState('');
