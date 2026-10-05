@@ -1,8 +1,23 @@
-import { Mail, User } from 'lucide-react';
+import { useRef, useState, type ChangeEvent } from 'react';
+import { Mail, Smartphone, User } from 'lucide-react';
+
+import {
+  detectIdentifierType,
+  normalizeIdentifier,
+} from '../../utils/identifier';
 
 import Button from '../Button/Button';
 import PasswordField from '../PasswordField/PasswordField';
 import TextBox from '../TextBox/TextBox';
+
+import {
+  IDENTITY_FIELD_ORDER,
+  validateIdentity,
+  validateIdentityField,
+  type IdentityErrors,
+  type IdentityField,
+  type IdentityValues,
+} from './signup.validation';
 
 type IdentityStepProps = {
   name: string;
@@ -16,7 +31,8 @@ type IdentityStepProps = {
   onConfirmPasswordChange: (value: string) => void;
 
   onBack: () => void;
-  onNext: () => void;
+  /** شناسه‌ی معتبر و نرمال‌شده را تحویل می‌دهد */
+  onNext: (normalizedIdentifier: string) => void;
 };
 
 function IdentityStep({
@@ -31,11 +47,109 @@ function IdentityStep({
   onBack,
   onNext,
 }: IdentityStepProps) {
-  const passwordMismatch =
-    confirmPassword.length > 0 && confirmPassword !== password;
+  const [errors, setErrors] = useState<IdentityErrors>({});
+  const [submitted, setSubmitted] = useState(false);
+
+  const nameRef = useRef<HTMLInputElement>(null);
+  const identifierRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const confirmPasswordRef = useRef<HTMLInputElement>(null);
+
+  const fieldRefs: Record<IdentityField, React.RefObject<HTMLInputElement | null>> = {
+    name: nameRef,
+    identifier: identifierRef,
+    password: passwordRef,
+    confirmPassword: confirmPasswordRef,
+  };
+
+  const values: IdentityValues = { name, identifier, password, confirmPassword };
+
+  function setFieldError(field: IdentityField, message: string | null) {
+    setErrors((current) => {
+      const next = { ...current };
+
+      if (message) {
+        next[field] = message;
+      } else {
+        delete next[field];
+      }
+
+      return next;
+    });
+  }
+
+  // با شروع تایپ، خطای همان فیلد پاک می‌شود
+  function clearFieldError(field: IdentityField) {
+    if (errors[field]) {
+      setFieldError(field, null);
+    }
+  }
+
+  // بعد از اولین ارسال، با خروج از فیلد دوباره بررسی می‌شود
+  function handleBlur(field: IdentityField) {
+    if (!submitted) {
+      return;
+    }
+
+    setFieldError(field, validateIdentityField(field, values));
+  }
+
+  function handleChange(
+    field: IdentityField,
+    onChange: (value: string) => void
+  ) {
+    return (event: ChangeEvent<HTMLInputElement>) => {
+      onChange(event.target.value);
+      clearFieldError(field);
+
+      // تغییر رمز، خطای «یکسان نیست» در فیلد تکرار را کهنه می‌کند
+      if (field === 'password') {
+        clearFieldError('confirmPassword');
+      }
+    };
+  }
+
+  function handleSubmit() {
+    setSubmitted(true);
+
+    const nextErrors = validateIdentity(values);
+    setErrors(nextErrors);
+
+    const firstInvalid = IDENTITY_FIELD_ORDER.find(
+      (field) => nextErrors[field]
+    );
+
+    if (firstInvalid) {
+      fieldRefs[firstInvalid].current?.focus();
+      return;
+    }
+
+    const type = detectIdentifierType(identifier);
+
+    if (!type) {
+      return;
+    }
+
+    onNext(normalizeIdentifier(identifier, type));
+  }
+
+  const identifierIcon = /^[+\d\u06F0-\u06F9\u0660-\u0669]/.test(
+    identifier.trim()
+  ) ? (
+    <Smartphone size={16} />
+  ) : (
+    <Mail size={16} />
+  );
 
   return (
-    <div className="flex flex-col gap-4">
+    <form
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault();
+        handleSubmit();
+      }}
+      className="flex flex-col gap-4"
+    >
       <div className="flex flex-col gap-1">
         <label
           htmlFor="signup-name"
@@ -45,6 +159,7 @@ function IdentityStep({
         </label>
 
         <TextBox
+          ref={nameRef}
           type="text"
           id="signup-name"
           name="name"
@@ -52,8 +167,11 @@ function IdentityStep({
           autoFocus
           placeholder="مثلاً علی رضایی"
           value={name}
-          onChange={(event) => onNameChange(event.target.value)}
+          onChange={handleChange('name', onNameChange)}
+          onBlur={() => handleBlur('name')}
           icon={<User size={16} />}
+          error={errors.name}
+          reserveErrorSpace
         />
       </div>
 
@@ -62,41 +180,54 @@ function IdentityStep({
           htmlFor="signup-identifier"
           className="text-sm text-gray-600 dark:text-gray-300"
         >
-          ایمیل یا شماره موبایل
+          ایمیل یا شماره تماس
         </label>
 
         <TextBox
+          ref={identifierRef}
           type="text"
           id="signup-identifier"
           name="username"
           autoComplete="username"
-          placeholder="مثلاً 0912xxxxxxx یا name@email.com"
+          placeholder="مثلاً ali@example.com یا 09121234567"
           value={identifier}
-          onChange={(event) => onIdentifierChange(event.target.value)}
-          icon={<Mail size={16} />}
+          onChange={handleChange('identifier', onIdentifierChange)}
+          onBlur={() => handleBlur('identifier')}
+          icon={identifierIcon}
+          error={errors.identifier}
+          reserveErrorSpace
+          ltrInput
         />
       </div>
 
       <PasswordField
+        ref={passwordRef}
         label="رمز عبور"
         id="signup-password"
         name="new-password"
         autoComplete="new-password"
-        placeholder="حداقل ۶ کاراکتر، ترکیبی از حرف و عدد"
+        placeholder="یک رمز قوی انتخاب کنید"
         value={password}
-        onChange={(event) => onPasswordChange(event.target.value)}
+        onChange={handleChange('password', onPasswordChange)}
+        onBlur={() => handleBlur('password')}
+        error={errors.password}
+        reserveErrorSpace
         showStrength
+        showRequirements
       />
 
       <PasswordField
+        ref={confirmPasswordRef}
         label="تکرار رمز عبور"
         id="signup-confirm-password"
-        name="new-password"
+        name="confirm-password"
         autoComplete="new-password"
-        placeholder="دوباره وارد کن"
+        placeholder="رمز عبور را دوباره وارد کنید"
         value={confirmPassword}
-        onChange={(event) => onConfirmPasswordChange(event.target.value)}
-        error={passwordMismatch ? 'با رمز عبور بالا یکسان نیست' : undefined}
+        onChange={handleChange('confirmPassword', onConfirmPasswordChange)}
+        onBlur={() => handleBlur('confirmPassword')}
+        error={errors.confirmPassword}
+        reserveErrorSpace
       />
 
       <div className="flex gap-2">
@@ -109,12 +240,10 @@ function IdentityStep({
         </button>
 
         <div className="flex-[2]">
-          <Button type="button" onClick={onNext}>
-            بعدی
-          </Button>
+          <Button type="submit">بعدی</Button>
         </div>
       </div>
-    </div>
+    </form>
   );
 }
 

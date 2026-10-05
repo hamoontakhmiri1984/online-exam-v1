@@ -8,7 +8,7 @@ type AuthLayoutProps = {
   title: string;
   subtitle: string;
   children: ReactNode;
-  /** خط پایین کارت، مثلاً «حساب نداری؟ ثبت‌نام رایگان» */
+  /** خط پایین کارت، مثلاً «حساب ندارید؟ ساخت حساب» */
   footer: ReactNode;
 };
 
@@ -34,6 +34,7 @@ function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProps) {
         <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
 
         <button
+          type="button"
           onClick={() => navigate('/')}
           className="relative flex items-center gap-2.5 cursor-pointer"
         >
@@ -86,19 +87,25 @@ function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProps) {
 
       {/* پنل فرم */}
       <div className="relative flex flex-1 flex-col items-center justify-center px-4 py-12">
+        {/* دکمه‌ی تم ثابت: با تغییر مرحله یا ارتفاع فرم جابه‌جا نمی‌شود */}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          aria-label={isDark ? 'تغییر به حالت روشن' : 'تغییر به حالت تیره'}
+          title={isDark ? 'حالت روشن' : 'حالت تیره'}
+          className="fixed left-4 top-4 z-20 flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm transition duration-300 hover:rotate-45 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+        >
+          {isDark ? <Sun size={18} /> : <Moon size={18} />}
+        </button>
+
         <div className="w-full max-w-sm">
-          <div className="mb-4 flex items-center justify-between lg:justify-end">
+          <div className="mb-4 flex items-center justify-between lg:hidden">
             <button
+              type="button"
               onClick={() => navigate('/')}
-              className="flex items-center gap-2 cursor-pointer lg:hidden"
+              className="flex items-center gap-2 cursor-pointer"
             >
               <Logo size="md" showText />
-            </button>
-            <button
-              onClick={toggleTheme}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm transition duration-300 hover:rotate-45 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-            >
-              {isDark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
           </div>
 
@@ -116,6 +123,7 @@ function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProps) {
           </div>
 
           <button
+            type="button"
             onClick={() => navigate('/')}
             className="stagger-1 animate-fade-slide-up group mx-auto mt-6 flex items-center gap-1.5 text-sm font-medium text-gray-500 transition hover:text-brand-600 dark:text-gray-400 dark:hover:text-white cursor-pointer"
           >

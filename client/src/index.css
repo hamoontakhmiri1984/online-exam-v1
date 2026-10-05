@@ -36,6 +36,10 @@
   --color-surface-dark: #0b0e17;
 }
 
+html.dark {
+  color-scheme: dark;
+}
+
 body {
   font-family: 'Vazirmatn', sans-serif;
   user-select: none;
@@ -123,4 +127,42 @@ html {
   .animate-drift-slow {
     animation: none !important;
   }
+}
+
+/* --- autofill مرورگر: رنگ زرد/آبی پیش‌فرض را حذف می‌کند و با تم هماهنگ می‌ماند.
+   تأخیر طولانی transition باعث می‌شود پس‌زمینه‌ی خود فیلد (کلاس‌های Tailwind)
+   دست‌نخورده بماند؛ فقط رنگ متن را صریح تنظیم می‌کنیم. دو قاعده‌ی جدا لازم
+   است چون اگر مرورگری یکی از سلکتورها را نشناسد کل لیست نادیده گرفته می‌شود. --- */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: #1f2937;
+  caret-color: #1f2937;
+  transition: background-color 9999s ease-out 0s;
+}
+
+input:autofill,
+input:autofill:hover,
+input:autofill:focus,
+input:autofill:active {
+  -webkit-text-fill-color: #1f2937;
+  caret-color: #1f2937;
+  transition: background-color 9999s ease-out 0s;
+}
+
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark input:-webkit-autofill:active {
+  -webkit-text-fill-color: #ffffff;
+  caret-color: #ffffff;
+}
+
+.dark input:autofill,
+.dark input:autofill:hover,
+.dark input:autofill:focus,
+.dark input:autofill:active {
+  -webkit-text-fill-color: #ffffff;
+  caret-color: #ffffff;
 }

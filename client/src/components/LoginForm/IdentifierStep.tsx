@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
-import { Mail, Smartphone, UserRound } from 'lucide-react';
+import { Mail, Smartphone } from 'lucide-react';
 
 import {
   detectIdentifierType,
@@ -30,7 +30,7 @@ function getIdentifierIcon(value: string) {
     return <Smartphone size={16} />;
   }
 
-  return <UserRound size={16} />;
+  return <Mail size={16} />;
 }
 
 function IdentifierStep({

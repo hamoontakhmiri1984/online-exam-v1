@@ -33,7 +33,7 @@ function IdentifierStep({
           htmlFor="forgot-identifier"
           className="text-sm text-gray-600 dark:text-gray-300"
         >
-          ایمیل یا شماره موبایل
+          ایمیل یا شماره تماس
         </label>
         <TextBox
           type="text"
@@ -41,13 +41,13 @@ function IdentifierStep({
           name="username"
           autoComplete="username"
           autoFocus
-          placeholder="مثلاً 0912xxxxxxx یا name@email.com"
+          placeholder="ایمیل یا شماره تماس"
           value={identifier}
           onChange={(e) => onIdentifierChange(e.target.value)}
           icon={<Mail size={16} />}
         />
         <p className="text-xs text-gray-400 dark:text-gray-500">
-          همون ایمیل یا موبایلی که موقع ثبت‌نام استفاده کردی
+          همان ایمیل یا شماره‌ای که هنگام ثبت‌نام وارد کرده‌اید
         </p>
       </div>
 

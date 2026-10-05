@@ -7,16 +7,17 @@ function LoginPage() {
 
   return (
     <AuthLayout
-      title="سامانه آزمون آنلاین"
-      subtitle="برای ادامه وارد حساب خود شوید"
+      title="ورود به حساب"
+      subtitle="به سامانه آزمون آنلاین خوش آمدید"
       footer={
         <>
-          حساب نداری؟{' '}
+          حساب ندارید؟{' '}
           <button
+            type="button"
             onClick={() => navigate('/signup')}
             className="font-bold text-brand-600 hover:underline dark:text-brand-400"
           >
-            ثبت‌نام رایگان
+            ساخت حساب
           </button>
         </>
       }

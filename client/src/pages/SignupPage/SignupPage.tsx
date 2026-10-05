@@ -8,15 +8,16 @@ function SignupPage() {
   return (
     <AuthLayout
       title="ساخت حساب رایگان"
-      subtitle="در کمتر از ۲ دقیقه شروع کن، بدون کارت بانکی"
+      subtitle="در کمتر از ۲ دقیقه شروع کنید، بدون نیاز به کارت بانکی"
       footer={
         <>
-          قبلاً حساب داری؟{' '}
+          قبلاً حساب ساخته‌اید؟{' '}
           <button
+            type="button"
             onClick={() => navigate('/login')}
             className="font-bold text-brand-600 hover:underline dark:text-brand-400"
           >
-            وارد شو
+            ورود به حساب
           </button>
         </>
       }

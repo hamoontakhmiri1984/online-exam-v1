@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -7,15 +7,19 @@ import { loginWithPassword, type CaptchaAnswer } from '../../api/authApi';
 import Button from '../Button/Button';
 import Captcha from '../Captcha/Captcha';
 import PasswordField from '../PasswordField/PasswordField';
-import TextBox from '../TextBox/TextBox';
 
 type Props = {
+  /** شناسه‌ی نرمال‌شده (مرحله‌ی اول) */
   identifier: string;
   rememberMe: boolean;
   captchaRequired: boolean;
   captcha: CaptchaAnswer | null;
 
-  onIdentifierChange: (value: string) => void;
+  /** برگشت به مرحله‌ی اول برای ویرایش شناسه */
+  onEdit: () => void;
+
+  /** برگشت به انتخاب روش ورود */
+  onChangeMethod: () => void;
 
   onRememberMeChange: (value: boolean) => void;
 
@@ -26,44 +30,80 @@ type Props = {
   onSuccess: (onboardingCompleted: boolean) => void;
 };
 
+const PASSWORD_REQUIRED_MESSAGE = 'رمز عبور را وارد کنید';
+
 function PasswordLoginForm({
   identifier,
   rememberMe,
   captchaRequired,
   captcha,
-  onIdentifierChange,
+  onEdit,
+  onChangeMethod,
   onRememberMeChange,
   onCaptchaChange,
   onCaptchaRequired,
   onSuccess,
 }: Props) {
+  const passwordRef = useRef<HTMLInputElement>(null);
+
   const [password, setPassword] = useState('');
 
-  const [error, setError] = useState('');
+  // خطای همین فیلد (خالی‌بودن)
+  const [passwordError, setPasswordError] = useState('');
+
+  // خطای سرور (رمز اشتباه، قفل موقت، ...) در بنر بالای فرم
+  const [serverError, setServerError] = useState('');
+
+  const [submitted, setSubmitted] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
   const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
 
+  function handlePasswordChange(event: React.ChangeEvent<HTMLInputElement>) {
+    setPassword(event.target.value);
+
+    // با شروع اصلاح، خطای همین فیلد پاک می‌شود
+    if (passwordError) {
+      setPasswordError('');
+    }
+  }
+
+  function handlePasswordBlur() {
+    // قبل از اولین ارسال، روی فیلد خالی خطا نشان نمی‌دهیم
+    if (!password && !submitted) {
+      return;
+    }
+
+    setPasswordError(password ? '' : PASSWORD_REQUIRED_MESSAGE);
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!identifier.trim() || !password) {
-      setError('لطفاً همه فیلدها را پر کنید');
+    if (loading) {
+      return;
+    }
+
+    setSubmitted(true);
+
+    if (!password) {
+      setPasswordError(PASSWORD_REQUIRED_MESSAGE);
+      passwordRef.current?.focus();
       return;
     }
 
     if (captchaRequired && !captcha) {
-      setError('لطفاً کد تصویر امنیتی رو هم وارد کن');
+      setServerError('کد تصویر امنیتی را وارد کنید');
       return;
     }
 
-    setError('');
+    setServerError('');
     setLoading(true);
 
     try {
       const result = await loginWithPassword(
-        identifier.trim(),
+        identifier,
         password,
         rememberMe,
         captcha ?? undefined
@@ -77,13 +117,13 @@ function PasswordLoginForm({
         return;
       }
 
-      setError(result.message);
+      setServerError(result.message);
 
       if (result.captchaRequired) {
         onCaptchaRequired();
       }
 
-      // کپچا یک‌بارمصرفه: بعد از هر تلاش ناموفق چالش جدید بگیر و ورودی رو پاک کن
+      // کپچا یک‌بارمصرف است: بعد از هر تلاش ناموفق چالش جدید بگیر و ورودی را پاک کن
       if (result.captchaRequired || captchaRequired) {
         onCaptchaChange(null);
         setCaptchaResetSignal((current) => current + 1);
@@ -94,43 +134,61 @@ function PasswordLoginForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      {error && (
-        <p className="flex items-start gap-2 rounded-lg border border-danger-100 bg-danger-50 px-3 py-2 text-sm text-danger-600 dark:border-danger-900 dark:bg-danger-950/40 dark:text-danger-400">
+    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+      {serverError && (
+        <p
+          role="alert"
+          className="flex items-start gap-2 rounded-lg border border-danger-100 bg-danger-50 px-3 py-2 text-sm text-danger-600 dark:border-danger-900 dark:bg-danger-950/40 dark:text-danger-400"
+        >
           <AlertTriangle size={16} className="mt-0.5 shrink-0" />
 
-          <span>{error}</span>
+          <span>{serverError}</span>
         </p>
       )}
 
-      <div className="flex flex-col gap-1">
-        <label
-          htmlFor="login-identifier"
-          className="text-sm text-gray-600 dark:text-gray-300"
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-600 dark:bg-gray-800">
+        <span
+          dir="ltr"
+          className="truncate text-sm text-gray-800 dark:text-gray-100"
         >
-          ایمیل، شماره موبایل یا نام کاربری
-        </label>
+          {identifier}
+        </span>
 
-        <TextBox
-          type="text"
-          id="login-identifier"
-          name="username"
-          autoComplete="username"
-          autoFocus
-          placeholder="ایمیل، موبایل یا نام کاربری"
-          value={identifier}
-          onChange={(event) => onIdentifierChange(event.target.value)}
-        />
+        <button
+          type="button"
+          onClick={onEdit}
+          disabled={loading}
+          className="shrink-0 cursor-pointer text-xs font-medium text-brand-600 hover:underline disabled:cursor-not-allowed disabled:opacity-60 dark:text-brand-400"
+        >
+          ویرایش
+        </button>
       </div>
 
+      {/* فیلد نام کاربری مخفی: مدیر رمز مرورگر برای ذخیره‌ی درست به آن نیاز دارد */}
+      <input
+        type="text"
+        name="username"
+        autoComplete="username"
+        value={identifier}
+        readOnly
+        tabIndex={-1}
+        aria-hidden="true"
+        className="sr-only"
+      />
+
       <PasswordField
+        ref={passwordRef}
         label="رمز عبور"
         id="login-password"
         name="password"
         autoComplete="current-password"
-        placeholder="رمز عبورت"
+        autoFocus
+        placeholder="رمز عبور"
         value={password}
-        onChange={(event) => setPassword(event.target.value)}
+        onChange={handlePasswordChange}
+        onBlur={handlePasswordBlur}
+        error={passwordError}
+        reserveErrorSpace
       />
 
       <div className="flex items-center justify-between text-sm">
@@ -166,6 +224,15 @@ function PasswordLoginForm({
           'ورود'
         )}
       </Button>
+
+      <button
+        type="button"
+        onClick={onChangeMethod}
+        disabled={loading}
+        className="mx-auto cursor-pointer text-xs text-gray-500 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-60 dark:text-gray-400 dark:hover:text-brand-400"
+      >
+        تغییر روش ورود
+      </button>
     </form>
   );
 }

@@ -10,9 +10,6 @@ import ReviewStep from './ReviewStep';
 import RoleStep from './RoleStep';
 
 import {
-  MIN_NAME_LENGTH,
-  MIN_PASSWORD_LENGTH,
-  PASSWORD_REGEX,
   WIZARD_LABELS,
   WIZARD_ORDER,
   type AccountRole,
@@ -29,7 +26,6 @@ import {
 
 import { OTP_CODE_LENGTH } from '../../constants/otp';
 import { useOtpCaptcha } from '../../hooks/useOtpCaptcha';
-import { isValidIdentifier } from '../../utils/identifier';
 import Captcha from '../Captcha/Captcha';
 
 function SignupForm() {
@@ -75,43 +71,17 @@ function SignupForm() {
 
   function handleRoleNext() {
     if (!role) {
-      setError('نوع حساب رو انتخاب کن');
+      setError('نوع حساب را انتخاب کنید');
       return;
     }
 
     goToWizardStep('identity');
   }
 
-  function handleIdentityNext() {
-    if (!name.trim() || !identifier.trim()) {
-      setError('لطفاً همه فیلدها رو پر کن');
-      return;
-    }
-
-    if (name.trim().length < MIN_NAME_LENGTH) {
-      setError(`نام باید حداقل ${MIN_NAME_LENGTH} کاراکتر باشه`);
-      return;
-    }
-
-    if (!isValidIdentifier(identifier)) {
-      setError('ایمیل یا شماره موبایل نامعتبره');
-      return;
-    }
-
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      setError(`رمز عبور باید حداقل ${MIN_PASSWORD_LENGTH} کاراکتر باشه`);
-      return;
-    }
-
-    if (!PASSWORD_REGEX.test(password)) {
-      setError('رمز عبور باید ترکیبی از حرف و عدد باشه');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError('رمز عبور و تکرار آن یکسان نیستند');
-      return;
-    }
+  // اعتبارسنجی فیلدها داخل IdentityStep انجام می‌شود؛ اینجا فقط شناسه‌ی
+  // نرمال‌شده (موبایل 09xxxxxxxxx یا ایمیل با حروف کوچک) ذخیره می‌شود
+  function handleIdentityNext(normalizedIdentifier: string) {
+    setIdentifier(normalizedIdentifier);
 
     goToWizardStep('review');
   }
@@ -120,12 +90,12 @@ function SignupForm() {
     event.preventDefault();
 
     if (!role) {
-      setError('نوع حساب مشخص نشده');
+      setError('نوع حساب مشخص نشده است');
       return;
     }
 
     if (!otpCaptcha.ready) {
-      setError('کد تصویر امنیتی رو وارد کن');
+      setError('کد تصویر امنیتی را وارد کنید');
       return;
     }
 
@@ -162,7 +132,7 @@ function SignupForm() {
     event.preventDefault();
 
     if (code.length !== OTP_CODE_LENGTH) {
-      setError('کد ۶ رقمی رو کامل وارد کن');
+      setError('کد ۶ رقمی را کامل وارد کنید');
       return;
     }
 
@@ -196,7 +166,7 @@ function SignupForm() {
     }
 
     if (!otpCaptcha.ready) {
-      setError('کد تصویر امنیتی رو وارد کن');
+      setError('کد تصویر امنیتی را وارد کنید');
       return;
     }
 
