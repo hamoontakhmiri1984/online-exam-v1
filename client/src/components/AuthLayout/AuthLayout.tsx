@@ -86,7 +86,7 @@ function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProps) {
       </div>
 
       {/* پنل فرم */}
-      <div className="relative flex flex-1 flex-col items-center justify-center px-4 py-12">
+      <div className="relative flex min-w-0 flex-1 flex-col items-center justify-center px-4 py-16">
         {/* دکمه‌ی تم ثابت: با تغییر مرحله یا ارتفاع فرم جابه‌جا نمی‌شود */}
         <button
           type="button"
@@ -109,7 +109,7 @@ function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProps) {
             </button>
           </div>
 
-          <div className="animate-fade-slide-up rounded-2xl border border-gray-100 bg-white p-8 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:shadow-none">
+          <div className="animate-fade-slide-up rounded-2xl border border-gray-100 bg-white p-5 sm:p-8 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:shadow-none">
             <h1 className="text-center text-2xl font-bold text-gray-800 dark:text-white">
               {title}
             </h1>

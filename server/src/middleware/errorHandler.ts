@@ -2,7 +2,6 @@ import type { Request, Response, NextFunction } from 'express';
 import { Prisma } from '@prisma/client';
 import { ZodError } from 'zod';
 import { AppError } from '../lib/errors';
-import { env } from '../config/env';
 
 // پیام فارسی برای رایج‌ترین کدهای خطای Prisma. کدهایی که پیش‌بینی نکردیم
 // به‌صورت 500 عمومی می‌رن - نه اینکه پیام داخلی Prisma مستقیم لو بره
@@ -15,6 +14,15 @@ function mapPrismaError(err: Prisma.PrismaClientKnownRequestError): {
       return { status: 409, message: 'این مقدار قبلاً ثبت شده' };
     case 'P2025': // update/delete روی رکوردی که وجود نداره
       return { status: 404, message: 'رکورد مورد نظر یافت نشد' };
+    case 'P1001':
+    case 'P1002':
+    case 'P1008':
+    case 'P1017':
+    case 'P2024':
+      return {
+        status: 503,
+        message: 'سرویس موقتاً در دسترس نیست؛ کمی بعد دوباره تلاش کنید.',
+      };
     case 'P2028': // تراکنش تایم‌اوت شد (مثلاً منتظر قفلِ یه ساخت/ایمپورتِ طولانی)
       return {
         status: 503,
@@ -36,39 +44,58 @@ export function errorHandler(
   err: unknown,
   _req: Request,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   // اگه پاسخ قبلاً شروع به ارسال شده (مثلاً streaming)، دیگه نمی‌شه
   // res.json دوباره صدا زد
   if (res.headersSent) {
-    return;
+    return _next(err);
   }
 
   if (err instanceof AppError) {
     return res
       .status(err.statusCode)
-      .json({ error: err.message, ...err.details });
+      .json({
+        ...err.details,
+        error: /[\u0600-\u06ff]/.test(err.message)
+          ? err.message
+          : err.statusCode >= 500
+            ? 'سرویس موقتاً در دسترس نیست؛ دوباره تلاش کنید.'
+            : 'انجام درخواست ممکن نشد؛ اطلاعات واردشده را بررسی کنید.',
+      });
   }
 
   if (err instanceof ZodError) {
     return res
       .status(400)
-      .json({ error: err.issues[0]?.message ?? 'ورودی نامعتبر' });
+      .json({
+        error:
+          err.issues[0]?.message &&
+          /[\u0600-\u06ff]/.test(err.issues[0].message)
+            ? err.issues[0].message
+            : 'اطلاعات واردشده نامعتبر است.',
+      });
   }
 
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    console.error('[database error]', err);
     const { status, message } = mapPrismaError(err);
     return res.status(status).json({ error: message });
   }
 
-  // خطای ناشناخته/غیرمنتظره - همیشه لاگ کن، ولی جزئیاتش رو فقط تو dev
-  // به کلاینت برگردون (تو production نباید پیام داخلی/stack لو بره)
+  // Initialization/connectivity errors are not KnownRequestError instances.
+  if (err instanceof Prisma.PrismaClientInitializationError) {
+    console.error('[database unavailable]', err);
+    return res
+      .status(503)
+      .json({ error: 'سرویس موقتاً در دسترس نیست؛ کمی بعد دوباره تلاش کنید.' });
+  }
+
+  // Never return runtime messages, source paths or SQL to the browser, even in development.
   console.error('[unhandled error]', err);
-  const message =
-    env.NODE_ENV !== 'production' && err instanceof Error
-      ? err.message
-      : 'خطای غیرمنتظره‌ی سرور رخ داد';
-  res.status(500).json({ error: message });
+  res
+    .status(500)
+    .json({ error: 'خطای غیرمنتظره‌ای رخ داد؛ دوباره تلاش کنید.' });
 }
 
 // برای مسیری که هیچ router‌ای match نمی‌کنه

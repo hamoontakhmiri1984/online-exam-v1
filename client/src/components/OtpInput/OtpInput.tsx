@@ -32,6 +32,10 @@ function OtpInput({
   const digits = Array.from({ length }, (_, i) => value[i] ?? '');
 
   function setDigitAt(index: number, digit: string) {
+    if (!digit) {
+      onChange(value.slice(0, index));
+      return;
+    }
     const next = digits.slice();
     next[index] = digit;
     onChange(next.join('').slice(0, length));
@@ -71,9 +75,9 @@ function OtpInput({
   ) {
     if (event.key === 'Backspace' && !digits[index] && index > 0) {
       focusIndex(index - 1);
-    } else if (event.key === 'ArrowLeft' && index < length - 1) {
+    } else if (event.key === 'ArrowRight' && index < length - 1) {
       focusIndex(index + 1);
-    } else if (event.key === 'ArrowRight' && index > 0) {
+    } else if (event.key === 'ArrowLeft' && index > 0) {
       focusIndex(index - 1);
     }
   }
@@ -99,7 +103,8 @@ function OtpInput({
           type="text"
           inputMode="numeric"
           autoComplete={index === 0 ? 'one-time-code' : 'off'}
-          maxLength={1}
+          maxLength={length}
+          aria-label={`رقم ${index + 1} کد تأیید`}
           autoFocus={autoFocus && index === 0}
           disabled={disabled}
           value={digit}
@@ -107,7 +112,7 @@ function OtpInput({
           onKeyDown={(e) => handleKeyDown(index, e)}
           onPaste={(e) => handlePaste(index, e)}
           onFocus={(e) => e.target.select()}
-          className={`h-12 w-11 rounded-xl border text-center text-lg font-semibold outline-none transition duration-300 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white
+          className={`h-12 min-w-0 max-w-11 flex-1 rounded-xl border text-center text-lg font-semibold outline-none transition duration-300 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white
             ${
               error
                 ? 'border-danger-400 focus:border-danger-500 focus:ring-4 focus:ring-danger-50 dark:focus:ring-danger-950'

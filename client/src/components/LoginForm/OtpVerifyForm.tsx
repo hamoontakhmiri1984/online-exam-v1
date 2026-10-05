@@ -129,7 +129,7 @@ function OtpVerifyForm({ identifier, rememberMe, onSuccess, onBack }: Props) {
   }
 
   async function handleResend() {
-    if (cooldown > 0 || resending || loading) {
+    if (cooldown > 0 || verifyingRef.current) {
       return;
     }
 
@@ -139,6 +139,7 @@ function OtpVerifyForm({ identifier, rememberMe, onSuccess, onBack }: Props) {
     }
 
     setError('');
+    verifyingRef.current = true;
     setResending(true);
 
     try {
@@ -161,6 +162,7 @@ function OtpVerifyForm({ identifier, rememberMe, onSuccess, onBack }: Props) {
 
       setError(result.message);
     } finally {
+      verifyingRef.current = false;
       setResending(false);
     }
   }
@@ -226,7 +228,7 @@ function OtpVerifyForm({ identifier, rememberMe, onSuccess, onBack }: Props) {
 
       <Button
         type="submit"
-        disabled={loading || code.length !== OTP_CODE_LENGTH}
+        disabled={loading || resending || code.length !== OTP_CODE_LENGTH}
       >
         {loading ? (
           <span className="flex items-center justify-center gap-2">
@@ -241,7 +243,7 @@ function OtpVerifyForm({ identifier, rememberMe, onSuccess, onBack }: Props) {
       <button
         type="button"
         onClick={onBack}
-        disabled={loading}
+        disabled={loading || resending}
         className="mx-auto flex cursor-pointer items-center gap-1 text-xs text-gray-500 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-60 dark:text-gray-400 dark:hover:text-brand-400"
       >
         <ArrowLeft size={13} />

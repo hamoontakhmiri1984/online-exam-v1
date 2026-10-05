@@ -1,3 +1,4 @@
+import { readCreationPolicy } from '../../../lib/approvalPolicy';
 import { OAuth2Client } from 'google-auth-library';
 
 import { prisma } from '../../../lib/prisma';
@@ -13,14 +14,20 @@ import { instructorApprovalBlockMessage, serializeMe } from '../auth.helpers';
 const googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
 
 async function verifyGoogleToken(idToken: string) {
-  const ticket = await googleClient.verifyIdToken({
-    idToken,
-    audience: env.GOOGLE_CLIENT_ID,
-  });
+  if (!env.GOOGLE_CLIENT_ID)
+    throw new AppError(503, 'ورود با گوگل فعلاً در دسترس نیست');
+  const ticket = await googleClient
+    .verifyIdToken({
+      idToken,
+      audience: env.GOOGLE_CLIENT_ID,
+    })
+    .catch(() => {
+      throw new AppError(401, 'اعتبار ورود با گوگل تمام شده؛ دوباره تلاش کنید');
+    });
 
   const payload = ticket.getPayload();
 
-  if (!payload?.email || !payload.email_verified) {
+  if (!payload?.sub || !payload.email || !payload.email_verified) {
     throw badRequest('توکن گوگل نامعتبره');
   }
 
@@ -50,7 +57,7 @@ export async function linkGoogleAccount(userId: string, idToken: string) {
   if (owner && owner.id !== currentUser.id) {
     throw new AppError(
       409,
-      'این حساب گوگل قبلاً به یه حساب دیگه تو همین سایت وصل شده'
+      'این حساب گوگل قبلاً به یه حساب دیگه تو همین سایت وصل شده',
     );
   }
 
@@ -72,72 +79,95 @@ export async function linkGoogleAccount(userId: string, idToken: string) {
   return serializeMe(user);
 }
 
-export async function loginWithGoogle(idToken: string) {
+export async function loginWithGoogle(
+  idToken: string,
+  registration?: { role: 'Student' | 'Instructor'; name: string },
+) {
   const payload = await verifyGoogleToken(idToken);
 
   // اول با googleId (شناسه‌ی پایدار گوگل)، بعد با ایمیل. قبلاً یه OR واحد بود
   // و اگه googleId مال یه حساب و ایمیل مال حساب دیگه بود، حساب اشتباه
   // انتخاب می‌شد
-  let user =
-    (await prisma.user.findUnique({
-      where: {
-        googleId: payload.sub,
-      },
-    })) ??
-    (await prisma.user.findFirst({
-      where: {
-        email: payload.email,
-      },
-    }));
+  const user = await prisma.$transaction(async (db) => {
+    // Serialize Google sign-ins; lock existing users against simultaneous registration edits.
+    await db.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${payload.sub}))`;
+    let user =
+      (await db.user.findUnique({
+        where: {
+          googleId: payload.sub,
+        },
+      })) ??
+      (await db.user.findFirst({
+        where: {
+          email: payload.email,
+        },
+      }));
 
-  if (!user) {
-    throw new AppError(
-      403,
-      'حسابی با این ایمیل ثبت نشده. اول باید از صفحه‌ی ثبت‌نام حساب بسازی'
-    );
-  }
+    if (!user) {
+      if (!registration) return null;
+      const policy = await readCreationPolicy(db);
+      return db.user.create({
+        data: {
+          email: payload.email,
+          googleId: payload.sub,
+          emailVerifiedAt: new Date(),
+          name: registration.name,
+          role: registration.role,
+          approvalStatus:
+            registration.role === 'Instructor' &&
+            policy.requireInstructorApproval
+              ? 'Pending'
+              : 'Approved',
+        },
+      });
+    }
+    await db.$queryRaw`SELECT id FROM users WHERE id = ${user.id} FOR UPDATE`;
+    user = await db.user.findUniqueOrThrow({ where: { id: user.id } });
 
-  // ایمیل ممکنه بعداً به آدم دیگه‌ای (مثلاً ایمیل سازمانی بازیافت‌شده) با
-  // حساب گوگل دیگه‌ای داده بشه؛ اگه این حساب قبلاً به یه حساب گوگلِ دیگه
-  // وصل شده، فقط با ایمیل واردش نمی‌کنیم
-  if (user.googleId && user.googleId !== payload.sub) {
-    throw new AppError(
-      403,
-      'این ایمیل به یه حساب گوگل دیگه وصل شده. با روش قبلی وارد شو'
-    );
-  }
+    // ایمیل ممکنه بعداً به آدم دیگه‌ای (مثلاً ایمیل سازمانی بازیافت‌شده) با
+    // حساب گوگل دیگه‌ای داده بشه؛ اگه این حساب قبلاً به یه حساب گوگلِ دیگه
+    // وصل شده، فقط با ایمیل واردش نمی‌کنیم
+    if (user.googleId && user.googleId !== payload.sub) {
+      throw new AppError(
+        403,
+        'این ایمیل به یه حساب گوگل دیگه وصل شده. با روش قبلی وارد شو',
+      );
+    }
 
-  // حساب تایید‌نشده ممکنه رمزش رو یه نفر دیگه موقع ثبت‌نام ناتمام گذاشته باشه؛
-  // صاحب واقعی ایمیل (با گوگل) تاییدش می‌کنه، پس اون رمز باید پاک بشه
-  const wasNeverVerified = !user.emailVerifiedAt && !user.phoneVerifiedAt;
+    // حساب تایید‌نشده ممکنه رمزش رو یه نفر دیگه موقع ثبت‌نام ناتمام گذاشته باشه؛
+    // صاحب واقعی ایمیل (با گوگل) تاییدش می‌کنه، پس اون رمز باید پاک بشه
+    const wasNeverVerified = !user.emailVerifiedAt && !user.phoneVerifiedAt;
 
-  if (!user.googleId || !user.emailVerifiedAt) {
-    user = await prisma.user.update({
-      where: {
-        id: user.id,
-      },
-      data: {
-        ...(wasNeverVerified
-          ? {
-              passwordHash: null,
-            }
-          : {}),
+    if (!user.googleId || !user.emailVerifiedAt) {
+      user = await db.user.update({
+        where: {
+          id: user.id,
+        },
+        data: {
+          ...(wasNeverVerified
+            ? {
+                passwordHash: null,
+              }
+            : {}),
 
-        ...(user.googleId
-          ? {}
-          : {
-              googleId: payload.sub,
-            }),
+          ...(user.googleId
+            ? {}
+            : {
+                googleId: payload.sub,
+              }),
 
-        ...(user.emailVerifiedAt
-          ? {}
-          : {
-              emailVerifiedAt: new Date(),
-            }),
-      },
-    });
-  }
+          ...(user.emailVerifiedAt || user.email !== payload.email
+            ? {}
+            : {
+                emailVerifiedAt: new Date(),
+              }),
+        },
+      });
+    }
 
+    return user;
+  });
+  if (!user) return { type: 'registration_required' as const };
   const approvalMessage = instructorApprovalBlockMessage(user);
 
   if (approvalMessage) {
@@ -149,7 +179,7 @@ export async function loginWithGoogle(idToken: string) {
 
   const { accessToken, refreshToken, sid } = await issueTokenPair(
     user.id,
-    user.role
+    user.role,
   );
 
   forceLogoutOtherSessions(user.id, sid);

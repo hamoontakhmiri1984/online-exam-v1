@@ -8,7 +8,7 @@ import {
 } from '../../utils/identifier';
 
 import Button from '../Button/Button';
-import GoogleSignInButton from '../GoogleSignInButton/GoogleSignInButton';
+import GoogleAccess from '../GoogleAccess/GoogleAccess';
 import TextBox from '../TextBox/TextBox';
 
 type Props = {
@@ -16,8 +16,7 @@ type Props = {
   onIdentifierChange: (value: string) => void;
   /** شناسه‌ی معتبر و نرمال‌شده رو تحویل می‌ده */
   onContinue: (normalizedIdentifier: string) => void;
-  onGoogleCredential: (idToken: string) => void;
-  onGoogleError: () => void;
+  onSuccess: (completed: boolean) => void;
 };
 
 // آیکن کنار فیلد بر اساس چیزی که کاربر تایپ کرده عوض می‌شه
@@ -37,9 +36,9 @@ function IdentifierStep({
   identifier,
   onIdentifierChange,
   onContinue,
-  onGoogleCredential,
-  onGoogleError,
+  onSuccess,
 }: Props) {
+  const [googleActive, setGoogleActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -85,7 +84,7 @@ function IdentifierStep({
 
   return (
     <div className="flex flex-col gap-4">
-      <form
+      {!googleActive && <><form
         onSubmit={handleSubmit}
         noValidate
         className="flex flex-col gap-4"
@@ -95,7 +94,7 @@ function IdentifierStep({
             htmlFor="login-identifier"
             className="text-sm text-gray-600 dark:text-gray-300"
           >
-            ایمیل یا شماره تماس
+            شماره موبایل یا ایمیل
           </label>
 
           <TextBox
@@ -105,7 +104,7 @@ function IdentifierStep({
             name="username"
             autoComplete="username"
             autoFocus
-            placeholder="ایمیل یا شماره تماس"
+            placeholder="مثلاً 09123456789 یا name@example.com"
             value={identifier}
             onChange={handleChange}
             onBlur={handleBlur}
@@ -125,11 +124,8 @@ function IdentifierStep({
         <span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
       </div>
 
-      <GoogleSignInButton
-        text="continue_with"
-        onCredential={onGoogleCredential}
-        onError={onGoogleError}
-      />
+      </>}
+      <GoogleAccess onSuccess={onSuccess} onFlowChange={setGoogleActive} />
     </div>
   );
 }

@@ -33,6 +33,7 @@ export function validateIdentityField(
         return 'نام را وارد کنید';
       }
 
+      if (name.length > 100) return 'نام نباید بیشتر از ۱۰۰ کاراکتر باشد';
       if (name.length < MIN_NAME_LENGTH) {
         return `نام باید حداقل ${MIN_NAME_LENGTH} کاراکتر باشد`;
       }
@@ -48,6 +49,7 @@ export function validateIdentityField(
         return 'رمز عبور را وارد کنید';
       }
 
+      if (values.password.length > 72) return 'رمز نباید بیشتر از ۷۲ کاراکتر باشد';
       // جزئیات شرط‌ها در چک‌لیست زیر فیلد دیده می‌شود
       return PASSWORD_REGEX.test(values.password)
         ? null

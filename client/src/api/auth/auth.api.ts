@@ -103,9 +103,10 @@ export async function register(input: RegisterInput): Promise<RegisterResult> {
   }
 }
 
-export async function googleLogin(idToken: string): Promise<GoogleLoginResult> {
+export async function googleLogin(idToken: string, registration?: { role: 'Student' | 'Instructor'; name: string }): Promise<GoogleLoginResult> {
   try {
     const data = await apiRequest<{
+      registrationRequired?: boolean;
       pendingApproval?: boolean;
       message?: string;
       accessToken?: string;
@@ -114,8 +115,11 @@ export async function googleLogin(idToken: string): Promise<GoogleLoginResult> {
       method: 'POST',
       body: {
         idToken,
+        registration,
       },
     });
+
+    if (data.registrationRequired) return { status: 'registration_required' };
 
     if (data.pendingApproval) {
       return {

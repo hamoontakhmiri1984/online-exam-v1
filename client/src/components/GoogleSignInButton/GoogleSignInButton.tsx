@@ -45,6 +45,8 @@ function GoogleSignInButton({
     else onError?.();
   }
 
+  if (!import.meta.env.VITE_GOOGLE_CLIENT_ID) return <p className="text-center text-xs text-gray-500 dark:text-gray-400">ورود با گوگل فعلاً در دسترس نیست</p>;
+
   return (
     <div ref={containerRef} className="w-full flex justify-center">
       <GoogleLogin

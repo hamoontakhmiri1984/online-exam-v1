@@ -125,6 +125,7 @@ export type UsernameAvailability =
     };
 
 export type GoogleLoginResult =
+  | { status: 'registration_required' }
   | {
       status: 'success';
       user: User;

@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import GoogleAccess from '../GoogleAccess/GoogleAccess';
 import Button from '../Button/Button';
 import StepIndicator from '../StepIndicator/StepIndicator';
 
@@ -30,6 +31,8 @@ import Captcha from '../Captcha/Captcha';
 
 function SignupForm() {
   const navigate = useNavigate();
+  const requesting = useRef(false);
+  const [googleActive, setGoogleActive] = useState(false);
 
   const [step, setStep] = useState<SignupStep>('role');
   const [role, setRole] = useState<AccountRole | null>(null);
@@ -88,6 +91,7 @@ function SignupForm() {
 
   async function handleFinalSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (requesting.current) return;
 
     if (!role) {
       setError('نوع حساب مشخص نشده است');
@@ -100,6 +104,7 @@ function SignupForm() {
     }
 
     setError('');
+    requesting.current = true;
     setLoading(true);
 
     try {
@@ -124,12 +129,14 @@ function SignupForm() {
 
       setError(result.message);
     } finally {
+      requesting.current = false;
       setLoading(false);
     }
   }
 
   async function handleOtpSubmit(event: FormEvent) {
     event.preventDefault();
+    if (requesting.current) return;
 
     if (code.length !== OTP_CODE_LENGTH) {
       setError('کد ۶ رقمی را کامل وارد کنید');
@@ -137,6 +144,7 @@ function SignupForm() {
     }
 
     setError('');
+    requesting.current = true;
     setLoading(true);
 
     try {
@@ -156,12 +164,13 @@ function SignupForm() {
 
       setError(result.message);
     } finally {
+      requesting.current = false;
       setLoading(false);
     }
   }
 
   async function handleResendCode() {
-    if (resending) {
+    if (requesting.current) {
       return;
     }
 
@@ -171,6 +180,7 @@ function SignupForm() {
     }
 
     setError('');
+    requesting.current = true;
     setResending(true);
 
     try {
@@ -190,6 +200,7 @@ function SignupForm() {
 
       setError(result.message);
     } finally {
+      requesting.current = false;
       setResending(false);
     }
   }
@@ -252,7 +263,8 @@ function SignupForm() {
         </div>
       )}
 
-      {step === 'role' && (
+      {step === 'role' && <GoogleAccess onFlowChange={setGoogleActive} onSuccess={(completed) => navigate(completed ? '/dashboard' : '/onboarding')} />}
+      {step === 'role' && !googleActive && (
         <RoleStep
           role={role}
           onRoleChange={handleRoleChange}

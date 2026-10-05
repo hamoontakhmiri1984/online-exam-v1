@@ -1,3 +1,4 @@
+import { otpSendKey } from '../lib/otpRateLimitKey';
 import rateLimit from 'express-rate-limit';
 import { RedisRateLimitStore } from '../lib/redisRateLimitStore';
 import { rateLimitRedis } from '../lib/rateLimitRedis';
@@ -27,8 +28,17 @@ export const otpSendLimiter = rateLimit({
   max: 1,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => `${req.ip}:${req.body?.identifier ?? 'unknown'}`,
-  message: { error: 'کد قبلی هنوز معتبره. کمی صبر کن و دوباره تلاش کن.' },
+  keyGenerator: otpSendKey,
+  // Failed validation/captcha/database requests did not send a usable code.
+  // Hourly IP/identifier abuse limits remain enforced by otpAbuseGuard.
+  skipFailedRequests: true,
+  handler: (_req, res) => {
+    const retryAfterSeconds = Math.max(1, Math.ceil(Number(res.getHeader('Retry-After')) || 90));
+    res.status(429).json({
+      error: `برای درخواست دوبارهٔ کد، ${retryAfterSeconds.toLocaleString('fa-IR')} ثانیه صبر کنید.`,
+      retryAfterSeconds,
+    });
+  },
 });
 
 export const otpVerifyLimiter = rateLimit({

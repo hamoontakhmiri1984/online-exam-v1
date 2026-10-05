@@ -1,3 +1,4 @@
+import { env } from '../../../config/env';
 import { prisma } from '../../../lib/prisma';
 
 import {
@@ -90,10 +91,12 @@ export async function requestOtp(data: RequestOtpData, ip: string) {
         userId: user.id,
       });
 
+      if (env.NODE_ENV === 'development') console.info(`[OTP] ${data.purpose}: code_created`);
       sendOtp({ identifier: value, channel, code }).catch((error) => {
         console.error('sendOtp failed:', error);
       });
     } else {
+      if (env.NODE_ENV === 'development') console.info(`[OTP] ${data.purpose}: account_not_found; no code created`);
       await simulateOtpCreationCost();
     }
 

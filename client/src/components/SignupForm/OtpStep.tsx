@@ -83,6 +83,7 @@ function OtpStep({
           value={code}
           onChange={onCodeChange}
           error={Boolean(error)}
+          disabled={loading || resending}
         />
       </div>
 
@@ -91,7 +92,7 @@ function OtpStep({
       <button
         type="button"
         onClick={onResend}
-        disabled={cooldown > 0 || resending}
+        disabled={cooldown > 0 || resending || loading}
         className="mx-auto cursor-pointer text-xs text-brand-600 hover:underline disabled:cursor-not-allowed disabled:text-gray-400 disabled:no-underline dark:text-brand-400"
       >
         {resending
@@ -103,7 +104,7 @@ function OtpStep({
 
       <Button
         type="submit"
-        disabled={loading || code.length !== OTP_CODE_LENGTH}
+        disabled={loading || resending || code.length !== OTP_CODE_LENGTH}
       >
         {loading ? 'در حال بررسی...' : 'تایید و ساخت حساب'}
       </Button>

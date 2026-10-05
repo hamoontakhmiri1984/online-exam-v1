@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Button from '../Button/Button';
 import StepIndicator from '../StepIndicator/StepIndicator';
 import IdentifierStep from './components/IdentifierStep';
@@ -13,15 +13,19 @@ import {
 import { useOtpCaptcha } from '../../hooks/useOtpCaptcha';
 import { OTP_CODE_LENGTH, RESEND_COOLDOWN_SECONDS } from '../../constants/otp';
 
+import { detectIdentifierType, normalizeIdentifier, validateIdentifier } from '../../utils/identifier';
+import { validateIdentityField } from '../SignupForm/signup.validation';
+
 type Step = 'identifier' | 'code' | 'newPassword' | 'done';
 
 const STEP_LABELS = ['شناسه', 'کد تایید', 'رمز جدید'];
 const STEP_ORDER: Step[] = ['identifier', 'code', 'newPassword'];
-const MIN_PASSWORD_LENGTH = 6;
+
 
 function ForgotPasswordForm() {
   const [step, setStep] = useState<Step>('identifier');
-  const [identifier, setIdentifier] = useState('');
+  const location = useLocation();
+  const [identifier, setIdentifier] = useState(typeof location.state?.identifier === 'string' ? location.state.identifier : '');
   const [code, setCode] = useState('');
   const [resetTicket, setResetTicket] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -47,8 +51,9 @@ function ForgotPasswordForm() {
   async function handleIdentifierSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (requesting.current) return;
-    if (!identifier.trim()) {
-      setError('ایمیل یا شماره موبایلت رو وارد کن');
+    const invalid = validateIdentifier(identifier);
+    if (invalid) {
+      setError(invalid);
       return;
     }
     if (!otpCaptcha.ready) {
@@ -56,18 +61,20 @@ function ForgotPasswordForm() {
       return;
     }
 
+    const normalized = normalizeIdentifier(identifier, detectIdentifierType(identifier)!);
+    setIdentifier(normalized);
     setError('');
     requesting.current = true;
     setLoading(true);
     try {
       const result = await requestOtp(
-        identifier.trim(),
+        normalizeIdentifier(identifier, detectIdentifierType(identifier)!),
         'RESET_PASSWORD',
         otpCaptcha.captcha ?? undefined
       );
       otpCaptcha.afterRequest(result);
       if (result.status === 'sent') {
-        setIdentifier(identifier.trim());
+        setIdentifier(normalizeIdentifier(identifier, detectIdentifierType(identifier)!));
         setCode('');
         setCooldown(RESEND_COOLDOWN_SECONDS);
         setStep('code');
@@ -90,13 +97,13 @@ function ForgotPasswordForm() {
     setResending(true);
     try {
       const result = await requestOtp(
-        identifier.trim(),
+        normalizeIdentifier(identifier, detectIdentifierType(identifier)!),
         'RESET_PASSWORD',
         otpCaptcha.captcha ?? undefined
       );
       otpCaptcha.afterRequest(result);
       if (result.status === 'sent') {
-        setIdentifier(identifier.trim());
+        setIdentifier(normalizeIdentifier(identifier, detectIdentifierType(identifier)!));
         setCode('');
         setCooldown(RESEND_COOLDOWN_SECONDS);
       } else {
@@ -136,8 +143,9 @@ function ForgotPasswordForm() {
   async function handleNewPasswordSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (requesting.current) return;
-    if (newPassword.length < MIN_PASSWORD_LENGTH) {
-      setError(`رمز عبور باید حداقل ${MIN_PASSWORD_LENGTH} کاراکتر باشه`);
+    const invalid = validateIdentityField('password', { password: newPassword, confirmPassword, name: '', identifier });
+    if (invalid) {
+      setError(invalid);
       return;
     }
     if (newPassword !== confirmPassword) {

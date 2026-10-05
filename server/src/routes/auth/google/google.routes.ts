@@ -89,7 +89,9 @@ router.post(
     }
 
     try {
-      const result = await loginWithGoogle(parsed.data.idToken);
+      const result = await loginWithGoogle(parsed.data.idToken, parsed.data.registration);
+
+      if (result.type === 'registration_required') return res.json({ registrationRequired: true });
 
       if (result.type === 'pending') {
         return res.json({
@@ -109,9 +111,7 @@ router.post(
         throw error;
       }
 
-      return res.status(401).json({
-        error: 'ورود با گوگل ناموفق بود',
-      });
+      throw error;
     }
   })
 );

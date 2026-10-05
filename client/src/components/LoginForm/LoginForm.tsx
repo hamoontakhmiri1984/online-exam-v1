@@ -1,9 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, Info } from 'lucide-react';
 
 import {
-  googleLogin,
   requestOtp,
   type CaptchaAnswer,
 } from '../../api/authApi';
@@ -36,6 +35,7 @@ function LoginForm() {
   // خطای سطح فرم (گوگل، ارسال کد)؛ خطای رمز تو خود PasswordLoginForm نمایش داده می‌شه
   const [error, setError] = useState('');
 
+  const sending = useRef(false);
   const [otpSending, setOtpSending] = useState(false);
 
   const otpCaptcha = useOtpCaptcha();
@@ -70,7 +70,7 @@ function LoginForm() {
 
   async function handleChooseCode() {
     // جلوگیری از کلیک تکراری
-    if (otpSending) {
+    if (sending.current) {
       return;
     }
 
@@ -80,6 +80,7 @@ function LoginForm() {
     }
 
     setError('');
+    sending.current = true;
     setOtpSending(true);
 
     try {
@@ -98,22 +99,9 @@ function LoginForm() {
 
       setError(result.message);
     } finally {
+      sending.current = false;
       setOtpSending(false);
     }
-  }
-
-  async function handleGoogleLogin(idToken: string) {
-    setError('');
-
-    const result = await googleLogin(idToken);
-
-    if (result.status === 'success') {
-      handleLoginSuccess(result.user.onboardingCompleted);
-
-      return;
-    }
-
-    setError(result.message);
   }
 
   if (step === 'otp-verify') {
@@ -151,8 +139,7 @@ function LoginForm() {
           identifier={identifier}
           onIdentifierChange={setIdentifier}
           onContinue={handleIdentifierContinue}
-          onGoogleCredential={handleGoogleLogin}
-          onGoogleError={() => setError('ورود با گوگل ناموفق بود')}
+          onSuccess={handleLoginSuccess}
         />
       )}
 

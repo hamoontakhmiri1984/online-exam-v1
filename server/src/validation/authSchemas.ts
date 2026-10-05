@@ -66,6 +66,10 @@ export const resetPasswordSchema = z.object({
 
 export const googleAuthSchema = z.object({
   idToken: z.string().min(10).max(4096),
+  registration: z.object({
+    role: z.enum(['Student', 'Instructor']),
+    name: z.string().trim().min(2, 'نام باید حداقل ۲ کاراکتر باشد').max(100),
+  }).optional(),
 });
 
 export const updateMeSchema = z.object({

@@ -194,6 +194,7 @@ function PasswordLoginForm({
       <div className="flex items-center justify-between text-sm">
         <Link
           to="/forgot-password"
+          state={{ identifier }}
           className="text-xs text-brand-600 hover:underline dark:text-brand-400"
         >
           رمز عبور را فراموش کرده‌اید؟
