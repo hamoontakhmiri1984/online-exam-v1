@@ -1,0 +1,1740 @@
+diff --git a/client/src/api/questionApi.ts b/client/src/api/questionApi.ts
+index 0f86153..7b43a89 100644
+--- a/client/src/api/questionApi.ts
++++ b/client/src/api/questionApi.ts
+@@ -3,6 +3,7 @@ import { apiRequest } from '../lib/apiClient';
+ export type Question = {
+   id: string;
+   examId: string;
++  questionId?: string | null;
+   text: string;
+   options: string[];
+   // نکته: سرور این فیلد رو برای نقش Student اصلاً برنمی‌گردونه (امنیت
+@@ -73,3 +74,10 @@ export function deleteQuestion(examId: string, id: string): Promise<void> {
+     method: 'DELETE',
+   });
+ }
++
++// Keep bank identity on the server; copying via /bulk would consume quota again.
++export function addQuestionsFromBank(examId: string, questionIds: string[]): Promise<Question[]> {
++  return apiRequest<Question[]>(`/exams/${examId}/questions/from-bank`, {
++    method: 'POST', body: { questionIds },
++  });
++}
+diff --git a/client/src/hooks/useExamQuestions.ts b/client/src/hooks/useExamQuestions.ts
+new file mode 100644
+index 0000000..55f4c6f
+--- /dev/null
++++ b/client/src/hooks/useExamQuestions.ts
+@@ -0,0 +1,146 @@
++import { useEffect, useRef, useState } from 'react';
++import { getExamById, publishExam, type Exam } from '../api/examApi';
++import {
++  addQuestion,
++  addQuestionsBulk,
++  addQuestionsFromBank,
++  deleteQuestion,
++  getQuestionsByExamId,
++  updateQuestion,
++  type Question,
++} from '../api/questionApi';
++import { ApiError } from '../lib/apiClient';
++
++type Input = Pick<Question, 'text' | 'options' | 'correctOptionIndex'>;
++export default function useExamQuestions(examId: string) {
++  const [exam, setExam] = useState<Exam>();
++  const [questions, setQuestions] = useState<Question[]>([]);
++  const [loading, setLoading] = useState(true);
++  const [loadError, setLoadError] = useState('');
++  const [error, setError] = useState('');
++  const [notice, setNotice] = useState('');
++  const [busy, setBusy] = useState(false);
++  const [revision, setRevision] = useState(0);
++  const pending = useRef(false);
++  const mounted = useRef(true);
++  useEffect(() => {
++    mounted.current = true;
++    return () => {
++      mounted.current = false;
++    };
++  }, []);
++  useEffect(() => {
++    let active = true;
++    setLoading(true);
++    setLoadError('');
++    Promise.all([getExamById(examId), getQuestionsByExamId(examId)])
++      .then(([info, items]) => {
++        if (!active) return;
++        if (!info) {
++          setLoadError('آزمون یافت نشد یا به آن دسترسی ندارید.');
++          return;
++        }
++        setExam(info);
++        setQuestions(items);
++      })
++      .catch((err) => {
++        if (active)
++          setLoadError(
++            err instanceof ApiError
++              ? err.message
++              : 'دریافت آزمون ناموفق بود. دوباره تلاش کنید.',
++          );
++      })
++      .finally(() => {
++        if (active) setLoading(false);
++      });
++    return () => {
++      active = false;
++    };
++  }, [examId, revision]);
++
++  async function mutate<T>(
++    action: () => Promise<T>,
++    apply: (result: T) => void,
++    message: string,
++  ) {
++    if (pending.current) return undefined;
++    pending.current = true;
++    setBusy(true);
++    setError('');
++    setNotice('');
++    try {
++      const result = await action();
++      if (mounted.current) {
++        apply(result);
++        setNotice(message);
++      }
++      return result;
++    } catch (err) {
++      if (mounted.current) {
++        setError(
++          err instanceof ApiError
++            ? err.message
++            : 'ذخیره انجام نشد؛ اطلاعات شما حفظ شده است. دوباره تلاش کنید.',
++        );
++        if (err instanceof ApiError && err.status === 409)
++          setRevision((value) => value + 1);
++      }
++      return undefined;
++    } finally {
++      pending.current = false;
++      if (mounted.current) setBusy(false);
++    }
++  }
++  const append = (items: Question[]) =>
++    setQuestions((current) => [...current, ...items]);
++  return {
++    exam,
++    questions,
++    loading,
++    loadError,
++    error,
++    notice,
++    busy,
++    clearError: () => setError(''),
++    retry: () => setRevision((value) => value + 1),
++    addItem: (input: Input) =>
++      mutate(
++        () => addQuestion({ ...input, examId }),
++        (item) => append([item]),
++        'سؤال به آزمون اضافه شد.',
++      ),
++    addMany: (inputs: Input[]) =>
++      mutate(
++        () => addQuestionsBulk(inputs.map((input) => ({ ...input, examId }))),
++        append,
++        'سؤال‌های فایل به آزمون اضافه شدند.',
++      ),
++    fromBank: (ids: string[]) =>
++      mutate(
++        () => addQuestionsFromBank(examId, ids),
++        append,
++        'سؤال‌های انتخاب‌شده به آزمون اضافه شدند.',
++      ),
++    updateItem: (id: string, input: Input) =>
++      mutate(
++        () => updateQuestion(id, { ...input, examId }),
++        (item) =>
++          setQuestions((current) =>
++            current.map((q) => (q.id === id ? item : q)),
++          ),
++        'تغییرات سؤال ذخیره شد.',
++      ),
++    remove: (id: string) =>
++      mutate(
++        async () => {
++          await deleteQuestion(examId, id);
++          return true;
++        },
++        () => setQuestions((current) => current.filter((q) => q.id !== id)),
++        'سؤال حذف شد.',
++      ),
++    publish: () =>
++      mutate(() => publishExam(examId), setExam, 'آزمون منتشر شد.'),
++  };
++}
+diff --git a/client/src/hooks/useQuestionFormModal.ts b/client/src/hooks/useQuestionFormModal.ts
+index 5cfb118..32edbf2 100644
+--- a/client/src/hooks/useQuestionFormModal.ts
++++ b/client/src/hooks/useQuestionFormModal.ts
+@@ -1,4 +1,4 @@
+-import { useState } from 'react';
++import { useRef, useState } from 'react';
+ import type { Question } from '../api/questionApi';
+ 
+ export const MIN_OPTIONS = 2;
+@@ -15,6 +15,7 @@ function useQuestionFormModal({
+   addItem,
+   updateItem,
+ }: UseQuestionFormModalParams) {
++  const pending = useRef(false);
+   const [isOpen, setIsOpen] = useState(false);
+   const [editingId, setEditingId] = useState<string | null>(null);
+   const [text, setText] = useState('');
+@@ -24,6 +25,7 @@ function useQuestionFormModal({
+   const [isSubmitting, setIsSubmitting] = useState(false);
+ 
+   function openAdd() {
++    setValidationError(null);
+     setEditingId(null);
+     setText('');
+     setOptions(['', '']);
+@@ -32,6 +34,7 @@ function useQuestionFormModal({
+   }
+ 
+   function openEdit(question: Question) {
++    setValidationError(null);
+     setEditingId(question.id);
+     setText(question.text);
+     setOptions(question.options);
+@@ -68,7 +71,7 @@ function useQuestionFormModal({
+ 
+     // جلوگیری از ثبت دوباره با دوبار کلیک / Enter پشت‌سرهم (وگرنه دوتا سوالِ
+     // یکسان ساخته می‌شد)
+-    if (isSubmitting) return;
++    if (pending.current) return;
+ 
+     const trimmedOptions = options.map((opt) => opt.trim());
+ 
+@@ -83,6 +86,8 @@ function useQuestionFormModal({
+       correctOptionIndex,
+     };
+ 
++    pending.current = true;
++    setValidationError(null);
+     setIsSubmitting(true);
+ 
+     let saved: unknown;
+@@ -92,6 +97,7 @@ function useQuestionFormModal({
+         ? await updateItem(editingId, questionData)
+         : await addItem(questionData);
+     } finally {
++      pending.current = false;
+       setIsSubmitting(false);
+     }
+ 
+diff --git a/client/src/hooks/useQuestionImportModal.ts b/client/src/hooks/useQuestionImportModal.ts
+index 39144ed..5034f8c 100644
+--- a/client/src/hooks/useQuestionImportModal.ts
++++ b/client/src/hooks/useQuestionImportModal.ts
+@@ -1,21 +1,16 @@
+-import { useState } from 'react';
++import { useRef, useState } from 'react';
+ import {
+   parseQuestionsFromExcel,
+   type ParsedQuestion,
+ } from '../utils/questionExcel';
+-import type { LimitedQuota } from './useInstructorPlanLimit';
+ 
+ type UseQuestionImportModalParams = {
+   addMany: (inputs: ParsedQuestion[]) => Promise<unknown>;
+-  getQuotaIfGated: () => Promise<LimitedQuota | null>;
+-  onLimitExceeded: (quota: LimitedQuota) => void;
+ };
+ 
+-function useQuestionImportModal({
+-  addMany,
+-  getQuotaIfGated,
+-  onLimitExceeded,
+-}: UseQuestionImportModalParams) {
++function useQuestionImportModal({ addMany }: UseQuestionImportModalParams) {
++  const pending = useRef(false);
++  const generation = useRef(0);
+   const [isOpen, setIsOpen] = useState(false);
+   const [preview, setPreview] = useState<ParsedQuestion[]>([]);
+   const [isParsing, setIsParsing] = useState(false);
+@@ -24,6 +19,7 @@ function useQuestionImportModal({
+   const [importWarning, setImportWarning] = useState('');
+ 
+   function open() {
++    generation.current += 1;
+     setPreview([]);
+     setImportError('');
+     setImportWarning('');
+@@ -31,72 +27,66 @@ function useQuestionImportModal({
+   }
+ 
+   function close() {
++    if (pending.current) return;
++    generation.current += 1;
++    setIsParsing(false);
+     setIsOpen(false);
+   }
+ 
+   async function handleFileSelected(
+-    event: React.ChangeEvent<HTMLInputElement>
++    event: React.ChangeEvent<HTMLInputElement>,
+   ) {
+-    const file = event.target.files?.[0];
++    if (pending.current) return;
++    const input = event.target;
++    const file = input.files?.[0];
+     if (!file) return;
+ 
++    const request = ++generation.current;
++    setPreview([]);
+     setIsParsing(true);
+     setImportError('');
+     setImportWarning('');
+ 
+     try {
+       const { questions, skippedRows } = await parseQuestionsFromExcel(file);
++      if (request !== generation.current) return;
++      if (questions.length > 500) {
++        setImportError('در هر بار حداکثر ۵۰۰ سؤال وارد کنید.');
++        return;
++      }
+       if (questions.length === 0) {
+         setImportError(
+-          'هیچ سوال معتبری تو فایل پیدا نشد. مطمئن شو از قالب درست استفاده کردی (هر سوال حداقل ۲ گزینه‌ی پر و یه پاسخ صحیح مشخص داشته باشه).'
++          'هیچ سوال معتبری تو فایل پیدا نشد. مطمئن شو از قالب درست استفاده کردی (هر سوال حداقل ۲ گزینه‌ی پر و یه پاسخ صحیح مشخص داشته باشه).',
+         );
+       } else if (skippedRows > 0) {
+         setImportWarning(
+           `${skippedRows.toLocaleString(
+-            'fa-IR'
+-          )} سطر ایمپورت نمی‌شه (کمتر از ۲ گزینه، گزینه‌ی خالی وسط گزینه‌ها، یا پاسخ صحیح خالی/نامعتبر). بقیه‌ی سوال‌ها آماده‌ی افزودنن.`
++            'fa-IR',
++          )} سطر ایمپورت نمی‌شه (کمتر از ۲ گزینه، گزینه‌ی خالی وسط گزینه‌ها، یا پاسخ صحیح خالی/نامعتبر). بقیه‌ی سوال‌ها آماده‌ی افزودنن.`,
+         );
+       }
+       setPreview(questions);
+     } catch {
++      if (request !== generation.current) return;
+       setPreview([]);
+       setImportError('خطا در خواندن فایل. مطمئن شو فرمتش Excel یا CSV است.');
+     } finally {
+-      setIsParsing(false);
+-      event.target.value = '';
++      if (request === generation.current) setIsParsing(false);
++      input.value = '';
+     }
+   }
+ 
+   async function confirmImport() {
+-    if (preview.length === 0) return;
+-
+-    const quota = await getQuotaIfGated();
+-    if (quota) {
+-      if (quota.expired || quota.remaining === 0) {
+-        setIsOpen(false);
+-        onLimitExceeded(quota);
+-        return;
+-      }
+-      if (preview.length > quota.remaining) {
+-        setImportError(
+-          `این فایل ${preview.length.toLocaleString(
+-            'fa-IR'
+-          )} سوال داره ولی پلن فعلیت فقط ${quota.remaining.toLocaleString(
+-            'fa-IR'
+-          )} سوال دیگه جا داره. فایل رو کوچیک‌تر کن یا پلنت رو ارتقا بده.`
+-        );
+-        return;
+-      }
+-    }
+-
++    if (pending.current || isParsing || preview.length === 0) return;
++    pending.current = true;
+     setIsImporting(true);
+-    setImportError('');
+-
+     try {
++      // The server applies the quota atomically when it saves the batch.
++      setImportError('');
++
+       const created = await addMany(preview);
+ 
+-      // موقع خطا useQuestionBank پیام رو تو Toast نشون می‌ده و undefined
+-      // برمی‌گردونه؛ مودال با پیش‌نمایش باز می‌مونه تا نیاز به آپلود دوباره نباشه
++      // Keep the preview if saving fails; the page displays the server error.
+       if (!created) {
+         setImportError('افزودن سوال‌ها با خطا مواجه شد. دوباره تلاش کن.');
+         return;
+@@ -104,7 +94,10 @@ function useQuestionImportModal({
+ 
+       setIsOpen(false);
+       setPreview([]);
++    } catch {
++      setImportError('افزودن سؤال‌ها ناموفق بود. دوباره تلاش کنید.');
+     } finally {
++      pending.current = false;
+       setIsImporting(false);
+     }
+   }
+diff --git a/client/src/pages/ExamsPage/ExamsPage.tsx b/client/src/pages/ExamsPage/ExamsPage.tsx
+index 6dcd3b5..7e092da 100644
+--- a/client/src/pages/ExamsPage/ExamsPage.tsx
++++ b/client/src/pages/ExamsPage/ExamsPage.tsx
+@@ -121,7 +121,11 @@ function ExamsPage() {
+     fetchQuota: () => getRemainingActiveExamQuota(currentUser?.id ?? ''),
+   });
+ 
+-  const form = useExamFormModal({ exams, addItem, updateItem });
++  const form = useExamFormModal({ exams, updateItem, addItem: async input => {
++    const created = await addItem(input);
++    if (created) navigate(`/exams/${created.id}/questions`);
++    return created;
++  } });
+ 
+   async function openAddModal() {
+     if (await planLimit.ensureAllowed()) form.openAdd();
+diff --git a/client/src/pages/ExamsPage/components/ExamRow.tsx b/client/src/pages/ExamsPage/components/ExamRow.tsx
+index 7473227..440ff2c 100644
+--- a/client/src/pages/ExamsPage/components/ExamRow.tsx
++++ b/client/src/pages/ExamsPage/components/ExamRow.tsx
+@@ -86,10 +86,11 @@ function ExamRow({
+             <>
+               <button
+                 onClick={() => onOpenQuestions(exam)}
+-                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-accent-500/10 hover:text-accent-600 dark:text-gray-400 dark:hover:bg-accent-500/15 dark:hover:text-accent-500 transition"
++                className="flex h-9 items-center justify-center gap-2 rounded-lg px-3 text-gray-500 hover:bg-accent-500/10 hover:text-accent-600 dark:text-gray-400 dark:hover:bg-accent-500/15 dark:hover:text-accent-500 transition"
+                 title="سوال‌های آزمون"
+               >
+                 <ListChecks size={16} />
++                سؤال‌ها
+               </button>
+               {exam.status === 'draft' && (
+                 <button
+diff --git a/client/src/pages/QuestionsPage/QuestionsPage.tsx b/client/src/pages/QuestionsPage/QuestionsPage.tsx
+index 2f280ba..cace0e7 100644
+--- a/client/src/pages/QuestionsPage/QuestionsPage.tsx
++++ b/client/src/pages/QuestionsPage/QuestionsPage.tsx
+@@ -1,274 +1,203 @@
+-import ListPagination from '../../components/ListPagination/ListPagination';
+ import { useState } from 'react';
+-import { useNavigate } from 'react-router-dom';
+-import { BookOpen, Pencil, Plus, Trash2, XCircle } from 'lucide-react';
+-
++import { Link, useParams } from 'react-router-dom';
++import { ArrowRight } from 'lucide-react';
+ import { getCurrentUser } from '../../api/authApi';
++import type { Question } from '../../api/questionApi';
+ import AppLayout from '../../components/AppLayout/AppLayout';
+-import EmptyState from '../../components/EmptyState/EmptyState';
+ import Spinner from '../../components/Spinner/Spinner';
+-import Toast from '../../components/Toast/Toast';
+-import CategorySelect from '../../components/CategorySelect/CategorySelect';
+-
+-import useQuestionBanks from '../../hooks/useQuestionBanks';
+-
+-import type {
+-  QuestionBank,
+-  QuestionBankInput,
+-} from '../../api/questionBankApi';
+-
+-const EMPTY_FORM: QuestionBankInput = {
+-  name: '',
+-  category: '',
+-};
+-
+-function QuestionBanksPage() {
+-  const navigate = useNavigate();
+-  // SuperAdmin پنل محتوا نیست: بک‌اند دیگه ایجاد/ویرایش/حذف بانک رو ازش
+-  // قبول نمی‌کنه (server/src/routes/questionBanks/banks.routes.ts) - فقط
+-  // مشاهده برای نظارت باقی می‌مونه
+-  const canManage = getCurrentUser()?.role !== 'SuperAdmin';
+-
+-  const { banks, loading, error, clearError, addBank, updateBank, deleteBank, page, pageSize, total, q, setPage, setSearch } =
+-    useQuestionBanks();
+-
+-  const [form, setForm] = useState<QuestionBankInput>(EMPTY_FORM);
+-
+-  const [editingBank, setEditingBank] = useState<QuestionBank | null>(null);
+-
+-  const [saving, setSaving] = useState(false);
+-
+-  const isEditing = editingBank !== null;
+-
+-  function resetForm() {
+-    setEditingBank(null);
+-    setForm(EMPTY_FORM);
+-  }
+-
+-  function startEdit(bank: QuestionBank) {
+-    setEditingBank(bank);
+-
+-    setForm({
+-      name: bank.name,
+-      category: bank.category,
+-    });
+-  }
+-
+-  async function handleSubmit(event: React.FormEvent) {
+-    event.preventDefault();
+-
+-    const name = form.name.trim();
+-
+-    if (!name || !form.category) return;
+-
+-    setSaving(true);
+-
+-    try {
+-      if (editingBank) {
+-        const updated = await updateBank(editingBank.id, {
+-          name,
+-          category: form.category,
+-        });
+-
+-        if (updated) resetForm();
+-
+-        return;
+-      }
+-
+-      const created = await addBank({
+-        name,
+-        category: form.category,
+-      });
+-
+-      if (created) resetForm();
+-    } finally {
+-      setSaving(false);
+-    }
+-  }
+-
+-  async function handleDelete(bank: QuestionBank) {
+-    const confirmed = window.confirm(
+-      `بانک «${bank.name}» و تمام سوال‌های داخل آن حذف شوند؟`
+-    );
+-
+-    if (!confirmed) return;
+-
+-    const removed = await deleteBank(bank.id);
+-
+-    // اگه حذف شکست خورد، فرمِ ویرایش رو پاک نکن
+-    if (removed && editingBank?.id === bank.id) {
+-      resetForm();
+-    }
+-  }
++import useExamQuestions from '../../hooks/useExamQuestions';
++import useQuestionFormModal from '../../hooks/useQuestionFormModal';
++import useQuestionImportModal from '../../hooks/useQuestionImportModal';
++import ExamQuestionList from './components/ExamQuestionList';
++import ExamQuestionHeader from './components/ExamQuestionHeader';
++import QuestionFormModal from './components/QuestionFormModal';
++import ImportQuestionsModal from './components/ImportQuestionsModal';
++import DeleteQuestionModal from './components/DeleteQuestionModal';
++import BankQuestionPicker from './components/BankQuestionPicker';
++import QuestionSources from './components/QuestionSources';
++
++// Keying by exam keeps pending requests and modal drafts isolated when the URL changes.
++export default function QuestionsPage() {
++  const { examId } = useParams();
++  return examId ? (
++    <ExamQuestionsEditor key={examId} examId={examId} />
++  ) : (
++    <AppLayout title="سؤال‌های آزمون">
++      <p role="alert">شناسهٔ آزمون مشخص نیست.</p>
++    </AppLayout>
++  );
++}
+ 
++function ExamQuestionsEditor({ examId }: { examId: string }) {
++  const editor = useExamQuestions(examId);
++  const form = useQuestionFormModal(editor);
++  const importer = useQuestionImportModal({
++    addMany: editor.addMany,
++  });
++  const [bankOpen, setBankOpen] = useState(false);
++  const [deleteTarget, setDeleteTarget] = useState<Question | null>(null);
++  const { exam, questions, busy } = editor;
++  const isInstructor = getCurrentUser()?.role === 'Instructor';
++  const locked = !!exam && exam.participants > 0;
++  const canEdit = isInstructor && !locked;
++  const closeForm = () => {
++    if (!busy) form.close();
++  };
++  const openManual = () => {
++    editor.clearError();
++    form.openAdd();
++  };
++  const openExcel = () => {
++    editor.clearError();
++    importer.open();
++  };
+   return (
+-    <AppLayout title="بانک سوال">
+-      {error && (
+-        <Toast
+-          message={error}
+-          tone="danger"
+-          icon={XCircle}
+-          onDismiss={clearError}
+-        />
+-      )}
+-
+-      <div
+-        className={`grid gap-6 ${
+-          canManage ? 'lg:grid-cols-[340px_minmax(0,1fr)]' : ''
+-        }`}
+-      >
+-        {canManage && (
+-          <form
+-            onSubmit={handleSubmit}
+-            className="h-fit rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"
++    <AppLayout title="سؤال‌های آزمون">
++      <div className="mx-auto max-w-5xl space-y-6" dir="rtl">
++        <Link
++          to="/exams"
++          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-brand-600"
++        >
++          <ArrowRight size={16} />
++          بازگشت به آزمون‌ها
++        </Link>
++        {editor.loading ? (
++          <Spinner />
++        ) : editor.loadError || !exam ? (
++          <div
++            role="alert"
++            className="rounded-2xl border border-danger-200 p-5"
+           >
+-          <div className="mb-5 flex items-center gap-2">
+-            <Plus size={20} className="text-brand-600" />
+-
+-            <h2 className="font-bold text-gray-900 dark:text-white">
+-              {isEditing ? 'ویرایش بانک سوال' : 'بانک سوال جدید'}
+-            </h2>
++            <p>{editor.loadError}</p>
++            <button onClick={editor.retry} className="mt-3 text-brand-600">
++              تلاش مجدد
++            </button>
+           </div>
+-
+-          <div className="flex flex-col gap-4">
+-            <div className="flex flex-col gap-1">
+-              <label className="text-sm text-gray-600 dark:text-gray-300">
+-                نام بانک
+-              </label>
+-
+-              <input
+-                value={form.name}
+-                onChange={(event) =>
+-                  setForm((current) => ({
+-                    ...current,
+-                    name: event.target.value,
+-                  }))
+-                }
+-                placeholder="مثلاً سوالات ریاضی دهم"
+-                className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-800 outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:ring-brand-900"
++        ) : (
++          <>
++            <ExamQuestionHeader exam={exam} count={questions.length} />
++            {locked ? (
++              <p
++                role="status"
++                className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200"
++              >
++                این آزمون توسط شرکت‌کننده شروع شده است؛ برای حفظ صحت نتایج،
++                سؤال‌ها فقط قابل مشاهده‌اند.
++              </p>
++            ) : !isInstructor ? (
++              <p className="text-sm text-gray-500">
++                نمای نظارت؛ ویرایش سؤال‌ها از پنل مدرس انجام می‌شود.
++              </p>
++            ) : (
++              <QuestionSources
++                onManual={openManual}
++                onExcel={openExcel}
++                onBank={() => {
++                  editor.clearError();
++                  setBankOpen(true);
++                }}
++                disabled={busy}
+               />
+-            </div>
+-
+-            <CategorySelect
+-              label="دسته‌بندی"
+-              value={form.category}
+-              onChange={(category) =>
+-                setForm((current) => ({
+-                  ...current,
+-                  category,
+-                }))
+-              }
+-            />
+-
+-            <div className="flex gap-2">
+-              <button
+-                type="submit"
+-                disabled={saving || !form.name.trim() || !form.category}
+-                className="flex-1 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
++            )}
++            {editor.error && (
++              <p
++                role="alert"
++                className="rounded-xl bg-danger-50 p-4 text-sm text-danger-600 dark:bg-danger-950"
+               >
+-                {saving
+-                  ? 'در حال ذخیره...'
+-                  : isEditing
+-                  ? 'ذخیره تغییرات'
+-                  : 'ساخت بانک'}
+-              </button>
+-
+-              {isEditing && (
++                {editor.error}
++              </p>
++            )}
++            <p
++              role="status"
++              aria-live="polite"
++              className="text-sm text-success-600"
++            >
++              {editor.notice}
++            </p>
++            <ExamQuestionList
++              questions={questions}
++              canEdit={canEdit}
++              busy={busy}
++              onEdit={(q) => {
++                editor.clearError();
++                form.openEdit(q);
++              }}
++              onDelete={(q) => {
++                editor.clearError();
++                setDeleteTarget(q);
++              }}
++            />
++            {canEdit && exam.status === 'draft' && (
++              <footer className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
++                <p className="text-sm text-gray-500">
++                  {questions.length
++                    ? 'پس از بررسی سؤال‌ها، آزمون آمادهٔ انتشار است.'
++                    : 'برای انتشار، حداقل یک سؤال اضافه کنید.'}
++                </p>
+                 <button
+-                  type="button"
+-                  onClick={resetForm}
+-                  className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
++                  disabled={busy || !questions.length}
++                  onClick={editor.publish}
++                  className="rounded-xl bg-brand-600 px-6 py-3 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                 >
+-                  انصراف
++                  {busy ? 'در حال ذخیره…' : 'انتشار آزمون'}
+                 </button>
+-              )}
+-            </div>
+-          </div>
+-          </form>
++              </footer>
++            )}
++          </>
+         )}
+-
+-        <section>
+-          <ListPagination {...{ page, pageSize, total, loading, q, setPage, setSearch }} />
+-          {loading ? (
+-            <Spinner />
+-          ) : banks.length === 0 ? (
+-            <EmptyState
+-              icon={BookOpen}
+-              title="هنوز بانک سوالی نداری"
+-              description="اولین بانک سوالت رو بساز و سوال‌ها رو داخلش مدیریت کن."
++      </div>
++      {canEdit && (
++        <>
++          <QuestionFormModal
++            isOpen={form.isOpen}
++            isEditing={!!form.editingId}
++            isSubmitting={form.isSubmitting}
++            text={form.text}
++            onTextChange={form.setText}
++            options={form.options}
++            correctOptionIndex={form.correctOptionIndex}
++            onCorrectOptionChange={form.setCorrectOptionIndex}
++            onOptionTextChange={form.updateOptionText}
++            onAddOption={form.addOption}
++            onRemoveOption={form.removeOption}
++            onSubmit={form.handleSubmit}
++            onClose={closeForm}
++            error={form.validationError || editor.error}
++          />
++          <ImportQuestionsModal
++            isOpen={importer.isOpen}
++            preview={importer.preview}
++            isParsing={importer.isParsing}
++            isImporting={importer.isImporting}
++            importError={editor.error || importer.importError}
++            importWarning={importer.importWarning}
++            onFileSelected={importer.handleFileSelected}
++            onConfirm={importer.confirmImport}
++            onClose={importer.close}
++          />
++          <DeleteQuestionModal
++            isOpen={!!deleteTarget}
++            busy={busy}
++            error={editor.error}
++            onClose={() => {
++              if (!busy) setDeleteTarget(null);
++            }}
++            onConfirm={async () => {
++              if (deleteTarget && (await editor.remove(deleteTarget.id)))
++                setDeleteTarget(null);
++            }}
++          />
++          {bankOpen && (
++            <BankQuestionPicker
++              existing={questions}
++              busy={busy}
++              error={editor.error}
++              onClose={() => setBankOpen(false)}
++              onConfirm={editor.fromBank}
+             />
+-          ) : (
+-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+-              {banks.map((bank) => (
+-                // کلیکِ ماوس روی هرجای کارت جزئیات رو باز می‌کنه. برای کیبورد،
+-                // خودِ کارت فوکوس نمی‌گیره (قبلاً role="button" + onKeyDown روی
+-                // کارت بود و Enter/Space روی دکمه‌های ویرایش/حذف داخلش بالا
+-                // می‌اومد و به‌جای اون‌ها صفحه‌ی جزئیات باز می‌شد)؛ به‌جاش
+-                // اسمِ بانک یه <button> واقعیه و Enter/Space روش همون کلیکِ
+-                // کارت رو صدا می‌زنه.
+-                <article
+-                  key={bank.id}
+-                  onClick={() => navigate(`/question-banks/${bank.id}`)}
+-                  className="cursor-pointer rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:border-brand-800"
+-                >
+-                  <div className="mb-4 flex items-start justify-between gap-3">
+-                    <div className="min-w-0">
+-                      <h3 className="font-bold text-gray-900 dark:text-white">
+-                        <button
+-                          type="button"
+-                          className="block max-w-full truncate rounded text-start hover:text-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 dark:hover:text-brand-400"
+-                        >
+-                          {bank.name}
+-                        </button>
+-                      </h3>
+-
+-                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+-                        {bank.category}
+-                      </p>
+-                    </div>
+-
+-                    <BookOpen size={20} className="shrink-0 text-brand-600" />
+-                  </div>
+-
+-                  <div className="mb-5 rounded-xl bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:bg-gray-700/50 dark:text-gray-300">
+-                    {bank.questionCount} سوال
+-                  </div>
+-
+-                  {canManage && (
+-                    <div className="flex gap-2">
+-                      <button
+-                        type="button"
+-                        onClick={(event) => {
+-                          event.stopPropagation();
+-                          startEdit(bank);
+-                        }}
+-                        className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+-                      >
+-                        <Pencil size={15} />
+-                        ویرایش
+-                      </button>
+-
+-                      <button
+-                        type="button"
+-                        onClick={(event) => {
+-                          event.stopPropagation();
+-                          void handleDelete(bank);
+-                        }}
+-                        className="flex items-center justify-center rounded-lg border border-danger-200 px-3 py-2 text-danger-600 transition hover:bg-danger-50 dark:border-danger-900 dark:text-danger-400 dark:hover:bg-danger-950/30"
+-                        aria-label={`حذف ${bank.name}`}
+-                      >
+-                        <Trash2 size={16} />
+-                      </button>
+-                    </div>
+-                  )}
+-                </article>
+-              ))}
+-            </div>
+           )}
+-        </section>
+-      </div>
++        </>
++      )}
+     </AppLayout>
+   );
+ }
+-
+-export default QuestionBanksPage;
+\ No newline at end of file
+diff --git a/client/src/pages/QuestionsPage/components/BankQuestionPicker.tsx b/client/src/pages/QuestionsPage/components/BankQuestionPicker.tsx
+new file mode 100644
+index 0000000..e60ea32
+--- /dev/null
++++ b/client/src/pages/QuestionsPage/components/BankQuestionPicker.tsx
+@@ -0,0 +1,184 @@
++import { useEffect, useState } from 'react';
++import {
++  getQuestionBanks,
++  getBankQuestionsPage,
++  type QuestionBank,
++} from '../../../api/questionBankApi';
++import type { Question } from '../../../api/questionApi';
++import usePagedList from '../../../hooks/usePagedList';
++import Modal from './ExamQuestionDialog';
++import ListPagination from '../../../components/ListPagination/ListPagination';
++
++type Props = {
++  existing: Question[];
++  busy: boolean;
++  error: string;
++  onClose: () => void;
++  onConfirm: (ids: string[]) => Promise<unknown>;
++};
++export default function BankQuestionPicker({
++  existing,
++  busy,
++  error,
++  onClose,
++  onConfirm,
++}: Props) {
++  const [banks, setBanks] = useState<QuestionBank[]>([]);
++  const [bankId, setBankId] = useState('');
++  const [loadingBanks, setLoadingBanks] = useState(true);
++  const [bankError, setBankError] = useState('');
++  const [revision, setRevision] = useState(0);
++  const [selected, setSelected] = useState<string[]>([]);
++  const list = usePagedList(
++    (query) => getBankQuestionsPage(bankId, query),
++    bankId,
++    !!bankId,
++  );
++  const existingIds = new Set(
++    existing.map((q) => q.questionId).filter(Boolean),
++  );
++  useEffect(() => {
++    let active = true;
++    setLoadingBanks(true);
++    setBankError('');
++    getQuestionBanks()
++      .then((items) => {
++        if (active) setBanks(items);
++      })
++      .catch(() => {
++        if (active) setBankError('دریافت بانک‌های سؤال ناموفق بود.');
++      })
++      .finally(() => {
++        if (active) setLoadingBanks(false);
++      });
++    return () => {
++      active = false;
++    };
++  }, [revision]);
++  return (
++    <Modal
++      label="انتخاب از بانک سؤال"
++      isOpen
++      onClose={() => {
++        if (!busy) onClose();
++      }}
++    >
++      <h2 className="text-lg font-bold dark:text-white">انتخاب از بانک سؤال</h2>
++      <p className="my-3 text-sm leading-6 text-gray-500">
++        سؤال‌ها به این آزمون کپی می‌شوند. ویرایش آن‌ها در آزمون، بانک را تغییر
++        نمی‌دهد.
++      </p>
++      {loadingBanks ? (
++        <p role="status">در حال دریافت بانک‌ها…</p>
++      ) : bankError ? (
++        <p role="alert">
++          {bankError}{' '}
++          <button onClick={() => setRevision((n) => n + 1)}>تلاش مجدد</button>
++        </p>
++      ) : banks.length === 0 ? (
++        <p className="rounded-xl bg-gray-50 p-4 text-sm dark:bg-gray-800">
++          هنوز بانک سؤال ندارید. برای ساخت آزمون نیازی به بانک نیست؛ از نوشتن
++          سؤال یا ورود از اکسل استفاده کنید.
++        </p>
++      ) : (
++        <label className="block text-sm dark:text-white">
++          بانک سؤال
++          <select
++            value={bankId}
++            disabled={busy}
++            onChange={(event) => {
++              setBankId(event.target.value);
++              setSelected([]);
++            }}
++            className="my-2 w-full rounded-xl border border-gray-300 bg-transparent p-3 dark:border-gray-700"
++          >
++            <option value="">بانک را انتخاب کنید</option>
++            {banks.map((bank) => (
++              <option key={bank.id} value={bank.id}>
++                {bank.name} ({bank.questionCount})
++              </option>
++            ))}
++          </select>
++        </label>
++      )}
++      {bankId && (
++        <fieldset disabled={busy}>
++          <ListPagination {...list} />
++          {list.error && (
++            <p role="alert">
++              {list.error} <button onClick={list.reload}>تلاش مجدد</button>
++            </p>
++          )}
++          <div className="max-h-72 space-y-2 overflow-y-auto">
++            {list.loading ? (
++              <p role="status">در حال دریافت سؤال‌ها…</p>
++            ) : !list.error && !list.items.length ? (
++              <p>سؤالی پیدا نشد.</p>
++            ) : (
++              list.items.map((question) => {
++                const added = existingIds.has(question.id);
++                const checked = selected.includes(question.id);
++                return (
++                  <label
++                    key={question.id}
++                    className="flex gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-700 dark:text-white"
++                  >
++                    <input
++                      type="checkbox"
++                      checked={checked || added}
++                      disabled={added || (!checked && selected.length >= 100)}
++                      onChange={() =>
++                        setSelected((ids) =>
++                          checked
++                            ? ids.filter((id) => id !== question.id)
++                            : [...ids, question.id],
++                        )
++                      }
++                    />
++                    <span className="min-w-0 break-words">
++                      {question.text}
++                      <span className="mt-1 block text-xs text-gray-500">
++                        {added
++                          ? 'قبلاً به آزمون اضافه شده'
++                          : `پاسخ صحیح: ${question.options[question.correctOptionIndex]}`}
++                      </span>
++                    </span>
++                  </label>
++                );
++              })
++            )}
++          </div>
++        </fieldset>
++      )}
++      <p className="my-3 text-xs text-gray-500">
++        {selected.length.toLocaleString('fa-IR')} سؤال انتخاب شده • حداکثر ۱۰۰
++        سؤال در هر بار
++      </p>
++      {error && (
++        <p role="alert" className="mb-3 text-sm text-danger-600">
++          {error}
++        </p>
++      )}
++      <div className="flex gap-3">
++        <button
++          disabled={busy}
++          onClick={onClose}
++          className="rounded-xl border px-4 py-2 text-sm dark:text-white"
++        >
++          بازگشت
++        </button>
++        <button
++          disabled={busy || !selected.length}
++          onClick={async () => {
++            if (await onConfirm(selected)) onClose();
++          }}
++          className="flex-1 rounded-xl bg-brand-600 px-4 py-2 text-sm text-white disabled:opacity-50"
++        >
++          {busy
++            ? 'در حال افزودن…'
++            : `افزودن ${selected.length.toLocaleString('fa-IR')} سؤال`}
++        </button>
++      </div>
++    </Modal>
++  );
++}
+diff --git a/client/src/pages/QuestionsPage/components/DeleteQuestionModal.tsx b/client/src/pages/QuestionsPage/components/DeleteQuestionModal.tsx
+index abef276..e28d976 100644
+--- a/client/src/pages/QuestionsPage/components/DeleteQuestionModal.tsx
++++ b/client/src/pages/QuestionsPage/components/DeleteQuestionModal.tsx
+@@ -1,34 +1,39 @@
+-import Modal from '../../../components/Modal/Modal';
++import Modal from './ExamQuestionDialog';
+ 
+ type DeleteQuestionModalProps = {
+   isOpen: boolean;
++  busy?: boolean;
++  error?: string;
+   onConfirm: () => void;
+   onClose: () => void;
+ };
+ 
+ function DeleteQuestionModal({
+   isOpen,
++  busy,
++  error,
+   onConfirm,
+   onClose,
+ }: DeleteQuestionModalProps) {
+   return (
+-    <Modal isOpen={isOpen} onClose={onClose}>
++    <Modal label="حذف سؤال" isOpen={isOpen} onClose={onClose}>
+       <h2 className="text-lg font-bold mb-2 dark:text-white">حذف سوال</h2>
+       <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+         آیا از حذف این سوال مطمئنی؟ این عملیات قابل بازگشت نیست.
+       </p>
++      {error && <p role="alert" className="mb-3 text-danger-600">{error}</p>}
+       <div className="flex gap-3">
+-        <button
++        <button disabled={busy}
+           onClick={onClose}
+           className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+         >
+           انصراف
+         </button>
+-        <button
++        <button disabled={busy}
+           onClick={onConfirm}
+           className="flex-1 rounded-xl bg-danger-600 py-2.5 text-sm font-medium text-white hover:bg-danger-700 transition"
+         >
+-          حذف
++          {busy ? 'در حال حذف…' : 'حذف سؤال'}
+         </button>
+       </div>
+     </Modal>
+diff --git a/client/src/pages/QuestionsPage/components/ExamQuestionDialog.tsx b/client/src/pages/QuestionsPage/components/ExamQuestionDialog.tsx
+new file mode 100644
+index 0000000..af5bba5
+--- /dev/null
++++ b/client/src/pages/QuestionsPage/components/ExamQuestionDialog.tsx
+@@ -0,0 +1,96 @@
++import { useEffect, useRef, type ReactNode } from 'react';
++
++type Props = {
++  isOpen: boolean;
++  onClose: () => void;
++  label: string;
++  children: ReactNode;
++};
++// Keep focus in the editor, return it to the source action, and preserve drafts on backdrop clicks.
++export default function ExamQuestionDialog({
++  isOpen,
++  onClose,
++  label,
++  children,
++}: Props) {
++  const panel = useRef<HTMLDivElement>(null);
++  const close = useRef(onClose);
++  close.current = onClose;
++  useEffect(() => {
++    if (!isOpen) return;
++    const previous = document.activeElement as HTMLElement | null;
++    const oldOverflow = document.body.style.overflow;
++    document.body.style.overflow = 'hidden';
++    const focusable = () =>
++      Array.from(
++        panel.current?.querySelectorAll<HTMLElement>(
++          'button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [tabindex="0"]',
++        ) ?? [],
++      );
++    (
++      panel.current?.querySelector<HTMLElement>('textarea') ??
++      focusable()[0] ??
++      panel.current
++    )?.focus();
++    function handleKey(event: KeyboardEvent) {
++      if (event.key === 'Escape') {
++        event.preventDefault();
++        close.current();
++      }
++      if (event.key !== 'Tab') return;
++      const items = focusable();
++      const first = items[0];
++      const last = items.at(-1);
++      if (!first) {
++        event.preventDefault();
++        panel.current?.focus();
++        return;
++      }
++      if (
++        event.shiftKey &&
++        (document.activeElement === first ||
++          document.activeElement === panel.current)
++      ) {
++        event.preventDefault();
++        last?.focus();
++      } else if (!event.shiftKey && document.activeElement === last) {
++        event.preventDefault();
++        first.focus();
++      }
++    }
++    document.addEventListener('keydown', handleKey);
++    return () => {
++      document.removeEventListener('keydown', handleKey);
++      document.body.style.overflow = oldOverflow;
++      previous?.focus();
++    };
++  }, [isOpen]);
++  if (!isOpen) return null;
++  return (
++    <div
++      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-6"
++      dir="rtl"
++    >
++      <div
++        ref={panel}
++        role="dialog"
++        aria-modal="true"
++        aria-label={label}
++        tabIndex={-1}
++        className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl dark:bg-gray-900 sm:p-7"
++      >
++        <div className="mb-2 flex justify-end">
++          <button
++            type="button"
++            onClick={onClose}
++            aria-label="بستن"
++            className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
++          >
++            ✕
++          </button>
++        </div>
++        {children}
++      </div>
++    </div>
++  );
++}
+diff --git a/client/src/pages/QuestionsPage/components/ExamQuestionHeader.tsx b/client/src/pages/QuestionsPage/components/ExamQuestionHeader.tsx
+new file mode 100644
+index 0000000..aa7b394
+--- /dev/null
++++ b/client/src/pages/QuestionsPage/components/ExamQuestionHeader.tsx
+@@ -0,0 +1,42 @@
++import type { Exam } from '../../../api/examApi';
++export default function ExamQuestionHeader({
++  exam,
++  count,
++}: {
++  exam: Exam;
++  count: number;
++}) {
++  const status =
++    exam.status === 'draft'
++      ? 'پیش‌نویس'
++      : exam.status === 'upcoming'
++        ? 'منتشرشده'
++        : 'پایان‌یافته';
++
++  return (
++    <header className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900 sm:p-7">
++      <div className="flex flex-wrap items-start justify-between gap-4">
++        <div className="min-w-0 flex-1">
++          <p className="mb-2 text-xs font-medium text-brand-600">
++            طراحی سؤال‌های آزمون
++          </p>
++          <h1 className="break-words text-xl font-bold text-gray-900 dark:text-white sm:text-2xl">
++            {exam.title}
++          </h1>
++          <p className="mt-3 text-sm text-gray-500">
++            {exam.category} • {exam.durationMinutes.toLocaleString('fa-IR')}{' '}
++            دقیقه • {count.toLocaleString('fa-IR')} سؤال
++          </p>
++        </div>
++        <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700 dark:bg-brand-950 dark:text-brand-300">
++          {status}
++        </span>
++      </div>
++      <p className="mt-5 border-t border-gray-100 pt-4 text-sm leading-7 text-gray-500 dark:border-gray-800">
++        {exam.status === 'draft'
++          ? 'ابتدا سؤال‌ها را اضافه و بررسی کنید، سپس آزمون را منتشر کنید. سؤال‌های ذخیره‌شده بعد از خروج هم باقی می‌مانند.'
++          : 'آزمون منتشر شده است. تغییر سؤال‌ها تا پیش از شروع اولین شرکت‌کننده امکان‌پذیر است.'}
++      </p>
++    </header>
++  );
++}
+diff --git a/client/src/pages/QuestionsPage/components/ExamQuestionList.tsx b/client/src/pages/QuestionsPage/components/ExamQuestionList.tsx
+new file mode 100644
+index 0000000..d176a8e
+--- /dev/null
++++ b/client/src/pages/QuestionsPage/components/ExamQuestionList.tsx
+@@ -0,0 +1,77 @@
++import { useState } from 'react';
++import { ClipboardList } from 'lucide-react';
++import type { Question } from '../../../api/questionApi';
++import QuestionCard from './QuestionCard';
++type Props = {
++  questions: Question[];
++  canEdit: boolean;
++  busy: boolean;
++  onEdit: (q: Question) => void;
++  onDelete: (q: Question) => void;
++};
++export default function ExamQuestionList({
++  questions,
++  canEdit,
++  busy,
++  onEdit,
++  onDelete,
++}: Props) {
++  const [search, setSearch] = useState('');
++  const shown = questions
++    .map((question, index) => ({ question, index }))
++    .filter(({ question }) => question.text.includes(search.trim()));
++  return (
++    <section aria-label="سؤال‌های ذخیره‌شده" className="space-y-4">
++      <div className="flex flex-wrap items-center justify-between gap-3">
++        <h2 className="font-bold dark:text-white">
++          سؤال‌های آزمون ({questions.length.toLocaleString('fa-IR')})
++        </h2>
++        {questions.length > 0 && (
++          <input
++            aria-label="جست‌وجو در سؤال‌های آزمون"
++            placeholder="جست‌وجو در متن سؤال…"
++            value={search}
++            onChange={(e) => setSearch(e.target.value)}
++            className="w-full rounded-xl border border-gray-200 bg-transparent px-4 py-2 text-sm dark:border-gray-700 dark:text-white sm:w-64"
++          />
++        )}
++      </div>
++      {questions.length === 0 ? (
++        <div className="rounded-2xl border-2 border-dashed border-gray-200 px-5 py-12 text-center dark:border-gray-700">
++          <ClipboardList size={32} className="mx-auto mb-3 text-gray-400" />
++          <h3 className="font-bold dark:text-white">
++            {canEdit
++              ? 'اولین سؤال آزمون را اضافه کنید'
++              : 'این آزمون هنوز سؤالی ندارد'}
++          </h3>
++          {canEdit && (
++            <p className="mt-2 text-sm leading-7 text-gray-500">
++              ساخت بانک سؤال الزامی نیست. می‌توانید روش دستی، اکسل و بانک را در
++              همین آزمون ترکیب کنید.
++            </p>
++          )}
++        </div>
++      ) : !shown.length ? (
++        <p className="p-6 text-center text-gray-500">
++          سؤالی با این متن پیدا نشد.
++        </p>
++      ) : (
++        shown.map(({ question, index }) => (
++          <QuestionCard
++            key={question.id}
++            question={question}
++            index={index}
++            canEdit={canEdit}
++            disabled={busy}
++            onEdit={(q) => {
++              onEdit(q);
++            }}
++            onDelete={(q) => {
++              onDelete(q);
++            }}
++          />
++        ))
++      )}
++    </section>
++  );
++}
+diff --git a/client/src/pages/QuestionsPage/components/ImportQuestionsModal.tsx b/client/src/pages/QuestionsPage/components/ImportQuestionsModal.tsx
+index fe8b260..f822c08 100644
+--- a/client/src/pages/QuestionsPage/components/ImportQuestionsModal.tsx
++++ b/client/src/pages/QuestionsPage/components/ImportQuestionsModal.tsx
+@@ -1,5 +1,5 @@
+ import { Upload, Download, AlertTriangle } from 'lucide-react';
+-import Modal from '../../../components/Modal/Modal';
++import Modal from './ExamQuestionDialog';
+ import {
+   downloadQuestionTemplate,
+   type ParsedQuestion,
+@@ -29,7 +29,7 @@ function ImportQuestionsModal({
+   onClose,
+ }: ImportQuestionsModalProps) {
+   return (
+-    <Modal isOpen={isOpen} onClose={onClose}>
++    <Modal label="ورود سؤال از اکسل" isOpen={isOpen} onClose={onClose}>
+       <h2 className="text-lg font-bold mb-2 dark:text-white">
+         ایمپورت سوال از اکسل
+       </h2>
+@@ -45,14 +45,15 @@ function ImportQuestionsModal({
+         دانلود قالب نمونه
+       </button>
+ 
+-      <label className="mb-4 flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-gray-200 px-4 py-8 text-center text-sm text-gray-500 hover:border-brand-300 hover:bg-brand-50/50 dark:border-gray-700 dark:text-gray-400 dark:hover:border-brand-800 dark:hover:bg-brand-950/20 transition">
++      <label className="mb-4 flex cursor-pointer focus-within:ring-2 focus-within:ring-brand-500 flex-col items-center gap-2 rounded-xl border-2 border-dashed border-gray-200 px-4 py-8 text-center text-sm text-gray-500 hover:border-brand-300 hover:bg-brand-50/50 dark:border-gray-700 dark:text-gray-400 dark:hover:border-brand-800 dark:hover:bg-brand-950/20 transition">
+         <Upload size={20} />
+-        فایل را انتخاب کن (xlsx یا csv)
++        فایل را انتخاب کن (xlsx، xls یا csv)
+         <input
+           type="file"
++          disabled={isParsing || isImporting}
+           accept=".xlsx,.xls,.csv"
+           onChange={onFileSelected}
+-          className="hidden"
++          className="sr-only"
+         />
+       </label>
+ 
+@@ -95,14 +96,14 @@ function ImportQuestionsModal({
+ 
+       <div className="flex gap-3">
+         <button
+-          onClick={onClose}
++          disabled={isImporting} onClick={onClose}
+           className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+         >
+           انصراف
+         </button>
+         <button
+           onClick={onConfirm}
+-          disabled={preview.length === 0 || isImporting}
++          disabled={preview.length === 0 || isImporting || isParsing}
+           className="flex-1 rounded-xl bg-brand-600 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40 transition"
+         >
+           {isImporting
+diff --git a/client/src/pages/QuestionsPage/components/QuestionCard.tsx b/client/src/pages/QuestionsPage/components/QuestionCard.tsx
+index b90a93a..8c636de 100644
+--- a/client/src/pages/QuestionsPage/components/QuestionCard.tsx
++++ b/client/src/pages/QuestionsPage/components/QuestionCard.tsx
+@@ -4,6 +4,8 @@ import type { Question } from '../../../api/questionApi';
+ type QuestionCardProps = {
+   question: Question;
+   index: number;
++  canEdit?: boolean;
++  disabled?: boolean;
+   onEdit: (question: Question) => void;
+   onDelete: (question: Question) => void;
+ };
+@@ -13,19 +15,22 @@ function QuestionCard({
+   index,
+   onEdit,
+   onDelete,
++  canEdit = true,
++  disabled = false,
+ }: QuestionCardProps) {
+   return (
+     <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700">
+       <div className="flex items-start justify-between gap-4">
+-        <p className="font-medium text-gray-800 dark:text-white">
++        <p className="min-w-0 whitespace-pre-wrap break-words font-medium text-gray-800 dark:text-white">
+           <span className="text-gray-400 dark:text-gray-500">
+             {(index + 1).toLocaleString('fa-IR')}.
+           </span>{' '}
+           {question.text}
+         </p>
+-        <div className="flex shrink-0 items-center gap-2">
++        {canEdit && <div className="flex shrink-0 items-center gap-2">
+           <button
+             type="button"
++            disabled={disabled}
+             aria-label="ویرایش سوال"
+             onClick={() => onEdit(question)}
+             className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-brand-50 hover:text-brand-600 dark:text-gray-400 dark:hover:bg-brand-950/40 dark:hover:text-brand-400 transition"
+@@ -35,6 +40,7 @@ function QuestionCard({
+           </button>
+           <button
+             type="button"
++            disabled={disabled}
+             aria-label="حذف سوال"
+             onClick={() => onDelete(question)}
+             className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-danger-50 hover:text-danger-600 dark:text-gray-400 dark:hover:bg-danger-950/40 dark:hover:text-danger-400 transition"
+@@ -42,20 +48,20 @@ function QuestionCard({
+           >
+             <Trash2 size={16} />
+           </button>
+-        </div>
++        </div>}
+       </div>
+ 
+       <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+         {question.options.map((option, optionIndex) => (
+           <div
+             key={optionIndex}
+-            className={`rounded-xl border px-4 py-2 text-sm ${
++            className={`break-words rounded-xl border px-4 py-2 text-sm ${
+               optionIndex === question.correctOptionIndex
+                 ? 'border-success-500/40 bg-success-500/10 text-success-600 dark:border-success-500/30 dark:bg-success-500/15 dark:text-success-500'
+                 : 'border-gray-100 text-gray-600 dark:border-gray-800 dark:text-gray-300'
+             }`}
+           >
+-            {option}
++            {option}{optionIndex === question.correctOptionIndex && <span className="mr-2 text-xs font-bold">✓ پاسخ صحیح</span>}
+           </div>
+         ))}
+       </div>
+diff --git a/client/src/pages/QuestionsPage/components/QuestionFormModal.tsx b/client/src/pages/QuestionsPage/components/QuestionFormModal.tsx
+index 910e60d..0292f96 100644
+--- a/client/src/pages/QuestionsPage/components/QuestionFormModal.tsx
++++ b/client/src/pages/QuestionsPage/components/QuestionFormModal.tsx
+@@ -1,9 +1,10 @@
+ import { Plus, X } from 'lucide-react';
+-import Modal from '../../../components/Modal/Modal';
++import Modal from './ExamQuestionDialog';
+ import { MIN_OPTIONS, MAX_OPTIONS } from '../../../hooks/useQuestionFormModal';
+ 
+ type QuestionFormModalProps = {
+   isOpen: boolean;
++  error?: string;
+   isEditing: boolean;
+   isSubmitting?: boolean;
+   text: string;
+@@ -21,6 +22,7 @@ type QuestionFormModalProps = {
+ function QuestionFormModal({
+   isOpen,
+   isEditing,
++  error,
+   isSubmitting = false,
+   text,
+   onTextChange,
+@@ -34,11 +36,11 @@ function QuestionFormModal({
+   onClose,
+ }: QuestionFormModalProps) {
+   return (
+-    <Modal isOpen={isOpen} onClose={onClose}>
++    <Modal label="نوشتن و ویرایش سؤال" isOpen={isOpen} onClose={onClose}>
+       <h2 className="text-lg font-bold mb-4 dark:text-white">
+         {isEditing ? 'ویرایش سوال' : 'سوال جدید'}
+       </h2>
+-      <form onSubmit={onSubmit} className="flex flex-col gap-4">
++      <form onSubmit={onSubmit}><fieldset disabled={isSubmitting} className="flex flex-col gap-4">
+         <div className="flex flex-col gap-1">
+           <label
+             htmlFor="question-text"
+@@ -50,7 +52,11 @@ function QuestionFormModal({
+             id="question-text"
+             value={text}
+             onChange={(e) => onTextChange(e.target.value)}
+-            rows={2}
++            rows={4}
++            autoFocus
++            minLength={2}
++            maxLength={5000}
++            required
+             className="border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-400 focus:ring-4 focus:ring-brand-50 dark:focus:ring-brand-900 transition resize-none"
+             placeholder="متن سوال را بنویسید..."
+           />
+@@ -81,9 +87,11 @@ function QuestionFormModal({
+               </button>
+               <input
+                 value={option}
++                required
++                maxLength={1000}
+                 aria-label={`متن گزینه ${String.fromCharCode(65 + index)}`}
+                 onChange={(e) => onOptionTextChange(index, e.target.value)}
+-                className="flex-1 border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-400 focus:ring-4 focus:ring-brand-50 dark:focus:ring-brand-900 transition"
++                className="min-w-0 flex-1 border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-400 focus:ring-4 focus:ring-brand-50 dark:focus:ring-brand-900 transition"
+                 placeholder={`گزینه ${String.fromCharCode(65 + index)}`}
+               />
+               {options.length > MIN_OPTIONS && (
+@@ -112,14 +120,15 @@ function QuestionFormModal({
+           )}
+         </div>
+ 
++        {error && <p role="alert" className="text-sm text-danger-600">{error}</p>}
+         <button
+           type="submit"
+           disabled={isSubmitting}
+           className="w-full bg-brand-600 text-white font-medium px-4 py-2.5 rounded-xl hover:bg-brand-700 transition disabled:cursor-not-allowed disabled:opacity-60"
+         >
+-          {isEditing ? 'ذخیره تغییرات' : 'افزودن سوال'}
++          {isSubmitting ? 'در حال ذخیره…' : isEditing ? 'ذخیره تغییرات' : 'افزودن سؤال به آزمون'}
+         </button>
+-      </form>
++      </fieldset></form>
+     </Modal>
+   );
+ }
+diff --git a/client/src/pages/QuestionsPage/components/QuestionSources.tsx b/client/src/pages/QuestionsPage/components/QuestionSources.tsx
+new file mode 100644
+index 0000000..136bd1a
+--- /dev/null
++++ b/client/src/pages/QuestionsPage/components/QuestionSources.tsx
+@@ -0,0 +1,56 @@
++import { BookOpen, FileSpreadsheet, PenLine } from 'lucide-react';
++
++type Props = {
++  onManual: () => void;
++  onExcel: () => void;
++  onBank: () => void;
++  disabled?: boolean;
++};
++export default function QuestionSources({
++  onManual,
++  onExcel,
++  onBank,
++  disabled,
++}: Props) {
++  const sources = [
++    {
++      title: 'نوشتن سؤال',
++      description: 'متن، گزینه‌ها و پاسخ صحیح را وارد کنید.',
++      icon: PenLine,
++      action: onManual,
++    },
++    {
++      title: 'ورود از اکسل',
++      description: 'قالب را بگیرید و چند سؤال را یک‌جا اضافه کنید.',
++      icon: FileSpreadsheet,
++      action: onExcel,
++    },
++    {
++      title: 'انتخاب از بانک سؤال',
++      description: 'از سؤال‌های قبلی خودتان استفاده کنید؛ اختیاری است.',
++      icon: BookOpen,
++      action: onBank,
++    },
++  ];
++  return (
++    <div className="grid gap-3 md:grid-cols-3" aria-label="روش افزودن سؤال">
++      {sources.map(({ title, description, icon: Icon, action }, index) => (
++        <button
++          key={title}
++          type="button"
++          onClick={action}
++          disabled={disabled}
++          className={`flex items-start gap-3 rounded-2xl border p-4 text-start transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:opacity-50 ${index === 0 ? 'border-brand-500 bg-brand-600 text-white hover:bg-brand-700' : 'border-gray-200 bg-white text-gray-800 hover:border-brand-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'}`}
++        >
++          <Icon size={22} className="mt-1 shrink-0" />
++          <span>
++            <span className="block font-bold">{title}</span>
++            <span className="mt-1 block text-xs leading-6 opacity-80">
++              {description}
++            </span>
++          </span>
++        </button>
++      ))}
++    </div>
++  );
++}
+diff --git a/client/src/utils/questionExcel.ts b/client/src/utils/questionExcel.ts
+index 4ad5238..bb9cef0 100644
+--- a/client/src/utils/questionExcel.ts
++++ b/client/src/utils/questionExcel.ts
+@@ -54,7 +54,11 @@ export async function parseQuestionsFromExcel(
+   // واقعاً لازمش داریم دانلود/اجرا می‌شه، نه با کل صفحه
+   const XLSX = await import('xlsx');
+   const buffer = await file.arrayBuffer();
+-  const workbook = XLSX.read(buffer, { type: 'array' });
++  // CSV has no workbook encoding metadata; decode UTF-8 before SheetJS so
++  // Persian column names work even when the file has no BOM.
++  const workbook = /\.csv$/i.test(file.name)
++    ? XLSX.read(new TextDecoder('utf-8', { fatal: true }).decode(buffer), { type: 'string' })
++    : XLSX.read(buffer, { type: 'array' });
+   const firstSheetName = workbook.SheetNames[0];
+   const sheet = workbook.Sheets[firstSheetName];
+ 
+diff --git a/client/tests/examQuestionEditor.test.ts b/client/tests/examQuestionEditor.test.ts
+new file mode 100644
+index 0000000..a1b52f1
+--- /dev/null
++++ b/client/tests/examQuestionEditor.test.ts
+@@ -0,0 +1,94 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createElement } from 'react';
++import { renderToString } from 'react-dom/server';
++import { addQuestion, addQuestionsBulk, addQuestionsFromBank } from '../src/api/questionApi';
++import QuestionSources from '../src/pages/QuestionsPage/components/QuestionSources';
++import QuestionCard from '../src/pages/QuestionsPage/components/QuestionCard';
++import QuestionFormModal from '../src/pages/QuestionsPage/components/QuestionFormModal';
++import QuestionsPage from '../src/pages/QuestionsPage/QuestionsPage';
++import { routes } from '../src/routes/routeConfig';
++
++const question = { id: 'q1', examId: 'exam1', text: 'سؤال مستقیم', options: ['اول', 'دوم'], correctOptionIndex: 1 };
++
++test('exam question route loads the exam editor instead of the bank directory', async () => {
++  const route = routes.find(item => item.path === '/exams/:examId/questions');
++  assert.ok(route?.protected);
++  // Exercise the actual lazy module used by the router, not a source-text match.
++  const lazy = route!.Component as unknown as { _init: (payload: unknown) => unknown; _payload: unknown };
++  let component: unknown;
++  try { component = lazy._init(lazy._payload); } catch (pending) {
++    await pending;
++    component = lazy._init(lazy._payload);
++  }
++  assert.equal(component, QuestionsPage);
++});
++
++test('manual and bulk questions need only an exam; bank import preserves source IDs', async () => {
++  const original = globalThis.fetch;
++  const requests: { path: string; body: unknown }[] = [];
++  globalThis.fetch = (async (input, init) => {
++    requests.push({ path: new URL(String(input)).pathname, body: JSON.parse(String(init?.body)) });
++    return new Response(JSON.stringify(question), { status: 201 });
++  }) as typeof fetch;
++  try {
++    await addQuestion(question);
++    await addQuestionsBulk([question]);
++    await addQuestionsFromBank('exam1', ['bank-question-2']);
++    const body = { text: question.text, options: question.options, correctOptionIndex: 1 };
++    assert.deepEqual(requests, [
++      { path: '/exams/exam1/questions', body },
++      { path: '/exams/exam1/questions/bulk', body: [body] },
++      { path: '/exams/exam1/questions/from-bank', body: { questionIds: ['bank-question-2'] } },
++    ]);
++  } finally { globalThis.fetch = original; }
++});
++
++test('three visible source actions are independent and bank creation is never required', () => {
++  const calls: string[] = [];
++  const props = { onManual: () => calls.push('manual'), onExcel: () => calls.push('excel'), onBank: () => calls.push('bank') };
++  const tree = QuestionSources(props);
++  for (const button of tree.props.children) button.props.onClick();
++  assert.deepEqual(calls, ['manual', 'excel', 'bank']);
++  const html = renderToString(createElement(QuestionSources, props));
++  for (const label of ['نوشتن سؤال', 'ورود از اکسل', 'انتخاب از بانک سؤال']) assert.ok(html.includes(label));
++  assert.ok(html.includes('اختیاری'));
++});
++
++test('read-only exam questions expose answers but no mutation controls', () => {
++  const html = renderToString(createElement(QuestionCard, { question, index: 0, canEdit: false, onEdit: () => {}, onDelete: () => {} }));
++  assert.ok(html.includes('پاسخ صحیح'));
++  assert.ok(html.includes('دوم'));
++  assert.doesNotMatch(html, /<button/);
++});
++
++test('failed save remains visible inside the manual question form with entered content', () => {
++  const noop = () => {};
++  const html = renderToString(createElement(QuestionFormModal, {
++    isOpen: true, isEditing: false, isSubmitting: false,
++    text: question.text, options: question.options, correctOptionIndex: 1,
++    error: 'ذخیره انجام نشد', onTextChange: noop, onCorrectOptionChange: noop,
++    onOptionTextChange: noop, onAddOption: noop, onRemoveOption: noop, onSubmit: noop, onClose: noop,
++  }));
++  assert.ok(html.includes('سؤال مستقیم'));
++  assert.ok(html.includes('ذخیره انجام نشد'));
++  assert.ok(html.includes('role="alert"'));
++});
++
++
++test('Persian CSV works with and without BOM and real Excel works without any bank', async () => {
++  const { parseQuestionsFromExcel } = await import('../src/utils/questionExcel');
++  const XLSX = await import('xlsx');
++  const csv = 'سوال,گزینه A,گزینه B,پاسخ صحیح\nسؤال از فایل,اول,دوم,B\n';
++  for (const prefix of ['', '\uFEFF']) {
++    const parsed = await parseQuestionsFromExcel(new File([prefix + csv], 'questions.csv'));
++    assert.deepEqual(parsed.questions, [{ text: 'سؤال از فایل', options: ['اول', 'دوم'], correctOptionIndex: 1 }]);
++  }
++  const workbook = XLSX.utils.book_new();
++  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
++    ['سوال', 'گزینه A', 'گزینه B', 'پاسخ صحیح'], ['سؤال اکسل', 'اول', 'دوم', 'B'],
++  ]), 'Questions');
++  const parsed = await parseQuestionsFromExcel(new File([XLSX.write(workbook, { type: 'array', bookType: 'xlsx' })], 'questions.xlsx'));
++  assert.equal(parsed.questions[0].text, 'سؤال اکسل');
++  assert.equal(parsed.questions[0].correctOptionIndex, 1);
++});

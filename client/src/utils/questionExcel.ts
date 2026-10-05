@@ -54,7 +54,11 @@ export async function parseQuestionsFromExcel(
   // واقعاً لازمش داریم دانلود/اجرا می‌شه، نه با کل صفحه
   const XLSX = await import('xlsx');
   const buffer = await file.arrayBuffer();
-  const workbook = XLSX.read(buffer, { type: 'array' });
+  // CSV has no workbook encoding metadata; decode UTF-8 before SheetJS so
+  // Persian column names work even when the file has no BOM.
+  const workbook = /\.csv$/i.test(file.name)
+    ? XLSX.read(new TextDecoder('utf-8', { fatal: true }).decode(buffer), { type: 'string' })
+    : XLSX.read(buffer, { type: 'array' });
   const firstSheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[firstSheetName];
 

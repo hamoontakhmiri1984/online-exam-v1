@@ -37,6 +37,7 @@ router.get(
     const [questions, total] = await prisma.$transaction([
       prisma.question.findMany({
         where: filter,
+        include: { _count: { select: { practiceQuestions: { where: { practice: { publishedAt: { not: null } } } } } } },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
         skip,
         take: pageSize,

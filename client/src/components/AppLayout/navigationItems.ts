@@ -12,6 +12,7 @@ import {
   Tags,
   GraduationCap,
   LibraryBig,
+  BookOpenCheck,
   Layout,
   Newspaper,
   type LucideIcon,
@@ -41,6 +42,13 @@ export const navigationItems: NavigationItem[] = [
     adminLabel: 'همهٔ آزمون‌ها',
     to: '/exams',
     icon: FileText,
+    roles: ALL_ROLES,
+  },
+  {
+    label: 'تمرین‌ها',
+    adminLabel: 'مجموعه‌های تمرین',
+    to: '/practice',
+    icon: BookOpenCheck,
     roles: ALL_ROLES,
   },
   {

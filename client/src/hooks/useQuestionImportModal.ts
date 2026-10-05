@@ -1,21 +1,16 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   parseQuestionsFromExcel,
   type ParsedQuestion,
 } from '../utils/questionExcel';
-import type { LimitedQuota } from './useInstructorPlanLimit';
 
 type UseQuestionImportModalParams = {
   addMany: (inputs: ParsedQuestion[]) => Promise<unknown>;
-  getQuotaIfGated: () => Promise<LimitedQuota | null>;
-  onLimitExceeded: (quota: LimitedQuota) => void;
 };
 
-function useQuestionImportModal({
-  addMany,
-  getQuotaIfGated,
-  onLimitExceeded,
-}: UseQuestionImportModalParams) {
+function useQuestionImportModal({ addMany }: UseQuestionImportModalParams) {
+  const pending = useRef(false);
+  const generation = useRef(0);
   const [isOpen, setIsOpen] = useState(false);
   const [preview, setPreview] = useState<ParsedQuestion[]>([]);
   const [isParsing, setIsParsing] = useState(false);
@@ -24,6 +19,7 @@ function useQuestionImportModal({
   const [importWarning, setImportWarning] = useState('');
 
   function open() {
+    generation.current += 1;
     setPreview([]);
     setImportError('');
     setImportWarning('');
@@ -31,72 +27,66 @@ function useQuestionImportModal({
   }
 
   function close() {
+    if (pending.current) return;
+    generation.current += 1;
+    setIsParsing(false);
     setIsOpen(false);
   }
 
   async function handleFileSelected(
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) {
-    const file = event.target.files?.[0];
+    if (pending.current) return;
+    const input = event.target;
+    const file = input.files?.[0];
     if (!file) return;
 
+    const request = ++generation.current;
+    setPreview([]);
     setIsParsing(true);
     setImportError('');
     setImportWarning('');
 
     try {
       const { questions, skippedRows } = await parseQuestionsFromExcel(file);
+      if (request !== generation.current) return;
+      if (questions.length > 500) {
+        setImportError('در هر بار حداکثر ۵۰۰ سؤال وارد کنید.');
+        return;
+      }
       if (questions.length === 0) {
         setImportError(
-          'هیچ سوال معتبری تو فایل پیدا نشد. مطمئن شو از قالب درست استفاده کردی (هر سوال حداقل ۲ گزینه‌ی پر و یه پاسخ صحیح مشخص داشته باشه).'
+          'هیچ سوال معتبری تو فایل پیدا نشد. مطمئن شو از قالب درست استفاده کردی (هر سوال حداقل ۲ گزینه‌ی پر و یه پاسخ صحیح مشخص داشته باشه).',
         );
       } else if (skippedRows > 0) {
         setImportWarning(
           `${skippedRows.toLocaleString(
-            'fa-IR'
-          )} سطر ایمپورت نمی‌شه (کمتر از ۲ گزینه، گزینه‌ی خالی وسط گزینه‌ها، یا پاسخ صحیح خالی/نامعتبر). بقیه‌ی سوال‌ها آماده‌ی افزودنن.`
+            'fa-IR',
+          )} سطر ایمپورت نمی‌شه (کمتر از ۲ گزینه، گزینه‌ی خالی وسط گزینه‌ها، یا پاسخ صحیح خالی/نامعتبر). بقیه‌ی سوال‌ها آماده‌ی افزودنن.`,
         );
       }
       setPreview(questions);
     } catch {
+      if (request !== generation.current) return;
       setPreview([]);
       setImportError('خطا در خواندن فایل. مطمئن شو فرمتش Excel یا CSV است.');
     } finally {
-      setIsParsing(false);
-      event.target.value = '';
+      if (request === generation.current) setIsParsing(false);
+      input.value = '';
     }
   }
 
   async function confirmImport() {
-    if (preview.length === 0) return;
-
-    const quota = await getQuotaIfGated();
-    if (quota) {
-      if (quota.expired || quota.remaining === 0) {
-        setIsOpen(false);
-        onLimitExceeded(quota);
-        return;
-      }
-      if (preview.length > quota.remaining) {
-        setImportError(
-          `این فایل ${preview.length.toLocaleString(
-            'fa-IR'
-          )} سوال داره ولی پلن فعلیت فقط ${quota.remaining.toLocaleString(
-            'fa-IR'
-          )} سوال دیگه جا داره. فایل رو کوچیک‌تر کن یا پلنت رو ارتقا بده.`
-        );
-        return;
-      }
-    }
-
+    if (pending.current || isParsing || preview.length === 0) return;
+    pending.current = true;
     setIsImporting(true);
-    setImportError('');
-
     try {
+      // The server applies the quota atomically when it saves the batch.
+      setImportError('');
+
       const created = await addMany(preview);
 
-      // موقع خطا useQuestionBank پیام رو تو Toast نشون می‌ده و undefined
-      // برمی‌گردونه؛ مودال با پیش‌نمایش باز می‌مونه تا نیاز به آپلود دوباره نباشه
+      // Keep the preview if saving fails; the page displays the server error.
       if (!created) {
         setImportError('افزودن سوال‌ها با خطا مواجه شد. دوباره تلاش کن.');
         return;
@@ -104,7 +94,10 @@ function useQuestionImportModal({
 
       setIsOpen(false);
       setPreview([]);
+    } catch {
+      setImportError('افزودن سؤال‌ها ناموفق بود. دوباره تلاش کنید.');
     } finally {
+      pending.current = false;
       setIsImporting(false);
     }
   }

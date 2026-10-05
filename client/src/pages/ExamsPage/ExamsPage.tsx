@@ -121,7 +121,11 @@ function ExamsPage() {
     fetchQuota: () => getRemainingActiveExamQuota(currentUser?.id ?? ''),
   });
 
-  const form = useExamFormModal({ exams, addItem, updateItem });
+  const form = useExamFormModal({ exams, updateItem, addItem: async input => {
+    const created = await addItem(input);
+    if (created) navigate(`/exams/${created.id}/questions`);
+    return created;
+  } });
 
   async function openAddModal() {
     if (await planLimit.ensureAllowed()) form.openAdd();

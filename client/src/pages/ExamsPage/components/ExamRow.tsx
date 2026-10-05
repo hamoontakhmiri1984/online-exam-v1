@@ -86,10 +86,11 @@ function ExamRow({
             <>
               <button
                 onClick={() => onOpenQuestions(exam)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-accent-500/10 hover:text-accent-600 dark:text-gray-400 dark:hover:bg-accent-500/15 dark:hover:text-accent-500 transition"
+                className="flex h-9 items-center justify-center gap-2 rounded-lg px-3 text-gray-500 hover:bg-accent-500/10 hover:text-accent-600 dark:text-gray-400 dark:hover:bg-accent-500/15 dark:hover:text-accent-500 transition"
                 title="سوال‌های آزمون"
               >
                 <ListChecks size={16} />
+                سؤال‌ها
               </button>
               {exam.status === 'draft' && (
                 <button

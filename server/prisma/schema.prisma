@@ -109,6 +109,8 @@ model User {
   handouts           Handout[]
   blogPosts          BlogPost[]         @relation("BlogAuthor")
   siteContentEdits   SiteContent[]      @relation("SiteContentEditor")
+  practiceSets       PracticeSet[]
+  practiceAttempts   PracticeAttempt[]
   adminActions       AdminAuditLog[]    @relation("AdminActor")
 
   @@map("users")
@@ -145,6 +147,7 @@ model Group {
   students       User[]          @relation("GroupMembers")
   exams          Exam[]          @relation("GroupExams")
   lessonSessions LessonSession[] @relation("GroupSessions")
+  practiceAccess PracticeSetGroup[]
   handouts       Handout[]
 
   @@index([instructorId])
@@ -318,6 +321,7 @@ model Question {
   difficulty         QuestionDifficulty @default(Medium)
 
   bank          QuestionBank   @relation(fields: [bankId], references: [id], onDelete: Cascade)
+  practiceQuestions PracticeQuestion[]
   examQuestions ExamQuestion[]
 
   @@index([bankId])
@@ -456,4 +460,72 @@ model AdminAuditLog {
   @@index([adminId, createdAt])
   @@index([targetType, targetId, createdAt])
   @@map("admin_audit_logs")
+}
+
+
+enum PracticeStatus {
+  Draft
+  Published
+  Archived
+}
+
+model PracticeSet {
+  id           String @id @default(cuid())
+  instructorId String
+  title        String
+  description  String @default("")
+  status       PracticeStatus @default(Draft)
+  publishedAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  instructor   User @relation(fields: [instructorId], references: [id], onDelete: Restrict)
+  groups       PracticeSetGroup[]
+  questions    PracticeQuestion[]
+  @@index([instructorId, createdAt])
+  @@map("practice_sets")
+}
+
+model PracticeSetGroup {
+  practiceId String
+  groupId String
+  practice PracticeSet @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  @@id([practiceId, groupId])
+  @@index([groupId])
+  @@map("practice_set_groups")
+}
+
+// Published snapshots are immutable, including after archive/resume.
+model PracticeQuestion {
+  id String @id @default(cuid())
+  practiceId String
+  sourceQuestionId String?
+  position Int
+  text String
+  options String[]
+  correctOptionIndex Int
+  difficulty QuestionDifficulty
+  practice PracticeSet @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+  source Question? @relation(fields: [sourceQuestionId], references: [id], onDelete: SetNull)
+  attempts PracticeAttempt[]
+  @@unique([practiceId, position])
+  @@index([sourceQuestionId])
+  @@map("practice_questions")
+}
+
+// Append-only answers. A retry reuses requestId and cannot increment history twice.
+model PracticeAttempt {
+  id String @id @default(cuid())
+  questionId String
+  studentId String
+  requestId String
+  selectedOptionIndex Int
+  isCorrect Boolean
+  createdAt DateTime @default(now())
+  question PracticeQuestion @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  student User @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  @@unique([studentId, requestId])
+  @@index([studentId, questionId, createdAt])
+  @@index([questionId])
+  @@map("practice_attempts")
 }

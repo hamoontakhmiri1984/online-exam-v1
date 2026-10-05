@@ -2,14 +2,9 @@ import { Pencil, Trash2 } from 'lucide-react';
 
 import type {
   BankQuestion,
-  QuestionDifficulty,
 } from '../../../api/questionBankApi';
 
-const DIFFICULTY_LABELS: Record<QuestionDifficulty, string> = {
-  Easy: 'آسان',
-  Medium: 'متوسط',
-  Hard: 'سخت',
-};
+import Difficulty from '../../../components/QuestionDifficultyBadge/QuestionDifficultyBadge';
 
 type BankQuestionCardProps = {
   question: BankQuestion;
@@ -48,10 +43,7 @@ function BankQuestionCard({
             ))}
           </div>
 
-          <p className="mt-3 text-xs text-gray-400">
-            سختی:{' '}
-            {DIFFICULTY_LABELS[question.difficulty] ?? question.difficulty}
-          </p>
+          <div className="mt-3"><Difficulty difficulty={question.difficulty}/></div>
         </div>
 
         {onEdit && onDelete && (

@@ -1,0 +1,2727 @@
+diff --git a/client/src/api/practiceApi.ts b/client/src/api/practiceApi.ts
+new file mode 100644
+index 0000000..fe1d32a
+--- /dev/null
++++ b/client/src/api/practiceApi.ts
+@@ -0,0 +1,97 @@
++import { apiRequest } from '../lib/apiClient';
++import {
++  listQueryString,
++  type ListPage,
++  type ListQuery,
++} from '../lib/listPagination';
++import type { QuestionDifficulty } from './questionBankApi';
++export type Practice = {
++  id: string;
++  title: string;
++  description: string;
++  status: 'Draft' | 'Published' | 'Archived';
++  publishedAt: string | null;
++  questionCount: number;
++  instructorName: string | null;
++  groups: { id: string; name: string }[];
++};
++export type PracticeStats = {
++  attempts: number;
++  correct: number;
++  incorrect: number;
++  lastCorrect: boolean | null;
++  lastAttemptAt: string | null;
++};
++export type PracticeQuestion = {
++  id: string;
++  text: string;
++  options: string[];
++  difficulty: QuestionDifficulty;
++  position: number;
++  correctOptionIndex?: number;
++  sourceQuestionId?: string | null;
++  stats?: PracticeStats;
++};
++export type PracticeAttempt = {
++  id: string;
++  selectedOptionIndex: number;
++  isCorrect: boolean;
++  createdAt: string;
++};
++export type PracticeAnswer = PracticeAttempt & {
++  questionId: string;
++  correctOptionIndex: number;
++  stats: PracticeStats;
++};
++export type PracticeInput = {
++  title: string;
++  description: string;
++  groupIds: string[];
++  questionIds?: string[];
++};
++export type PracticeFilters = {
++  difficulty?: QuestionDifficulty;
++  progress?: 'all' | 'unanswered' | 'mistakes';
++};
++export const getPractices = (query: ListQuery = {}) =>
++  apiRequest<ListPage<Practice>>(`/practice${listQueryString(query)}`);
++export const getPractice = (id: string) =>
++  apiRequest<Practice>(`/practice/${id}`);
++export const createPractice = (input: PracticeInput) =>
++  apiRequest<{ id: string }>('/practice', { method: 'POST', body: input });
++export const updatePractice = (id: string, input: PracticeInput) =>
++  apiRequest<{ id: string }>(`/practice/${id}`, { method: 'PUT', body: input });
++export const setPracticeStatus = (
++  id: string,
++  status: 'Published' | 'Archived',
++) => apiRequest(`/practice/${id}/status`, { method: 'POST', body: { status } });
++export function getPracticeQuestions(
++  id: string,
++  query: ListQuery = {},
++  filters: PracticeFilters = {},
++) {
++  const params = new URLSearchParams(listQueryString(query).slice(1));
++  if (filters.difficulty) params.set('difficulty', filters.difficulty);
++  if (filters.progress) params.set('progress', filters.progress);
++  return apiRequest<ListPage<PracticeQuestion>>(
++    `/practice/${id}/questions?${params}`,
++  );
++}
++export const answerPractice = (
++  id: string,
++  questionId: string,
++  requestId: string,
++  selectedOptionIndex: number,
++) =>
++  apiRequest<PracticeAnswer>(
++    `/practice/${id}/questions/${questionId}/answers`,
++    { method: 'POST', body: { requestId, selectedOptionIndex } },
++  );
++export const getPracticeHistory = (
++  id: string,
++  questionId: string,
++  query: ListQuery = {},
++) =>
++  apiRequest<ListPage<PracticeAttempt>>(
++    `/practice/${id}/questions/${questionId}/history${listQueryString(query)}`,
++  );
+diff --git a/client/src/api/questionBankApi.ts b/client/src/api/questionBankApi.ts
+index ee34fd9..2f741a7 100644
+--- a/client/src/api/questionBankApi.ts
++++ b/client/src/api/questionBankApi.ts
+@@ -19,6 +19,7 @@ export type QuestionBank = {
+ };
+ 
+ export type BankQuestion = {
++  usedInPractice?: boolean;
+   id: string;
+   bankId: string;
+   text: string;
+diff --git a/client/src/components/AppLayout/navigationItems.ts b/client/src/components/AppLayout/navigationItems.ts
+index b795f87..bcab52e 100644
+--- a/client/src/components/AppLayout/navigationItems.ts
++++ b/client/src/components/AppLayout/navigationItems.ts
+@@ -12,6 +12,7 @@ import {
+   Tags,
+   GraduationCap,
+   LibraryBig,
++  BookOpenCheck,
+   Layout,
+   Newspaper,
+   type LucideIcon,
+@@ -43,6 +44,13 @@ export const navigationItems: NavigationItem[] = [
+     icon: FileText,
+     roles: ALL_ROLES,
+   },
++  {
++    label: 'تمرین‌ها',
++    adminLabel: 'مجموعه‌های تمرین',
++    to: '/practice',
++    icon: BookOpenCheck,
++    roles: ALL_ROLES,
++  },
+   {
+     label: 'بانک سوال',
+     adminLabel: 'همهٔ بانک‌های سوال',
+diff --git a/client/src/components/QuestionDifficultyBadge/QuestionDifficultyBadge.tsx b/client/src/components/QuestionDifficultyBadge/QuestionDifficultyBadge.tsx
+new file mode 100644
+index 0000000..b9ebb55
+--- /dev/null
++++ b/client/src/components/QuestionDifficultyBadge/QuestionDifficultyBadge.tsx
+@@ -0,0 +1,29 @@
++import type { QuestionDifficulty } from '../../api/questionBankApi';
++export const difficultyLabels: Record<QuestionDifficulty, string> = {
++  Easy: 'آسان',
++  Medium: 'متوسط',
++  Hard: 'سخت',
++};
++const colors = {
++  Easy: 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
++  Medium:
++    'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300',
++  Hard: 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-300',
++};
++export default function QuestionDifficultyBadge({
++  difficulty,
++}: {
++  difficulty: QuestionDifficulty;
++}) {
++  return (
++    <span
++      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${colors[difficulty]}`}
++    >
++      <span
++        aria-hidden="true"
++        className="h-1.5 w-1.5 rounded-full bg-current"
++      />
++      {difficultyLabels[difficulty]}
++    </span>
++  );
++}
+diff --git a/client/src/pages/PracticePage/PracticeDetailPage.tsx b/client/src/pages/PracticePage/PracticeDetailPage.tsx
+new file mode 100644
+index 0000000..6abb2b2
+--- /dev/null
++++ b/client/src/pages/PracticePage/PracticeDetailPage.tsx
+@@ -0,0 +1,157 @@
++import { useEffect, useRef, useState } from "react";
++import { Link, useParams } from "react-router-dom";
++import { getCurrentUser } from "../../api/authApi";
++import {
++  getPractice,
++  setPracticeStatus,
++  type Practice,
++} from "../../api/practiceApi";
++import { ApiError } from "../../lib/apiClient";
++import AppLayout from "../../components/AppLayout/AppLayout";
++import PracticeQuestions from "./components/PracticeQuestions";
++import { panel, primary, secondary, statusLabels } from "./practiceUi";
++export default function PracticeDetailPage() {
++  const { practiceId } = useParams();
++  return <Detail key={practiceId} id={practiceId!} />;
++}
++function Detail({ id }: { id: string }) {
++  const role = getCurrentUser()?.role;
++  const [practice, setPractice] = useState<Practice | null>(null);
++  const [loading, setLoading] = useState(true);
++  const [error, setError] = useState("");
++  const [busy, setBusy] = useState(false);
++  const [revision, setRevision] = useState(0);
++  const pending = useRef(false);
++  useEffect(() => {
++    let active = true;
++    setLoading(true);
++    setError("");
++    getPractice(id)
++      .then((p) => {
++        if (active) setPractice(p);
++      })
++      .catch((e) => {
++        if (active)
++          setError(
++            e instanceof ApiError ? e.message : "دریافت تمرین ناموفق بود.",
++          );
++      })
++      .finally(() => {
++        if (active) setLoading(false);
++      });
++    return () => {
++      active = false;
++    };
++  }, [id, revision]);
++  async function changeStatus() {
++    if (!practice || pending.current) return;
++    pending.current = true;
++    setBusy(true);
++    setError("");
++    try {
++      await setPracticeStatus(
++        id,
++        practice.status === "Published" ? "Archived" : "Published",
++      );
++      setPractice(await getPractice(id));
++    } catch (e) {
++      setError(e instanceof ApiError ? e.message : "تغییر وضعیت ناموفق بود.");
++    } finally {
++      pending.current = false;
++      setBusy(false);
++    }
++  }
++  return (
++    <AppLayout
++      title={role === "Student" ? "تمرین و مرور" : "بازبینی مجموعهٔ تمرین"}
++    >
++      <div className="mx-auto max-w-6xl space-y-5" dir="rtl">
++        <Link to="/practice" className="text-sm text-gray-500">
++          ← بازگشت به تمرین‌ها
++        </Link>
++        {error && (
++          <div
++            role="alert"
++            className={`${panel} text-rose-700 dark:text-rose-300`}
++          >
++            {error}
++            <button
++              className={`${secondary} mr-3`}
++              onClick={() => setRevision((n) => n + 1)}
++            >
++              دریافت دوباره
++            </button>
++          </div>
++        )}
++        {loading ? (
++          <p role="status">در حال دریافت تمرین…</p>
++        ) : (
++          practice && (
++            <>
++              <header className={panel}>
++                <div className="flex flex-wrap items-start justify-between gap-4">
++                  <div className="min-w-0 flex-1">
++                    <p className="mb-2 text-sm text-brand-600 dark:text-brand-300">
++                      {role === "Student"
++                        ? "فضای تمرین شما"
++                        : "بازبینی پیش از انتشار"}
++                    </p>
++                    <h1 className="break-words text-2xl font-bold">
++                      {practice.title}
++                    </h1>
++                    <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-gray-500">
++                      {practice.description}
++                    </p>
++                  </div>
++                  <span className="rounded-full bg-gray-100 px-3 py-1 text-xs dark:bg-gray-800">
++                    {statusLabels[practice.status]}
++                  </span>
++                </div>
++                <p className="mt-4 text-sm text-gray-500">
++                  {practice.questionCount.toLocaleString("fa-IR")} سؤال • مدرس:{" "}
++                  {practice.instructorName || "بدون نام"} • بدون محدودیت زمان
++                </p>
++                {role === "Instructor" && (
++                  <div className="mt-5 border-t border-gray-100 pt-5 dark:border-gray-800">
++                    <p className="mb-3 text-sm leading-7 text-gray-500">
++                      گروه‌های مجاز:{" "}
++                      {practice.groups.map((g) => g.name).join("، ") ||
++                        "هنوز گروهی انتخاب نشده"}
++                      {!practice.publishedAt &&
++                        " • پس از انتشار، سؤال‌ها برای حفظ سابقه ثابت می‌مانند."}
++                    </p>
++                    <div className="flex flex-wrap gap-3">
++                      <Link to={`/practice/${id}/edit`} className={secondary}>
++                        ویرایش مشخصات و دسترسی
++                      </Link>
++                      <button
++                        className={primary}
++                        disabled={
++                          busy ||
++                          (!practice.groups.length &&
++                            practice.status !== "Published")
++                        }
++                        onClick={changeStatus}
++                      >
++                        {busy
++                          ? "در حال ذخیره…"
++                          : practice.status === "Published"
++                            ? "توقف دسترسی به تمرین"
++                            : "انتشار برای گروه‌های انتخاب‌شده"}
++                      </button>
++                    </div>
++                    <p className="mt-3 text-xs text-gray-500">
++                      توقف دسترسی، سابقه‌ها را حذف نمی‌کند؛ با انتشار دوباره،
++                      دسترسی برمی‌گردد.
++                    </p>
++                  </div>
++                )}
++              </header>
++              <PracticeQuestions practiceId={id} learner={role === "Student"} />
++            </>
++          )
++        )}
++      </div>
++    </AppLayout>
++  );
++}
+diff --git a/client/src/pages/PracticePage/PracticeEditorPage.tsx b/client/src/pages/PracticePage/PracticeEditorPage.tsx
+new file mode 100644
+index 0000000..6f2a24f
+--- /dev/null
++++ b/client/src/pages/PracticePage/PracticeEditorPage.tsx
+@@ -0,0 +1,241 @@
++import { useEffect, useRef, useState } from "react";
++import { Link, useNavigate, useParams } from "react-router-dom";
++import AppLayout from "../../components/AppLayout/AppLayout";
++import { getGroups, type Group } from "../../api/groupApi";
++import { getQuestionBanks, type QuestionBank } from "../../api/questionBankApi";
++import {
++  createPractice,
++  getPractice,
++  getPracticeQuestions,
++  updatePractice,
++} from "../../api/practiceApi";
++import { collectListPages } from "../../lib/listPagination";
++import { ApiError } from "../../lib/apiClient";
++import PracticeQuestionPicker, {
++  type PickedQuestion,
++} from "./components/PracticeQuestionPicker";
++import { input, panel, primary, secondary } from "./practiceUi";
++export default function PracticeEditorPage() {
++  const { practiceId } = useParams();
++  return <Editor key={practiceId ?? "new"} id={practiceId} />;
++}
++function Editor({ id }: { id?: string }) {
++  const navigate = useNavigate();
++  const [groups, setGroups] = useState<Group[]>([]);
++  const [banks, setBanks] = useState<QuestionBank[]>([]);
++  const [title, setTitle] = useState("");
++  const [description, setDescription] = useState("");
++  const [groupIds, setGroupIds] = useState<string[]>([]);
++  const [selected, setSelected] = useState<PickedQuestion[]>([]);
++  const [frozen, setFrozen] = useState(false);
++  const [loading, setLoading] = useState(true);
++  const [loadError, setLoadError] = useState("");
++  const [error, setError] = useState("");
++  const [busy, setBusy] = useState(false);
++  const [revision, setRevision] = useState(0);
++  const pending = useRef(false);
++  useEffect(() => {
++    let active = true;
++    setLoading(true);
++    setLoadError("");
++    Promise.all([
++      getGroups(),
++      getQuestionBanks(),
++      id ? getPractice(id) : null,
++      id ? collectListPages((query) => getPracticeQuestions(id, query)) : [],
++    ])
++      .then(([g, b, p, qs]) => {
++        if (!active) return;
++        setGroups(g);
++        setBanks(b);
++        if (p) {
++          setTitle(p.title);
++          setDescription(p.description);
++          setGroupIds(p.groups.map((item) => item.id));
++          setFrozen(!!p.publishedAt);
++          setSelected(
++            qs
++              .filter((q) => q.sourceQuestionId)
++              .map((q) => ({
++                id: q.sourceQuestionId!,
++                text: q.text,
++                difficulty: q.difficulty,
++              })),
++          );
++        }
++      })
++      .catch((e) => {
++        if (active)
++          setLoadError(
++            e instanceof ApiError ? e.message : "دریافت اطلاعات ناموفق بود.",
++          );
++      })
++      .finally(() => {
++        if (active) setLoading(false);
++      });
++    return () => {
++      active = false;
++    };
++  }, [id, revision]);
++  async function save(event: React.FormEvent) {
++    event.preventDefault();
++    if (pending.current) return;
++    if (!frozen && !selected.length) {
++      setError("حداقل یک سؤال انتخاب کنید.");
++      return;
++    }
++    pending.current = true;
++    setBusy(true);
++    setError("");
++    try {
++      const data = {
++        title,
++        description,
++        groupIds,
++        ...(!frozen ? { questionIds: selected.map((q) => q.id) } : {}),
++      };
++      const saved = id
++        ? await updatePractice(id, data)
++        : await createPractice(data);
++      navigate(`/practice/${saved.id}`);
++    } catch (e) {
++      setError(
++        e instanceof ApiError
++          ? e.message
++          : "ذخیره انجام نشد؛ دوباره تلاش کنید.",
++      );
++    } finally {
++      pending.current = false;
++      setBusy(false);
++    }
++  }
++  return (
++    <AppLayout title={id ? "ویرایش مجموعهٔ تمرین" : "مجموعهٔ تمرین جدید"}>
++      <div className="mx-auto max-w-5xl space-y-5" dir="rtl">
++        <Link to="/practice" className="text-sm text-gray-500">
++          ← بازگشت به تمرین‌ها
++        </Link>
++        <h1 className="text-2xl font-bold">
++          {id ? "تنظیم مجموعهٔ تمرین" : "یک مسیر تازه برای تمرین"}
++        </h1>
++        <p className="text-sm leading-7 text-gray-500">
++          مشخصات، سؤال‌ها و گروه‌های مجاز را انتخاب کنید. پس از ذخیره، پیش‌نمایش
++          را ببینید و منتشر کنید.
++        </p>
++        {loading ? (
++          <p role="status">در حال دریافت اطلاعات…</p>
++        ) : loadError ? (
++          <div role="alert">
++            {loadError}
++            <button
++              className={secondary}
++              onClick={() => setRevision((n) => n + 1)}
++            >
++              تلاش مجدد
++            </button>
++          </div>
++        ) : (
++          <form onSubmit={save} className="space-y-5">
++            <fieldset disabled={busy} className={`${panel} space-y-4`}>
++              <h2 className="text-lg font-bold">۱. مشخصات مجموعه</h2>
++              <label className="block text-sm">
++                نام تمرین
++                <input
++                  className={`${input} mt-2`}
++                  value={title}
++                  onChange={(e) => setTitle(e.target.value)}
++                  required
++                  minLength={2}
++                  maxLength={160}
++                  placeholder="مثلاً مرور فصل اول ریاضی"
++                />
++              </label>
++              <label className="block text-sm">
++                راهنمای کوتاه برای کارآموز
++                <textarea
++                  className={`${input} mt-2`}
++                  rows={3}
++                  maxLength={2000}
++                  value={description}
++                  onChange={(e) => setDescription(e.target.value)}
++                  placeholder="هدف این تمرین چیست؟"
++                />
++              </label>
++            </fieldset>
++            {frozen ? (
++              <section className={panel}>
++                <h2 className="font-bold">سؤال‌های این مجموعه ثابت هستند</h2>
++                <p className="mt-2 text-sm leading-7 text-gray-500">
++                  برای حفظ اعتبار سابقهٔ کارآموز، سؤال‌ها پس از اولین انتشار
++                  تغییر نمی‌کنند. می‌توانید نام، توضیح و دسترسی گروه‌ها را
++                  ویرایش کنید یا مجموعهٔ تازه بسازید.
++                </p>
++              </section>
++            ) : (
++              <PracticeQuestionPicker
++                banks={banks}
++                selected={selected}
++                onChange={setSelected}
++                disabled={busy}
++              />
++            )}
++            <fieldset disabled={busy} className={panel}>
++              <h2 className="text-lg font-bold">۳. دسترسی گروه‌ها</h2>
++              <p className="mb-4 mt-2 text-sm text-gray-500">
++                فقط اعضای گروه‌های انتخاب‌شده، پس از انتشار این تمرین را
++                می‌بینند.
++              </p>
++              {!groups.length ? (
++                <Link to="/groups" className="text-brand-600 underline">
++                  ابتدا گروه بسازید
++                </Link>
++              ) : (
++                <div className="grid gap-3 sm:grid-cols-2">
++                  {groups.map((g) => (
++                    <label
++                      key={g.id}
++                      className="flex items-center gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-700"
++                    >
++                      <input
++                        type="checkbox"
++                        checked={groupIds.includes(g.id)}
++                        onChange={() =>
++                          setGroupIds((ids) =>
++                            ids.includes(g.id)
++                              ? ids.filter((value) => value !== g.id)
++                              : [...ids, g.id],
++                          )
++                        }
++                        className="h-4 w-4 accent-brand-600"
++                      />
++                      {g.name}
++                    </label>
++                  ))}
++                </div>
++              )}
++            </fieldset>
++            {error && (
++              <p
++                role="alert"
++                className="rounded-xl bg-rose-50 p-4 text-sm text-rose-700 dark:bg-rose-950 dark:text-rose-300"
++              >
++                {error}
++              </p>
++            )}
++            <footer
++              className={`${panel} flex flex-wrap items-center justify-between gap-4`}
++            >
++              <p className="text-sm text-gray-500">
++                {groupIds.length.toLocaleString("fa-IR")} گروه انتخاب شده •
++                انتشار در مرحلهٔ بعد
++              </p>
++              <button className={primary} disabled={busy}>
++                {busy ? "در حال ذخیره…" : "ذخیره و بازبینی"}
++              </button>
++            </footer>
++          </form>
++        )}
++      </div>
++    </AppLayout>
++  );
++}
+diff --git a/client/src/pages/PracticePage/PracticePage.tsx b/client/src/pages/PracticePage/PracticePage.tsx
+new file mode 100644
+index 0000000..cec6365
+--- /dev/null
++++ b/client/src/pages/PracticePage/PracticePage.tsx
+@@ -0,0 +1,105 @@
++import { Link } from "react-router-dom";
++import { BookOpenCheck, ArrowLeft, Plus } from "lucide-react";
++import { getCurrentUser } from "../../api/authApi";
++import { getPractices } from "../../api/practiceApi";
++import usePagedList from "../../hooks/usePagedList";
++import AppLayout from "../../components/AppLayout/AppLayout";
++import ListPagination from "../../components/ListPagination/ListPagination";
++import { panel, primary, secondary, statusLabels } from "./practiceUi";
++export default function PracticePage() {
++  const role = getCurrentUser()?.role;
++  const learner = role === "Student";
++  const list = usePagedList(getPractices);
++  return (
++    <AppLayout title={learner ? "تمرین‌های من" : "مجموعه‌های تمرین"}>
++      <div className="mx-auto max-w-6xl space-y-6" dir="rtl">
++        <header className="flex flex-wrap items-center justify-between gap-4">
++          <div>
++            <p className="mb-2 text-sm text-brand-600 dark:text-brand-400">
++              یادگیری با تکرار
++            </p>
++            <h1 className="text-2xl font-bold">
++              {learner
++                ? "هر بار تمرین، یک قدم جلوتر"
++                : "تمرین‌های هدفمند برای گروه‌های شما"}
++            </h1>
++            <p className="mt-3 max-w-2xl text-sm leading-7 text-gray-500 dark:text-gray-400">
++              {learner
++                ? "بدون محدودیت زمان تمرین کنید، نتیجهٔ هر پاسخ را ببینید و سابقهٔ خود را مرور کنید. این بخش نمرهٔ آزمون ندارد."
++                : "سؤال‌ها را از بانک انتخاب کنید و پس از بازبینی، برای گروه‌های خود منتشر کنید. بانک‌ها به‌صورت خودکار در دسترس کارآموز نیستند."}
++            </p>
++          </div>
++          {role === "Instructor" && (
++            <Link className={primary} to="/practice/new">
++              <Plus size={18} />
++              مجموعهٔ تمرین جدید
++            </Link>
++          )}
++        </header>
++        <section className={panel}>
++          <ListPagination {...list} />
++          {list.error ? (
++            <div role="alert">
++              <p>{list.error}</p>
++              <button onClick={list.reload} className={secondary}>
++                تلاش مجدد
++              </button>
++            </div>
++          ) : list.loading ? (
++            <p role="status" className="py-12 text-center text-gray-500">
++              در حال دریافت تمرین‌ها…
++            </p>
++          ) : !list.items.length ? (
++            <div className="py-14 text-center">
++              <BookOpenCheck
++                size={36}
++                className="mx-auto mb-4 text-brand-500"
++              />
++              <h2 className="font-bold">
++                {list.q
++                  ? "تمرینی با این نام پیدا نشد"
++                  : "هنوز مجموعهٔ تمرینی در این بخش نیست"}
++              </h2>
++              <p className="mt-3 text-sm text-gray-500">
++                {learner
++                  ? "تمرین‌هایی که مدرس برای گروه شما فعال کند، اینجا نمایش داده می‌شوند."
++                  : "با انتخاب سؤال‌ها و گروه، اولین مجموعه را بسازید."}
++              </p>
++            </div>
++          ) : (
++            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
++              {list.items.map((p) => (
++                <article
++                  key={p.id}
++                  className="flex flex-col rounded-2xl border border-gray-200 p-5 dark:border-gray-700"
++                >
++                  <div className="mb-4 flex items-center justify-between">
++                    <BookOpenCheck size={22} className="text-brand-500" />
++                    <span className="rounded-full bg-gray-100 px-3 py-1 text-xs dark:bg-gray-800">
++                      {statusLabels[p.status]}
++                    </span>
++                  </div>
++                  <h2 className="break-words text-lg font-bold">{p.title}</h2>
++                  <p className="mt-2 line-clamp-2 text-sm leading-7 text-gray-500">
++                    {p.description || "تمرین و مرور سؤال‌ها با بازخورد فوری"}
++                  </p>
++                  <p className="my-4 text-xs text-gray-500">
++                    {p.questionCount.toLocaleString("fa-IR")} سؤال • مدرس:{" "}
++                    {p.instructorName || "بدون نام"}
++                  </p>
++                  <Link
++                    className={`${secondary} mt-auto`}
++                    to={`/practice/${p.id}`}
++                  >
++                    {learner ? "شروع تمرین و مشاهدهٔ سابقه" : "مشاهده و مدیریت"}
++                    <ArrowLeft size={16} />
++                  </Link>
++                </article>
++              ))}
++            </div>
++          )}
++        </section>
++      </div>
++    </AppLayout>
++  );
++}
+diff --git a/client/src/pages/PracticePage/components/PracticeAnswerCard.tsx b/client/src/pages/PracticePage/components/PracticeAnswerCard.tsx
+new file mode 100644
+index 0000000..f1aefeb
+--- /dev/null
++++ b/client/src/pages/PracticePage/components/PracticeAnswerCard.tsx
+@@ -0,0 +1,161 @@
++import type {
++  PracticeAnswer,
++  PracticeQuestion,
++} from "../../../api/practiceApi";
++import Difficulty from "../../../components/QuestionDifficultyBadge/QuestionDifficultyBadge";
++import usePracticeAnswer from "../usePracticeAnswer";
++import { panel, primary, secondary } from "../practiceUi";
++type Props = {
++  practiceId: string;
++  question: PracticeQuestion;
++  onSaved: (answer: PracticeAnswer) => void;
++  onHistory: () => void;
++};
++export default function PracticeAnswerCard({
++  practiceId,
++  question,
++  onSaved,
++  onHistory,
++}: Props) {
++  const answer = usePracticeAnswer(
++    practiceId,
++    question.id,
++    question.options.length,
++    onSaved,
++  );
++  const stats = question.stats;
++  return (
++    <article className={panel}>
++      <div className="mb-5 flex items-center justify-between gap-3">
++        <span className="text-sm text-gray-500">
++          سؤال {(question.position + 1).toLocaleString("fa-IR")}
++        </span>
++        <Difficulty difficulty={question.difficulty} />
++      </div>
++      <h2 className="whitespace-pre-wrap break-words text-lg font-bold leading-9">
++        {question.text}
++      </h2>
++      <form
++        className="mt-6"
++        onSubmit={(e) => {
++          e.preventDefault();
++          void answer.submit();
++        }}
++      >
++        <fieldset
++          disabled={answer.busy || !!answer.feedback || answer.uncertain}
++          className="space-y-3"
++        >
++          <legend className="sr-only">گزینهٔ پاسخ</legend>
++          {question.options.map((option, index) => {
++            const correct = answer.feedback?.correctOptionIndex === index;
++            const wrong =
++              !!answer.feedback &&
++              answer.feedback.selectedOptionIndex === index &&
++              !answer.feedback.isCorrect;
++            return (
++              <label
++                key={index}
++                className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${correct ? "border-emerald-500 bg-emerald-50 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200" : wrong ? "border-rose-500 bg-rose-50 text-rose-900 dark:bg-rose-950 dark:text-rose-200" : answer.selected === index ? "border-brand-500 bg-brand-50 dark:bg-brand-950/40" : "border-gray-200 hover:border-brand-300 dark:border-gray-700"}`}
++              >
++                <input
++                  type="radio"
++                  name={`answer-${question.id}`}
++                  checked={answer.selected === index}
++                  onChange={() => answer.setSelected(index)}
++                  className="mt-1 h-4 w-4 shrink-0 accent-brand-600"
++                />
++                <span className="min-w-0 break-words text-sm leading-7">
++                  {option}
++                  {correct && (
++                    <strong className="mr-2 text-xs">✓ پاسخ صحیح</strong>
++                  )}
++                  {wrong && <strong className="mr-2 text-xs">پاسخ شما</strong>}
++                </span>
++              </label>
++            );
++          })}
++        </fieldset>
++        {answer.error && (
++          <p
++            role="alert"
++            className="mt-4 text-sm text-rose-600 dark:text-rose-300"
++          >
++            {answer.error}
++          </p>
++        )}
++        {answer.uncertain && (
++          <p className="mt-3 text-sm leading-7 text-amber-700 dark:text-amber-300">
++            ثبت قبلی نیاز به بررسی دارد؛ «تلاش مجدد» همان پاسخ را پیگیری می‌کند
++            و تلاش اضافه‌ای نمی‌سازد.
++          </p>
++        )}
++        {answer.feedback ? (
++          <div
++            role="status"
++            className="mt-5 flex flex-wrap items-center justify-between gap-3"
++          >
++            <p
++              className={
++                answer.feedback.isCorrect
++                  ? "font-bold text-emerald-700 dark:text-emerald-300"
++                  : "font-bold text-rose-700 dark:text-rose-300"
++              }
++            >
++              {answer.feedback.isCorrect
++                ? "درست پاسخ دادید!"
++                : "این پاسخ درست نبود؛ گزینهٔ صحیح مشخص شد."}
++            </p>
++            <button type="button" onClick={answer.repeat} className={secondary}>
++              دوباره تمرین می‌کنم
++            </button>
++          </div>
++        ) : (
++          <button
++            disabled={answer.busy || answer.selected === null}
++            className={`${primary} mt-5 w-full sm:w-auto`}
++          >
++            {answer.busy
++              ? "در حال ثبت…"
++              : answer.uncertain
++                ? "تلاش مجدد ثبت پاسخ"
++                : "ثبت پاسخ و دیدن نتیجه"}
++          </button>
++        )}
++      </form>
++      <footer className="mt-6 border-t border-gray-100 pt-5 dark:border-gray-800">
++        <h3 className="text-sm font-medium">سابقهٔ شما در این تمرین</h3>
++        <div className="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
++          {[
++            ["دفعات پاسخ", stats?.attempts ?? 0],
++            ["درست", stats?.correct ?? 0],
++            ["غلط", stats?.incorrect ?? 0],
++          ].map(([label, value]) => (
++            <div
++              key={label}
++              className="rounded-xl bg-gray-50 p-3 dark:bg-gray-950"
++            >
++              <strong className="block text-lg">
++                {Number(value).toLocaleString("fa-IR")}
++              </strong>
++              <span className="text-xs text-gray-500">{label}</span>
++            </div>
++          ))}
++        </div>
++        {stats?.lastAttemptAt && (
++          <p className="mt-3 text-xs leading-6 text-gray-500">
++            آخرین پاسخ: {stats.lastCorrect ? "درست" : "غلط"} •{" "}
++            {new Date(stats.lastAttemptAt).toLocaleString("fa-IR")}
++          </p>
++        )}
++        <button
++          onClick={onHistory}
++          disabled={!stats?.attempts || answer.busy}
++          className="mt-3 text-sm text-brand-600 underline disabled:opacity-40 dark:text-brand-300"
++        >
++          مشاهدهٔ سابقهٔ پاسخ‌ها
++        </button>
++      </footer>
++    </article>
++  );
++}
+diff --git a/client/src/pages/PracticePage/components/PracticeHistory.tsx b/client/src/pages/PracticePage/components/PracticeHistory.tsx
+new file mode 100644
+index 0000000..2b4fd0f
+--- /dev/null
++++ b/client/src/pages/PracticePage/components/PracticeHistory.tsx
+@@ -0,0 +1,86 @@
++import {
++  getPracticeHistory,
++  type PracticeQuestion,
++} from "../../../api/practiceApi";
++import usePagedList from "../../../hooks/usePagedList";
++import Dialog from "../../QuestionsPage/components/ExamQuestionDialog";
++import { secondary } from "../practiceUi";
++export default function PracticeHistory({
++  practiceId,
++  question,
++  onClose,
++}: {
++  practiceId: string;
++  question: PracticeQuestion;
++  onClose: () => void;
++}) {
++  const list = usePagedList(
++    (query) => getPracticeHistory(practiceId, question.id, query),
++    question.id,
++  );
++  return (
++    <Dialog label="سابقهٔ پاسخ‌ها" isOpen onClose={onClose}>
++      <h2 className="text-lg font-bold">سابقهٔ پاسخ‌های شما</h2>
++      <p className="my-4 break-words text-sm leading-7 text-gray-500">
++        {question.text}
++      </p>
++      {list.error ? (
++        <p role="alert">
++          {list.error}
++          <button onClick={list.reload} className={secondary}>
++            تلاش مجدد
++          </button>
++        </p>
++      ) : list.loading ? (
++        <p role="status">در حال دریافت سابقه…</p>
++      ) : (
++        <ol className="space-y-3">
++          {list.items.map((attempt) => (
++            <li
++              key={attempt.id}
++              className="rounded-xl border border-gray-200 p-4 text-sm dark:border-gray-700"
++            >
++              <span
++                className={
++                  attempt.isCorrect
++                    ? "text-emerald-700 dark:text-emerald-300"
++                    : "text-rose-700 dark:text-rose-300"
++                }
++              >
++                {attempt.isCorrect ? "✓ درست" : "✕ غلط"}
++              </span>
++              <p className="my-2 break-words">
++                پاسخ شما: {question.options[attempt.selectedOptionIndex]}
++              </p>
++              <time
++                className="text-xs text-gray-500"
++                dateTime={attempt.createdAt}
++              >
++                {new Date(attempt.createdAt).toLocaleString("fa-IR")}
++              </time>
++            </li>
++          ))}
++        </ol>
++      )}
++      <div className="mt-5 flex items-center justify-between gap-3">
++        <button
++          className={secondary}
++          disabled={list.loading || list.page === 1}
++          onClick={() => list.setPage(list.page - 1)}
++        >
++          قبلی
++        </button>
++        <span className="text-xs">
++          {list.total.toLocaleString("fa-IR")} پاسخ
++        </span>
++        <button
++          className={secondary}
++          disabled={list.loading || list.page * list.pageSize >= list.total}
++          onClick={() => list.setPage(list.page + 1)}
++        >
++          بعدی
++        </button>
++      </div>
++    </Dialog>
++  );
++}
+diff --git a/client/src/pages/PracticePage/components/PracticeQuestionPicker.tsx b/client/src/pages/PracticePage/components/PracticeQuestionPicker.tsx
+new file mode 100644
+index 0000000..8b11875
+--- /dev/null
++++ b/client/src/pages/PracticePage/components/PracticeQuestionPicker.tsx
+@@ -0,0 +1,148 @@
++import { useState } from "react";
++import {
++  getBankQuestionsPage,
++  type BankQuestion,
++  type QuestionBank,
++} from "../../../api/questionBankApi";
++import usePagedList from "../../../hooks/usePagedList";
++import ListPagination from "../../../components/ListPagination/ListPagination";
++import Difficulty from "../../../components/QuestionDifficultyBadge/QuestionDifficultyBadge";
++import { input, panel } from "../practiceUi";
++export type PickedQuestion = Pick<BankQuestion, "id" | "text" | "difficulty">;
++type Props = {
++  banks: QuestionBank[];
++  selected: PickedQuestion[];
++  onChange: (items: PickedQuestion[]) => void;
++  disabled: boolean;
++};
++export default function PracticeQuestionPicker({
++  banks,
++  selected,
++  onChange,
++  disabled,
++}: Props) {
++  const [bankId, setBankId] = useState(banks[0]?.id ?? "");
++  const list = usePagedList(
++    (query) => getBankQuestionsPage(bankId, query),
++    bankId,
++    !!bankId,
++  );
++  const ids = new Set(selected.map((q) => q.id));
++  return (
++    <section className={panel}>
++      <h2 className="mb-2 text-lg font-bold">۲. انتخاب سؤال‌ها</h2>
++      <p className="mb-5 text-sm text-gray-500">
++        حداکثر ۱۰۰ سؤال از بانک‌های خود انتخاب کنید؛ انتخاب‌ها هنگام جابه‌جایی
++        بین بانک‌ها باقی می‌مانند.
++      </p>
++      {!banks.length ? (
++        <p>ابتدا در بخش «بانک سؤال» سؤال بسازید یا فایل اکسل وارد کنید.</p>
++      ) : (
++        <fieldset
++          disabled={disabled}
++          className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_240px]"
++        >
++          <div className="min-w-0">
++            <label className="mb-4 block text-sm">
++              بانک سؤال
++              <select
++                className={`${input} mt-2`}
++                value={bankId}
++                onChange={(e) => setBankId(e.target.value)}
++              >
++                {banks.map((bank) => (
++                  <option key={bank.id} value={bank.id}>
++                    {bank.name}
++                  </option>
++                ))}
++              </select>
++            </label>
++            <ListPagination {...list} />
++            {list.error ? (
++              <p role="alert">
++                {list.error}
++                <button
++                  type="button"
++                  onClick={list.reload}
++                  className="mr-2 underline"
++                >
++                  تلاش مجدد
++                </button>
++              </p>
++            ) : list.loading ? (
++              <p role="status">در حال دریافت سؤال‌ها…</p>
++            ) : !list.items.length ? (
++              <p>سؤالی پیدا نشد.</p>
++            ) : (
++              <div className="max-h-[32rem] space-y-3 overflow-y-auto">
++                {list.items.map((q) => (
++                  <label
++                    key={q.id}
++                    className={`flex cursor-pointer gap-3 rounded-xl border p-4 ${ids.has(q.id) ? "border-brand-500 bg-brand-50 dark:bg-brand-950/30" : "border-gray-200 dark:border-gray-700"}`}
++                  >
++                    <input
++                      type="checkbox"
++                      checked={ids.has(q.id)}
++                      disabled={!ids.has(q.id) && selected.length >= 100}
++                      onChange={() =>
++                        onChange(
++                          ids.has(q.id)
++                            ? selected.filter((item) => item.id !== q.id)
++                            : [
++                                ...selected,
++                                {
++                                  id: q.id,
++                                  text: q.text,
++                                  difficulty: q.difficulty,
++                                },
++                              ],
++                        )
++                      }
++                      className="mt-1 h-4 w-4 shrink-0 accent-brand-600"
++                    />
++                    <span className="min-w-0">
++                      <span className="mb-2 block break-words text-sm leading-7">
++                        {q.text}
++                      </span>
++                      <Difficulty difficulty={q.difficulty} />
++                      <span className="mt-2 block text-xs text-gray-500">
++                        پاسخ صحیح: {q.options[q.correctOptionIndex]}
++                      </span>
++                    </span>
++                  </label>
++                ))}
++              </div>
++            )}
++          </div>
++          <aside className="rounded-xl bg-gray-50 p-4 dark:bg-gray-950">
++            <h3 className="font-bold">
++              انتخاب‌شده‌ها ({selected.length.toLocaleString("fa-IR")})
++            </h3>
++            <p className="my-3 text-xs leading-6 text-gray-500">
++              ترتیب این فهرست، ترتیب سؤال‌های تمرین است.
++            </p>
++            <ol className="max-h-[32rem] space-y-3 overflow-y-auto">
++              {selected.map((q, i) => (
++                <li key={q.id} className="flex items-start gap-2 text-sm">
++                  <span className="min-w-0 flex-1 break-words">
++                    {(i + 1).toLocaleString("fa-IR")}. {q.text}
++                  </span>
++                  <button
++                    type="button"
++                    aria-label={`حذف سؤال ${i + 1} از انتخاب`}
++                    onClick={() =>
++                      onChange(selected.filter((item) => item.id !== q.id))
++                    }
++                    className="px-2 text-gray-500"
++                  >
++                    ×
++                  </button>
++                </li>
++              ))}
++            </ol>
++          </aside>
++        </fieldset>
++      )}
++    </section>
++  );
++}
+diff --git a/client/src/pages/PracticePage/components/PracticeQuestions.tsx b/client/src/pages/PracticePage/components/PracticeQuestions.tsx
+new file mode 100644
+index 0000000..8a2fee9
+--- /dev/null
++++ b/client/src/pages/PracticePage/components/PracticeQuestions.tsx
+@@ -0,0 +1,175 @@
++import { useState } from "react";
++import {
++  getPracticeQuestions,
++  type PracticeFilters,
++  type PracticeQuestion,
++} from "../../../api/practiceApi";
++import usePagedList from "../../../hooks/usePagedList";
++import ListPagination from "../../../components/ListPagination/ListPagination";
++import Difficulty from "../../../components/QuestionDifficultyBadge/QuestionDifficultyBadge";
++import PracticeAnswerCard from "./PracticeAnswerCard";
++import PracticeHistory from "./PracticeHistory";
++import { input, panel, secondary } from "../practiceUi";
++export default function PracticeQuestions({
++  practiceId,
++  learner,
++}: {
++  practiceId: string;
++  learner: boolean;
++}) {
++  const [filters, setFilters] = useState<PracticeFilters>({ progress: "all" });
++  const [activeId, setActiveId] = useState("");
++  const [history, setHistory] = useState<PracticeQuestion | null>(null);
++  const list = usePagedList(
++    (query) => getPracticeQuestions(practiceId, query, filters),
++    JSON.stringify([practiceId, filters]),
++  );
++  const active = list.items.find((q) => q.id === activeId) ?? list.items[0];
++  const position = list.items.findIndex((q) => q.id === active?.id);
++  return (
++    <div className="space-y-5">
++      <section className={panel}>
++        <div className="mb-4 grid gap-3 sm:grid-cols-2">
++          <label className="text-sm">
++            سطح سؤال
++            <select
++              aria-label="سطح سؤال"
++              className={`${input} mt-2`}
++              value={filters.difficulty ?? ""}
++              onChange={(e) =>
++                setFilters((f) => ({
++                  ...f,
++                  difficulty:
++                    (e.target.value as PracticeFilters["difficulty"]) ||
++                    undefined,
++                }))
++              }
++            >
++              <option value="">همهٔ سطح‌ها</option>
++              <option value="Easy">آسان</option>
++              <option value="Medium">متوسط</option>
++              <option value="Hard">سخت</option>
++            </select>
++          </label>
++          {learner && (
++            <label className="text-sm">
++              وضعیت تمرین
++              <select
++                aria-label="وضعیت تمرین"
++                className={`${input} mt-2`}
++                value={filters.progress}
++                onChange={(e) =>
++                  setFilters((f) => ({
++                    ...f,
++                    progress: e.target.value as PracticeFilters["progress"],
++                  }))
++                }
++              >
++                <option value="all">همهٔ سؤال‌ها</option>
++                <option value="unanswered">هنوز پاسخ نداده‌ام</option>
++                <option value="mistakes">قبلاً اشتباه پاسخ داده‌ام</option>
++              </select>
++            </label>
++          )}
++        </div>
++        <ListPagination {...list} />
++      </section>
++      {list.error ? (
++        <div role="alert" className={panel}>
++          {list.error}
++          <button onClick={list.reload} className={secondary}>
++            تلاش مجدد
++          </button>
++        </div>
++      ) : list.loading ? (
++        <p role="status" className="p-8 text-center">
++          در حال دریافت سؤال‌ها…
++        </p>
++      ) : !active ? (
++        <p className={`${panel} text-center`}>سؤالی با این فیلتر پیدا نشد.</p>
++      ) : (
++        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_220px]">
++          <div className="min-w-0 space-y-4">
++            {learner ? (
++              <PracticeAnswerCard
++                key={active.id}
++                practiceId={practiceId}
++                question={active}
++                onHistory={() => setHistory(active)}
++                onSaved={(result) =>
++                  list.patchItem({ ...active, stats: result.stats })
++                }
++              />
++            ) : (
++              <article className={panel}>
++                <Difficulty difficulty={active.difficulty} />
++                <h2 className="my-5 text-lg font-bold leading-8">
++                  {active.text}
++                </h2>
++                <ol className="space-y-3">
++                  {active.options.map((option, i) => (
++                    <li
++                      key={i}
++                      className={`rounded-xl border p-3 text-sm ${i === active.correctOptionIndex ? "border-emerald-500 text-emerald-700 dark:text-emerald-300" : "border-gray-200 dark:border-gray-700"}`}
++                    >
++                      {option}
++                      {i === active.correctOptionIndex && " ✓ پاسخ صحیح"}
++                    </li>
++                  ))}
++                </ol>
++              </article>
++            )}
++            <nav
++              aria-label="حرکت بین سؤال‌ها"
++              className="flex justify-between gap-3"
++            >
++              <button
++                className={secondary}
++                disabled={position <= 0}
++                onClick={() => setActiveId(list.items[position - 1].id)}
++              >
++                سؤال قبلی
++              </button>
++              <button
++                className={secondary}
++                disabled={position >= list.items.length - 1}
++                onClick={() => setActiveId(list.items[position + 1].id)}
++              >
++                سؤال بعدی
++              </button>
++            </nav>
++          </div>
++          <aside className={panel}>
++            <h2 className="mb-4 text-sm font-bold">سؤال‌های این صفحه</h2>
++            <div className="grid grid-cols-5 gap-2 lg:grid-cols-4">
++              {list.items.map((q) => (
++                <button
++                  key={q.id}
++                  aria-label={`رفتن به سؤال ${q.position + 1}`}
++                  aria-current={q.id === active.id ? "step" : undefined}
++                  onClick={() => setActiveId(q.id)}
++                  className={`rounded-lg border py-2 text-sm ${q.id === active.id ? "border-brand-600 bg-brand-600 text-white" : "border-gray-200 dark:border-gray-700"}`}
++                >
++                  {(q.position + 1).toLocaleString("fa-IR")}
++                </button>
++              ))}
++            </div>
++            <p className="mt-4 text-xs leading-6 text-gray-500">
++              {learner
++                ? "پاسخ‌ها پس از زدن «ثبت پاسخ» ذخیره می‌شوند. برای تکرار، «دوباره تمرین می‌کنم» را بزنید."
++                : "این پیش‌نمایش مدرس است؛ پاسخ صحیح فقط برای شما نمایش داده می‌شود."}
++            </p>
++          </aside>
++        </div>
++      )}
++      {history && (
++        <PracticeHistory
++          key={history.id}
++          practiceId={practiceId}
++          question={history}
++          onClose={() => setHistory(null)}
++        />
++      )}
++    </div>
++  );
++}
+diff --git a/client/src/pages/PracticePage/practiceUi.ts b/client/src/pages/PracticePage/practiceUi.ts
+new file mode 100644
+index 0000000..3ce8b9d
+--- /dev/null
++++ b/client/src/pages/PracticePage/practiceUi.ts
+@@ -0,0 +1,13 @@
++export const panel =
++  "rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 sm:p-6";
++export const input =
++  "w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 [color-scheme:light] dark:[color-scheme:dark]";
++export const primary =
++  "inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:cursor-not-allowed disabled:opacity-50";
++export const secondary =
++  "inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 px-4 py-2.5 text-sm transition hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800 disabled:opacity-50";
++export const statusLabels = {
++  Draft: "پیش‌نویس",
++  Published: "فعال برای تمرین",
++  Archived: "متوقف‌شده",
++};
+diff --git a/client/src/pages/PracticePage/usePracticeAnswer.ts b/client/src/pages/PracticePage/usePracticeAnswer.ts
+new file mode 100644
+index 0000000..ed90261
+--- /dev/null
++++ b/client/src/pages/PracticePage/usePracticeAnswer.ts
+@@ -0,0 +1,102 @@
++import { useRef, useState } from "react";
++import { answerPractice, type PracticeAnswer } from "../../api/practiceApi";
++import { getCurrentUser } from "../../api/authApi";
++import { ApiError } from "../../lib/apiClient";
++type PendingAnswer = { id: string; option: number };
++function readPending(key: string, count: number): PendingAnswer | null {
++  try {
++    const value = JSON.parse(sessionStorage.getItem(key) ?? "null");
++    return value &&
++      typeof value.id === "string" &&
++      Number.isInteger(value.option) &&
++      value.option >= 0 &&
++      value.option < count
++      ? value
++      : null;
++  } catch {
++    return null;
++  }
++}
++export default function usePracticeAnswer(
++  practiceId: string,
++  questionId: string,
++  optionCount: number,
++  onSaved: (result: PracticeAnswer) => void,
++) {
++  const key = `practice-answer:${getCurrentUser()?.id}:${practiceId}:${questionId}`;
++  const [initial] = useState(() => readPending(key, optionCount));
++  const request = useRef<PendingAnswer | null>(initial);
++  const pending = useRef(false);
++  const [selected, setSelected] = useState<number | null>(
++    initial?.option ?? null,
++  );
++  const [feedback, setFeedback] = useState<PracticeAnswer | null>(null);
++  const [busy, setBusy] = useState(false);
++  const [uncertain, setUncertain] = useState(!!initial);
++  const [error, setError] = useState("");
++  async function submit() {
++    if (pending.current || selected === null || feedback) return;
++    pending.current = true;
++    setBusy(true);
++    setError("");
++    request.current ??= { id: crypto.randomUUID(), option: selected };
++    try {
++      sessionStorage.setItem(key, JSON.stringify(request.current));
++    } catch {
++      /* memory still protects retries */
++    }
++    try {
++      const result = await answerPractice(
++        practiceId,
++        questionId,
++        request.current.id,
++        request.current.option,
++      );
++      setFeedback(result);
++      setUncertain(false);
++      onSaved(result);
++      try {
++        sessionStorage.removeItem(key);
++      } catch {
++        /* harmless replay returns the same result */
++      }
++    } catch (e) {
++      const rejected =
++        e instanceof ApiError && [400, 403, 404, 409].includes(e.status);
++      if (rejected) {
++        request.current = null;
++        try {
++          sessionStorage.removeItem(key);
++        } catch {
++          /* storage disabled */
++        }
++      }
++      setUncertain(!rejected);
++      setError(
++        e instanceof ApiError
++          ? e.message
++          : "نتیجهٔ ثبت دریافت نشد. با تلاش مجدد، همین پاسخ بررسی می‌شود.",
++      );
++    } finally {
++      pending.current = false;
++      setBusy(false);
++    }
++  }
++  function repeat() {
++    request.current = null;
++    setFeedback(null);
++    setSelected(null);
++    setError("");
++    setUncertain(false);
++  }
++  return {
++    selected,
++    setSelected,
++    feedback,
++    busy,
++    uncertain,
++    error,
++    submit,
++    repeat,
++  };
++}
+diff --git a/client/src/pages/QuestionBanksPage/components/BankQuestionCard.tsx b/client/src/pages/QuestionBanksPage/components/BankQuestionCard.tsx
+index e75735e..58da527 100644
+--- a/client/src/pages/QuestionBanksPage/components/BankQuestionCard.tsx
++++ b/client/src/pages/QuestionBanksPage/components/BankQuestionCard.tsx
+@@ -2,14 +2,9 @@ import { Pencil, Trash2 } from 'lucide-react';
+ 
+ import type {
+   BankQuestion,
+-  QuestionDifficulty,
+ } from '../../../api/questionBankApi';
+ 
+-const DIFFICULTY_LABELS: Record<QuestionDifficulty, string> = {
+-  Easy: 'آسان',
+-  Medium: 'متوسط',
+-  Hard: 'سخت',
+-};
++import Difficulty from '../../../components/QuestionDifficultyBadge/QuestionDifficultyBadge';
+ 
+ type BankQuestionCardProps = {
+   question: BankQuestion;
+@@ -48,10 +43,7 @@ function BankQuestionCard({
+             ))}
+           </div>
+ 
+-          <p className="mt-3 text-xs text-gray-400">
+-            سختی:{' '}
+-            {DIFFICULTY_LABELS[question.difficulty] ?? question.difficulty}
+-          </p>
++          <div className="mt-3"><Difficulty difficulty={question.difficulty}/></div>
+         </div>
+ 
+         {onEdit && onDelete && (
+diff --git a/client/src/pages/QuestionsPage/components/BankQuestionPicker.tsx b/client/src/pages/QuestionsPage/components/BankQuestionPicker.tsx
+index bb9f834..c821424 100644
+--- a/client/src/pages/QuestionsPage/components/BankQuestionPicker.tsx
++++ b/client/src/pages/QuestionsPage/components/BankQuestionPicker.tsx
+@@ -8,6 +8,7 @@ import type { Question } from '../../../api/questionApi';
+ import usePagedList from '../../../hooks/usePagedList';
+ import Modal from './ExamQuestionDialog';
+ import ListPagination from '../../../components/ListPagination/ListPagination';
++import Difficulty from '../../../components/QuestionDifficultyBadge/QuestionDifficultyBadge';
+ 
+ type Props = {
+   existing: Question[];
+@@ -137,6 +138,8 @@ export default function BankQuestionPicker({
+                     />
+                     <span className="min-w-0 break-words">
+                       {question.text}
++                        <span className="my-2 block"><Difficulty difficulty={question.difficulty}/></span>
++                        {question.usedInPractice && <span className="mb-2 block text-xs text-amber-700 dark:text-amber-300">قبلاً در تمرین منتشر شده؛ ممکن است کارآموز پاسخ را دیده باشد.</span>}
+                       <span className="mt-1 block text-xs text-gray-500">
+                         {added
+                           ? 'قبلاً به آزمون اضافه شده'
+diff --git a/client/src/routes/routeConfig.tsx b/client/src/routes/routeConfig.tsx
+index 502baf4..fb8ba31 100644
+--- a/client/src/routes/routeConfig.tsx
++++ b/client/src/routes/routeConfig.tsx
+@@ -39,6 +39,9 @@ const ExamReviewPage = lazy(() =>
+   import('../pages/ExamReviewPage/ExamReviewPage')
+ );
+ 
++const PracticePage = lazy(() => import('../pages/PracticePage/PracticePage'));
++const PracticeEditorPage = lazy(() => import('../pages/PracticePage/PracticeEditorPage'));
++const PracticeDetailPage = lazy(() => import('../pages/PracticePage/PracticeDetailPage'));
+ const QuestionsPage = lazy(() =>
+   import('../pages/QuestionsPage/QuestionsPage')
+ );
+@@ -140,6 +143,10 @@ export const routes: RouteConfig[] = [
+     protected: true,
+     skipOnboardingGate: true,
+   },
++  { path: '/practice', Component: PracticePage, protected: true },
++  { path: '/practice/new', Component: PracticeEditorPage, protected: true, allowedRoles: ['Instructor'] },
++  { path: '/practice/:practiceId/edit', Component: PracticeEditorPage, protected: true, allowedRoles: ['Instructor'] },
++  { path: '/practice/:practiceId', Component: PracticeDetailPage, protected: true },
+   {
+     path: '/exams',
+     Component: ExamsPage,
+diff --git a/client/tests/practice.test.ts b/client/tests/practice.test.ts
+new file mode 100644
+index 0000000..a0590fc
+--- /dev/null
++++ b/client/tests/practice.test.ts
+@@ -0,0 +1,37 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createElement } from 'react';
++import { renderToString } from 'react-dom/server';
++import { answerPractice, getPracticeQuestions, createPractice } from '../src/api/practiceApi';
++import Difficulty from '../src/components/QuestionDifficultyBadge/QuestionDifficultyBadge';
++import PracticeAnswerCard from '../src/pages/PracticePage/components/PracticeAnswerCard';
++import { routes } from '../src/routes/routeConfig';
++import { navigationItems } from '../src/components/AppLayout/navigationItems';
++
++test('practice uses independent routes and editing is restricted to instructors',()=>{
++  for(const path of ['/practice/new','/practice/:practiceId/edit'])assert.deepEqual(routes.find(r=>r.path===path)?.allowedRoles,['Instructor']);
++  assert.equal(routes.find(r=>r.path==='/practice/:practiceId')?.protected,true);
++  assert.ok(navigationItems.find(n=>n.to==='/practice')?.roles.includes('Student'));
++  assert.equal(navigationItems.find(n=>n.to==='/question-banks')?.roles.includes('Student'),false);
++});
++test('difficulty badges include readable labels and different light/dark colors',()=>{
++  for(const [difficulty,label,color] of [['Easy','آسان','emerald'],['Medium','متوسط','amber'],['Hard','سخت','rose']] as const){
++    const html=renderToString(createElement(Difficulty,{difficulty}));assert.ok(html.includes(label));assert.ok(html.includes(color));assert.ok(html.includes('dark:'));
++  }
++});
++test('practice requests preserve parent, filters, group selection and idempotency without client grading',async()=>{
++  const original=globalThis.fetch;const calls:{url:URL;body:unknown}[]=[];
++  globalThis.fetch=(async(input,init)=>{calls.push({url:new URL(String(input)),body:init?.body?JSON.parse(String(init.body)):null});return new Response('{}',{status:200});}) as typeof fetch;
++  try{
++    await getPracticeQuestions('p1',{page:2,q:'جستجو'},{difficulty:'Hard',progress:'mistakes'});
++    await createPractice({title:'تمرین',description:'',groupIds:['g1'],questionIds:['q1']});
++    await answerPractice('p1','q1','00000000-0000-4000-8000-000000000001',1);
++    assert.equal(calls[0].url.pathname,'/practice/p1/questions');assert.equal(calls[0].url.searchParams.get('page'),'2');assert.equal(calls[0].url.searchParams.get('difficulty'),'Hard');assert.equal(calls[0].url.searchParams.get('progress'),'mistakes');
++    assert.deepEqual(calls[1].body,{title:'تمرین',description:'',groupIds:['g1'],questionIds:['q1']});
++    assert.deepEqual(calls[2].body,{requestId:'00000000-0000-4000-8000-000000000001',selectedOptionIndex:1});
++  }finally{globalThis.fetch=original;}
++});
++test('learner initial card shows options and history counts without revealing a correct answer',()=>{
++  const html=renderToString(createElement(PracticeAnswerCard,{practiceId:'p1',question:{id:'q1',text:'متن سؤال',options:['الف','ب'],difficulty:'Medium',position:0,stats:{attempts:3,correct:2,incorrect:1,lastCorrect:false,lastAttemptAt:null}},onSaved:()=>{},onHistory:()=>{}}));
++  assert.ok(html.includes('متن سؤال'));assert.ok(html.includes('ثبت پاسخ و دیدن نتیجه'));assert.ok(html.includes('سابقهٔ شما'));assert.ok(!html.includes('✓ پاسخ صحیح'));
++});
+diff --git a/docs/practice.fa.md b/docs/practice.fa.md
+new file mode 100644
+index 0000000..d89b43d
+--- /dev/null
++++ b/docs/practice.fa.md
+@@ -0,0 +1,40 @@
++# تمرین و مرور
++
++مدرس از سؤال‌های بانک‌های خودش یک مجموعهٔ تمرین می‌سازد، گروه‌های خودش را انتخاب می‌کند و پس از بازبینی آن را منتشر می‌کند. ذخیرهٔ پیش‌نویس به معنی انتشار نیست. کارآموز فقط تمرین منتشرشدهٔ گروه‌هایی را می‌بیند که عضو آن‌هاست. مدیر ارشد دسترسی مشاهده دارد.
++
++تمرین محدودیت زمانی و نمرهٔ آزمون ندارد. پاسخ صحیح پس از ثبت پاسخ نمایش داده می‌شود. هر بار «دوباره تمرین می‌کنم» یک تلاش تازه است؛ تکرار درخواست شبکه با همان شناسه، تلاش تازه محسوب نمی‌شود. شمارندهٔ درست و غلط، آخرین نتیجه و تاریخچه برای هر کارآموز و هر سؤال در همان مجموعه نگهداری می‌شود؛ آمار یک سؤال در مجموعه‌های مختلف با هم ادغام نمی‌شود.
++
++سؤال‌ها هنگام ساخت مجموعه کپی می‌شوند. ویرایش یا حذف سؤال اصلی، سؤال تمرین و سوابق آن را عوض نمی‌کند. بعد از اولین انتشار، سؤال‌های مجموعه ثابت می‌مانند؛ برای تغییر آن‌ها مجموعهٔ تازه بسازید. عنوان، توضیحات و گروه‌ها قابل ویرایش‌اند. توقف دسترسی، مجموعه را از دید کارآموز خارج می‌کند ولی سابقه را حذف نمی‌کند. حذف عضویت گروه نیز دسترسی به تمرین و سابقهٔ آن را قطع می‌کند.
++
++در انتخاب سؤال برای آزمون، سؤال‌هایی که در مجموعهٔ تمرین منتشر شده‌اند هشدار دارند. این هشدار مانع انتخاب نیست. مسیرهای موجود ساخت سؤال دستی، اکسل و بانک برای آزمون حفظ شده‌اند.
++
++## راه‌اندازی در Codespaces
++
++پس از اعمال پچ، با سرویس PostgreSQL روشن، از پوشهٔ server اجرا کنید:
++
++```bash
++npx prisma generate &&
++npx prisma migrate deploy &&
++REQUIRE_SERVICES=1 node --test tests/practice.test.cjs tests/practice.integration.test.cjs &&
++npm run build
++```
++
++مهاجرت فقط جدول‌ها و روابط جدید تمرین را اضافه می‌کند. از `migrate reset` استفاده نکنید. سرور در حال اجرا را پس از این مرحله دوباره راه‌اندازی کنید.
++
++از ریشهٔ پروژه:
++
++```bash
++npm test -w client &&
++npm run build -w client &&
++npm run lint -w client
++```
++
++تست اتصال واقعی با DATABASE_URL در server/.env اجرا می‌شود و داده‌های آزمون را با شناسه‌های تصادفی ایجاد و پاک می‌کند. REQUIRE_SERVICES=1 مانع رد شدن خاموش تست در نبود دیتابیس می‌شود. CI نیز پس از اجرای مهاجرت‌ها این تست را اجرا می‌کند.
++
++## بازبینی دستی
++
++1. مدرس: تمرین تازه با دو سؤال و یک گروه بسازید؛ پیش‌نویس نباید برای کارآموز دیده شود.
++2. منتشر کنید؛ عضو همان گروه باید دسترسی داشته باشد و عضو گروه دیگر نباید دسترسی داشته باشد.
++3. یک پاسخ درست و یک پاسخ غلط ثبت کنید؛ صفحه را رفرش کنید و سابقه و شمارنده‌ها را بررسی کنید.
++4. تمرین را متوقف کنید؛ دسترسی کارآموز قطع می‌شود. با انتشار دوباره، سابقه باقی است.
++5. حالت روشن، تاریک و صفحهٔ موبایل را بررسی کنید؛ سطح سؤال علاوه بر رنگ با متن مشخص است.
+diff --git a/server/package.json b/server/package.json
+index cb4ab67..595ee04 100644
+--- a/server/package.json
++++ b/server/package.json
+@@ -5,7 +5,7 @@
+   "scripts": {
+     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+     "build": "tsc",
+-    "test": "node --require ts-node/register/transpile-only --test tests/examTiming.test.ts tests/session.integration.test.ts tests/payments.integration.test.ts tests/quota.integration.test.ts tests/examStartGroups.integration.test.ts tests/otp.integration.test.ts tests/otp.test.cjs tests/sessionAccess.test.cjs tests/adminSuperAdmin.test.cjs tests/questionExcel.test.ts tests/uploadValidation.test.ts tests/questionBankAccess.test.cjs tests/listPagination.test.cjs tests/blogAdmin.test.cjs tests/adminInstructorContent.test.cjs tests/redisRateLimit.test.cjs tests/imageContent.test.ts tests/pdfContent.test.ts tests/videoContent.test.ts",
++    "test": "node --require ts-node/register/transpile-only --test tests/examTiming.test.ts tests/session.integration.test.ts tests/payments.integration.test.ts tests/quota.integration.test.ts tests/examStartGroups.integration.test.ts tests/otp.integration.test.ts tests/otp.test.cjs tests/sessionAccess.test.cjs tests/adminSuperAdmin.test.cjs tests/questionExcel.test.ts tests/uploadValidation.test.ts tests/questionBankAccess.test.cjs tests/listPagination.test.cjs tests/blogAdmin.test.cjs tests/adminInstructorContent.test.cjs tests/redisRateLimit.test.cjs tests/imageContent.test.ts tests/pdfContent.test.ts tests/videoContent.test.ts tests/practice.test.cjs tests/practice.integration.test.cjs",
+     "start": "node dist/server.js",
+     "postinstall": "prisma generate",
+     "prisma:generate": "prisma generate",
+diff --git a/server/prisma/migrations/20261004080000_practice_sets/migration.sql b/server/prisma/migrations/20261004080000_practice_sets/migration.sql
+new file mode 100644
+index 0000000..944561f
+--- /dev/null
++++ b/server/prisma/migrations/20261004080000_practice_sets/migration.sql
+@@ -0,0 +1,98 @@
++BEGIN;
++
++-- CreateEnum
++CREATE TYPE "PracticeStatus" AS ENUM ('Draft', 'Published', 'Archived');
++
++-- CreateTable
++CREATE TABLE "practice_sets" (
++    "id" TEXT NOT NULL,
++    "instructorId" TEXT NOT NULL,
++    "title" TEXT NOT NULL,
++    "description" TEXT NOT NULL DEFAULT '',
++    "status" "PracticeStatus" NOT NULL DEFAULT 'Draft',
++    "publishedAt" TIMESTAMP(3),
++    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
++    "updatedAt" TIMESTAMP(3) NOT NULL,
++
++    CONSTRAINT "practice_sets_pkey" PRIMARY KEY ("id")
++);
++
++-- CreateTable
++CREATE TABLE "practice_set_groups" (
++    "practiceId" TEXT NOT NULL,
++    "groupId" TEXT NOT NULL,
++
++    CONSTRAINT "practice_set_groups_pkey" PRIMARY KEY ("practiceId","groupId")
++);
++
++-- CreateTable
++CREATE TABLE "practice_questions" (
++    "id" TEXT NOT NULL,
++    "practiceId" TEXT NOT NULL,
++    "sourceQuestionId" TEXT,
++    "position" INTEGER NOT NULL,
++    "text" TEXT NOT NULL,
++    "options" TEXT[],
++    "correctOptionIndex" INTEGER NOT NULL,
++    "difficulty" "QuestionDifficulty" NOT NULL,
++
++    CONSTRAINT "practice_questions_pkey" PRIMARY KEY ("id")
++);
++
++-- CreateTable
++CREATE TABLE "practice_attempts" (
++    "id" TEXT NOT NULL,
++    "questionId" TEXT NOT NULL,
++    "studentId" TEXT NOT NULL,
++    "requestId" TEXT NOT NULL,
++    "selectedOptionIndex" INTEGER NOT NULL,
++    "isCorrect" BOOLEAN NOT NULL,
++    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
++
++    CONSTRAINT "practice_attempts_pkey" PRIMARY KEY ("id")
++);
++
++-- CreateIndex
++CREATE INDEX "practice_sets_instructorId_createdAt_idx" ON "practice_sets"("instructorId", "createdAt");
++
++-- CreateIndex
++CREATE INDEX "practice_set_groups_groupId_idx" ON "practice_set_groups"("groupId");
++
++-- CreateIndex
++CREATE INDEX "practice_questions_sourceQuestionId_idx" ON "practice_questions"("sourceQuestionId");
++
++-- CreateIndex
++CREATE UNIQUE INDEX "practice_questions_practiceId_position_key" ON "practice_questions"("practiceId", "position");
++
++-- CreateIndex
++CREATE INDEX "practice_attempts_studentId_questionId_createdAt_idx" ON "practice_attempts"("studentId", "questionId", "createdAt");
++
++-- CreateIndex
++CREATE INDEX "practice_attempts_questionId_idx" ON "practice_attempts"("questionId");
++
++-- CreateIndex
++CREATE UNIQUE INDEX "practice_attempts_studentId_requestId_key" ON "practice_attempts"("studentId", "requestId");
++
++-- AddForeignKey
++ALTER TABLE "practice_sets" ADD CONSTRAINT "practice_sets_instructorId_fkey" FOREIGN KEY ("instructorId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
++
++-- AddForeignKey
++ALTER TABLE "practice_set_groups" ADD CONSTRAINT "practice_set_groups_practiceId_fkey" FOREIGN KEY ("practiceId") REFERENCES "practice_sets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
++
++-- AddForeignKey
++ALTER TABLE "practice_set_groups" ADD CONSTRAINT "practice_set_groups_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "groups"("id") ON DELETE CASCADE ON UPDATE CASCADE;
++
++-- AddForeignKey
++ALTER TABLE "practice_questions" ADD CONSTRAINT "practice_questions_practiceId_fkey" FOREIGN KEY ("practiceId") REFERENCES "practice_sets"("id") ON DELETE CASCADE ON UPDATE CASCADE;
++
++-- AddForeignKey
++ALTER TABLE "practice_questions" ADD CONSTRAINT "practice_questions_sourceQuestionId_fkey" FOREIGN KEY ("sourceQuestionId") REFERENCES "questions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
++
++-- AddForeignKey
++ALTER TABLE "practice_attempts" ADD CONSTRAINT "practice_attempts_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "practice_questions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
++
++-- AddForeignKey
++ALTER TABLE "practice_attempts" ADD CONSTRAINT "practice_attempts_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
++
++
++COMMIT;
+diff --git a/server/prisma/schema.prisma b/server/prisma/schema.prisma
+index 4d308f6..98af5ef 100644
+--- a/server/prisma/schema.prisma
++++ b/server/prisma/schema.prisma
+@@ -109,6 +109,8 @@ model User {
+   handouts           Handout[]
+   blogPosts          BlogPost[]         @relation("BlogAuthor")
+   siteContentEdits   SiteContent[]      @relation("SiteContentEditor")
++  practiceSets       PracticeSet[]
++  practiceAttempts   PracticeAttempt[]
+   adminActions       AdminAuditLog[]    @relation("AdminActor")
+ 
+   @@map("users")
+@@ -145,6 +147,7 @@ model Group {
+   students       User[]          @relation("GroupMembers")
+   exams          Exam[]          @relation("GroupExams")
+   lessonSessions LessonSession[] @relation("GroupSessions")
++  practiceAccess PracticeSetGroup[]
+   handouts       Handout[]
+ 
+   @@index([instructorId])
+@@ -318,6 +321,7 @@ model Question {
+   difficulty         QuestionDifficulty @default(Medium)
+ 
+   bank          QuestionBank   @relation(fields: [bankId], references: [id], onDelete: Cascade)
++  practiceQuestions PracticeQuestion[]
+   examQuestions ExamQuestion[]
+ 
+   @@index([bankId])
+@@ -457,3 +461,71 @@ model AdminAuditLog {
+   @@index([targetType, targetId, createdAt])
+   @@map("admin_audit_logs")
+ }
++
++
++enum PracticeStatus {
++  Draft
++  Published
++  Archived
++}
++
++model PracticeSet {
++  id           String @id @default(cuid())
++  instructorId String
++  title        String
++  description  String @default("")
++  status       PracticeStatus @default(Draft)
++  publishedAt  DateTime?
++  createdAt    DateTime @default(now())
++  updatedAt    DateTime @updatedAt
++  instructor   User @relation(fields: [instructorId], references: [id], onDelete: Restrict)
++  groups       PracticeSetGroup[]
++  questions    PracticeQuestion[]
++  @@index([instructorId, createdAt])
++  @@map("practice_sets")
++}
++
++model PracticeSetGroup {
++  practiceId String
++  groupId String
++  practice PracticeSet @relation(fields: [practiceId], references: [id], onDelete: Cascade)
++  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
++  @@id([practiceId, groupId])
++  @@index([groupId])
++  @@map("practice_set_groups")
++}
++
++// Published snapshots are immutable, including after archive/resume.
++model PracticeQuestion {
++  id String @id @default(cuid())
++  practiceId String
++  sourceQuestionId String?
++  position Int
++  text String
++  options String[]
++  correctOptionIndex Int
++  difficulty QuestionDifficulty
++  practice PracticeSet @relation(fields: [practiceId], references: [id], onDelete: Cascade)
++  source Question? @relation(fields: [sourceQuestionId], references: [id], onDelete: SetNull)
++  attempts PracticeAttempt[]
++  @@unique([practiceId, position])
++  @@index([sourceQuestionId])
++  @@map("practice_questions")
++}
++
++// Append-only answers. A retry reuses requestId and cannot increment history twice.
++model PracticeAttempt {
++  id String @id @default(cuid())
++  questionId String
++  studentId String
++  requestId String
++  selectedOptionIndex Int
++  isCorrect Boolean
++  createdAt DateTime @default(now())
++  question PracticeQuestion @relation(fields: [questionId], references: [id], onDelete: Restrict)
++  student User @relation(fields: [studentId], references: [id], onDelete: Restrict)
++  @@unique([studentId, requestId])
++  @@index([studentId, questionId, createdAt])
++  @@index([questionId])
++  @@map("practice_attempts")
++}
+diff --git a/server/src/routes/practice.ts b/server/src/routes/practice.ts
+new file mode 100644
+index 0000000..97d8e38
+--- /dev/null
++++ b/server/src/routes/practice.ts
+@@ -0,0 +1,130 @@
++import { Router } from 'express';
++import { prisma } from '../lib/prisma';
++import { requireAuth, requireRole } from '../middleware/requireAuth';
++import { asyncHandler } from '../lib/asyncHandler';
++import { badRequest } from '../lib/errors';
++import {
++  accessiblePractice,
++  serializePractice,
++} from './practice/practice.access';
++import {
++  answerSchema,
++  createPracticeSchema,
++  statusSchema,
++  updatePracticeSchema,
++} from './practice/practice.validation';
++import {
++  createPractice,
++  setPracticeStatus,
++  updatePractice,
++} from './practice/practice.manage';
++import {
++  listPractices,
++  listPracticeQuestions,
++  practiceHistory,
++} from './practice/practice.read';
++import { answerPractice } from './practice/practice.answers';
++import type { z } from 'zod';
++const router = Router();
++router.use(requireAuth);
++router.use((_req, res, next) => {
++  res.setHeader('Cache-Control', 'no-store');
++  next();
++});
++function parse<T extends z.ZodTypeAny>(schema: T, body: unknown): z.output<T> {
++  const value = schema.safeParse(body);
++  if (!value.success) throw badRequest(value.error.issues[0].message);
++  return value.data;
++}
++router.get(
++  '/',
++  asyncHandler(async (req, res) => {
++    res.json(await listPractices(req.user!, req.query));
++  }),
++);
++router.post(
++  '/',
++  requireRole('Instructor'),
++  asyncHandler(async (req, res) => {
++    res
++      .status(201)
++      .json(
++        await createPractice(
++          req.user!.sub,
++          parse(createPracticeSchema, req.body),
++        ),
++      );
++  }),
++);
++router.get(
++  '/:id',
++  asyncHandler(async (req, res) => {
++    res.json(
++      serializePractice(
++        await accessiblePractice(prisma, req.params.id, req.user!),
++        req.user!,
++      ),
++    );
++  }),
++);
++router.put(
++  '/:id',
++  requireRole('Instructor'),
++  asyncHandler(async (req, res) => {
++    res.json(
++      await updatePractice(
++        req.params.id,
++        req.user!.sub,
++        parse(updatePracticeSchema, req.body),
++      ),
++    );
++  }),
++);
++router.post(
++  '/:id/status',
++  requireRole('Instructor'),
++  asyncHandler(async (req, res) => {
++    res.json(
++      await setPracticeStatus(
++        req.params.id,
++        req.user!.sub,
++        parse(statusSchema, req.body).status,
++      ),
++    );
++  }),
++);
++router.get(
++  '/:id/questions',
++  asyncHandler(async (req, res) => {
++    res.json(await listPracticeQuestions(req.params.id, req.user!, req.query));
++  }),
++);
++router.get(
++  '/:id/questions/:questionId/history',
++  requireRole('Student'),
++  asyncHandler(async (req, res) => {
++    res.json(
++      await practiceHistory(
++        req.params.id,
++        req.params.questionId,
++        req.user!.sub,
++        req.query,
++      ),
++    );
++  }),
++);
++router.post(
++  '/:id/questions/:questionId/answers',
++  requireRole('Student'),
++  asyncHandler(async (req, res) => {
++    res.json(
++      await answerPractice(
++        req.params.id,
++        req.params.questionId,
++        req.user!.sub,
++        parse(answerSchema, req.body),
++      ),
++    );
++  }),
++);
++export default router;
+diff --git a/server/src/routes/practice/practice.access.ts b/server/src/routes/practice/practice.access.ts
+new file mode 100644
+index 0000000..3f3a909
+--- /dev/null
++++ b/server/src/routes/practice/practice.access.ts
+@@ -0,0 +1,44 @@
++import { Prisma } from '@prisma/client';
++import { notFound } from '../../lib/errors';
++export type Actor = { sub: string; role: string };
++export function practiceScope(actor: Actor): Prisma.PracticeSetWhereInput {
++  if (actor.role === 'SuperAdmin') return {};
++  if (actor.role === 'Instructor') return { instructorId: actor.sub };
++  return {
++    status: 'Published',
++    groups: { some: { group: { students: { some: { id: actor.sub } } } } },
++  };
++}
++export async function accessiblePractice(
++  db: Prisma.TransactionClient,
++  id: string,
++  actor: Actor,
++) {
++  const practice = await db.practiceSet.findFirst({
++    where: { id, ...practiceScope(actor) },
++    include: {
++      groups: { include: { group: { select: { id: true, name: true } } } },
++      instructor: { select: { name: true } },
++      _count: { select: { questions: true } },
++    },
++  });
++  if (!practice) throw notFound('تمرین یافت نشد یا دسترسی شما تغییر کرده است.');
++  return practice;
++}
++export function serializePractice(
++  p: Awaited<ReturnType<typeof accessiblePractice>>,
++  actor: Actor,
++) {
++  return {
++    id: p.id,
++    title: p.title,
++    description: p.description,
++    status: p.status,
++    publishedAt: p.publishedAt,
++    instructorName: p.instructor.name,
++    questionCount: p._count.questions,
++    // Do not expose other groups' identities to a learner.
++    groups:
++      actor.role === 'Student' ? [] : p.groups.map((access) => access.group),
++  };
++}
+diff --git a/server/src/routes/practice/practice.answers.ts b/server/src/routes/practice/practice.answers.ts
+new file mode 100644
+index 0000000..fe403f1
+--- /dev/null
++++ b/server/src/routes/practice/practice.answers.ts
+@@ -0,0 +1,108 @@
++import { Prisma } from '@prisma/client';
++import { prisma } from '../../lib/prisma';
++import { badRequest, conflict, notFound } from '../../lib/errors';
++import { accessiblePractice } from './practice.access';
++
++type Input = { requestId: string; selectedOptionIndex: number };
++export async function answerPractice(
++  practiceId: string,
++  questionId: string,
++  studentId: string,
++  input: Input,
++) {
++  // Parallel learners share the lock; archive/content changes take FOR UPDATE.
++  // The student row serializes retries from multiple tabs before checking requestId.
++  return prisma.$transaction(async (db) => {
++    await db.$queryRaw`SELECT id FROM users WHERE id = ${studentId} FOR UPDATE`;
++    await db.$queryRaw`SELECT id FROM practice_sets WHERE id = ${practiceId} FOR SHARE`;
++    await accessiblePractice(db, practiceId, {
++      sub: studentId,
++      role: 'Student',
++    });
++    const q = await db.practiceQuestion.findFirst({
++      where: { id: questionId, practiceId },
++    });
++    if (!q) throw notFound('سؤال در این تمرین یافت نشد.');
++    if (input.selectedOptionIndex >= q.options.length)
++      throw badRequest('گزینه نامعتبر است.');
++    const existing = await db.practiceAttempt.findUnique({
++      where: { studentId_requestId: { studentId, requestId: input.requestId } },
++    });
++    if (
++      existing &&
++      (existing.questionId !== questionId ||
++        existing.selectedOptionIndex !== input.selectedOptionIndex)
++    )
++      throw conflict('شناسهٔ این تلاش قبلاً برای پاسخ دیگری استفاده شده است.');
++    const attempt =
++      existing ??
++      (await db.practiceAttempt.create({
++        data: {
++          studentId,
++          questionId,
++          requestId: input.requestId,
++          selectedOptionIndex: input.selectedOptionIndex,
++          isCorrect: input.selectedOptionIndex === q.correctOptionIndex,
++        },
++      }));
++    const stats = await questionStats(db, studentId, [questionId]);
++    return {
++      id: attempt.id,
++      questionId,
++      selectedOptionIndex: attempt.selectedOptionIndex,
++      isCorrect: attempt.isCorrect,
++      correctOptionIndex: q.correctOptionIndex,
++      createdAt: attempt.createdAt,
++      stats: stats[questionId],
++    };
++  });
++}
++export type PracticeStats = {
++  attempts: number;
++  correct: number;
++  incorrect: number;
++  lastCorrect: boolean | null;
++  lastAttemptAt: Date | null;
++};
++export async function questionStats(
++  db: Prisma.TransactionClient,
++  studentId: string,
++  ids: string[],
++) {
++  const stats: Record<string, PracticeStats> = Object.fromEntries(
++    ids.map((id) => [
++      id,
++      {
++        attempts: 0,
++        correct: 0,
++        incorrect: 0,
++        lastCorrect: null,
++        lastAttemptAt: null,
++      },
++    ]),
++  );
++  if (!ids.length) return stats;
++  const where = { studentId, questionId: { in: ids } };
++  const counts = await db.practiceAttempt.groupBy({
++    by: ['questionId', 'isCorrect'],
++    where,
++    _count: { _all: true },
++  });
++  for (const row of counts) {
++    stats[row.questionId].attempts += row._count._all;
++    stats[row.questionId][row.isCorrect ? 'correct' : 'incorrect'] +=
++      row._count._all;
++  }
++  const latest = await db.$queryRaw<
++    { questionId: string; isCorrect: boolean; createdAt: Date }[]
++  >`
++    SELECT DISTINCT ON ("questionId") "questionId", "isCorrect", "createdAt"
++    FROM practice_attempts WHERE "studentId" = ${studentId}
++    AND "questionId" IN (${Prisma.join(ids)})
++    ORDER BY "questionId", "createdAt" DESC, id DESC`;
++  for (const row of latest) {
++    stats[row.questionId].lastCorrect = row.isCorrect;
++    stats[row.questionId].lastAttemptAt = row.createdAt;
++  }
++  return stats;
++}
+diff --git a/server/src/routes/practice/practice.manage.ts b/server/src/routes/practice/practice.manage.ts
+new file mode 100644
+index 0000000..05df742
+--- /dev/null
++++ b/server/src/routes/practice/practice.manage.ts
+@@ -0,0 +1,119 @@
++import { Prisma, PracticeStatus } from '@prisma/client';
++import { prisma } from '../../lib/prisma';
++import { badRequest, conflict, notFound } from '../../lib/errors';
++import {
++  createPracticeSchema,
++  updatePracticeSchema,
++} from './practice.validation';
++import type { z } from 'zod';
++type Input = z.infer<typeof updatePracticeSchema>;
++async function ownedGroups(
++  db: Prisma.TransactionClient,
++  owner: string,
++  ids: string[],
++) {
++  const count = await db.group.count({
++    where: { id: { in: ids }, instructorId: owner },
++  });
++  if (count !== ids.length) throw notFound('یک یا چند گروه متعلق به شما نیست.');
++}
++async function snapshots(
++  db: Prisma.TransactionClient,
++  owner: string,
++  ids: string[],
++) {
++  const items = await db.question.findMany({
++    where: { id: { in: ids }, bank: { instructorId: owner } },
++  });
++  if (items.length !== ids.length)
++    throw notFound('یک یا چند سؤال متعلق به بانک‌های شما نیست.');
++  const map = new Map(items.map((q) => [q.id, q]));
++  return ids.map((id, position) => {
++    const q = map.get(id)!;
++    return {
++      sourceQuestionId: id,
++      position,
++      text: q.text,
++      options: q.options,
++      correctOptionIndex: q.correctOptionIndex,
++      difficulty: q.difficulty,
++    };
++  });
++}
++export async function createPractice(
++  owner: string,
++  input: z.infer<typeof createPracticeSchema>,
++) {
++  return prisma.$transaction(async (db) => {
++    await ownedGroups(db, owner, input.groupIds);
++    const questions = await snapshots(db, owner, input.questionIds);
++    return db.practiceSet.create({
++      data: {
++        instructorId: owner,
++        title: input.title,
++        description: input.description,
++        groups: { create: input.groupIds.map((groupId) => ({ groupId })) },
++        questions: { create: questions },
++      },
++      select: { id: true },
++    });
++  });
++}
++export async function updatePractice(id: string, owner: string, input: Input) {
++  return prisma.$transaction(async (db) => {
++    await db.$queryRaw`SELECT id FROM practice_sets WHERE id = ${id} FOR UPDATE`;
++    const practice = await db.practiceSet.findFirst({
++      where: { id, instructorId: owner },
++    });
++    if (!practice) throw notFound();
++    if (input.questionIds && practice.publishedAt)
++      throw conflict(
++        'سؤال‌های تمرین منتشرشده ثابت هستند؛ مجموعهٔ تازه بسازید.',
++      );
++    if (practice.status === 'Published' && !input.groupIds.length)
++      throw badRequest('تمرین منتشرشده باید حداقل یک گروه داشته باشد.');
++    await ownedGroups(db, owner, input.groupIds);
++    if (input.questionIds) {
++      const questions = await snapshots(db, owner, input.questionIds);
++      await db.practiceQuestion.deleteMany({ where: { practiceId: id } });
++      await db.practiceQuestion.createMany({
++        data: questions.map((q) => ({ ...q, practiceId: id })),
++      });
++    }
++    await db.practiceSetGroup.deleteMany({ where: { practiceId: id } });
++    await db.practiceSetGroup.createMany({
++      data: input.groupIds.map((groupId) => ({ groupId, practiceId: id })),
++    });
++    return db.practiceSet.update({
++      where: { id },
++      data: { title: input.title, description: input.description },
++      select: { id: true },
++    });
++  });
++}
++export async function setPracticeStatus(
++  id: string,
++  owner: string,
++  status: PracticeStatus,
++) {
++  return prisma.$transaction(async (db) => {
++    await db.$queryRaw`SELECT id FROM practice_sets WHERE id = ${id} FOR UPDATE`;
++    const p = await db.practiceSet.findFirst({
++      where: { id, instructorId: owner },
++      include: { _count: { select: { questions: true, groups: true } } },
++    });
++    if (!p) throw notFound();
++    if (status === 'Published' && (!p._count.groups || !p._count.questions))
++      throw badRequest('برای انتشار، حداقل یک گروه و یک سؤال لازم است.');
++    return db.practiceSet.update({
++      where: { id },
++      data: {
++        status,
++        ...(status === 'Published' && !p.publishedAt
++          ? { publishedAt: new Date() }
++          : {}),
++      },
++      select: { id: true },
++    });
++  });
++}
+diff --git a/server/src/routes/practice/practice.read.ts b/server/src/routes/practice/practice.read.ts
+new file mode 100644
+index 0000000..78933be
+--- /dev/null
++++ b/server/src/routes/practice/practice.read.ts
+@@ -0,0 +1,141 @@
++import { Prisma } from '@prisma/client';
++import { prisma } from '../../lib/prisma';
++import { parseListQuery } from '../../lib/listPagination';
++import { badRequest, notFound } from '../../lib/errors';
++import {
++  accessiblePractice,
++  practiceScope,
++  serializePractice,
++  type Actor,
++} from './practice.access';
++import { questionStats } from './practice.answers';
++import { questionFilterSchema } from './practice.validation';
++export async function listPractices(
++  actor: Actor,
++  query: Record<string, unknown>,
++) {
++  const { page, pageSize, skip, search } = parseListQuery(query);
++  const where: Prisma.PracticeSetWhereInput = {
++    ...practiceScope(actor),
++    ...(search ? { title: { contains: search, mode: 'insensitive' } } : {}),
++  };
++  return prisma.$transaction(
++    async (db) => {
++      const items = await db.practiceSet.findMany({
++        where,
++        skip,
++        take: pageSize,
++        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
++        include: {
++          groups: { include: { group: { select: { id: true, name: true } } } },
++          instructor: { select: { name: true } },
++          _count: { select: { questions: true } },
++        },
++      });
++      return {
++        items: items.map((p) => serializePractice(p, actor)),
++        total: await db.practiceSet.count({ where }),
++        page,
++        pageSize,
++      };
++    },
++    { isolationLevel: 'RepeatableRead' },
++  );
++}
++export async function listPracticeQuestions(
++  id: string,
++  actor: Actor,
++  query: Record<string, unknown>,
++) {
++  const { page, pageSize, skip, search } = parseListQuery(query);
++  const parsed = questionFilterSchema.safeParse(query);
++  if (!parsed.success) throw badRequest('فیلتر تمرین نامعتبر است.');
++  const { difficulty, progress } = parsed.data;
++  const where: Prisma.PracticeQuestionWhereInput = {
++    practiceId: id,
++    ...(difficulty ? { difficulty } : {}),
++    ...(search ? { text: { contains: search, mode: 'insensitive' } } : {}),
++    ...(actor.role === 'Student' && progress === 'unanswered'
++      ? { attempts: { none: { studentId: actor.sub } } }
++      : {}),
++    ...(actor.role === 'Student' && progress === 'mistakes'
++      ? { attempts: { some: { studentId: actor.sub, isCorrect: false } } }
++      : {}),
++  };
++  return prisma.$transaction(
++    async (db) => {
++      await accessiblePractice(db, id, actor);
++      const questions = await db.practiceQuestion.findMany({
++        where,
++        skip,
++        take: pageSize,
++        orderBy: { position: 'asc' },
++      });
++      const stats =
++        actor.role === 'Student'
++          ? await questionStats(
++              db,
++              actor.sub,
++              questions.map((q) => q.id),
++            )
++          : {};
++      const items = questions.map((q) => ({
++        id: q.id,
++        text: q.text,
++        options: q.options,
++        difficulty: q.difficulty,
++        position: q.position,
++        ...(actor.role === 'Student'
++          ? { stats: stats[q.id] }
++          : {
++              correctOptionIndex: q.correctOptionIndex,
++              sourceQuestionId: q.sourceQuestionId,
++            }),
++      }));
++      return {
++        items,
++        total: await db.practiceQuestion.count({ where }),
++        page,
++        pageSize,
++      };
++    },
++    { isolationLevel: 'RepeatableRead' },
++  );
++}
++export async function practiceHistory(
++  id: string,
++  questionId: string,
++  studentId: string,
++  query: Record<string, unknown>,
++) {
++  const { page, pageSize, skip } = parseListQuery(query);
++  return prisma.$transaction(
++    async (db) => {
++      await accessiblePractice(db, id, { sub: studentId, role: 'Student' });
++      const question = await db.practiceQuestion.findFirst({
++        where: { id: questionId, practiceId: id },
++      });
++      if (!question) throw notFound();
++      const where = { studentId, questionId };
++      const items = await db.practiceAttempt.findMany({
++        where,
++        skip,
++        take: pageSize,
++        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
++        select: {
++          id: true,
++          selectedOptionIndex: true,
++          isCorrect: true,
++          createdAt: true,
++        },
++      });
++      return {
++        items,
++        total: await db.practiceAttempt.count({ where }),
++        page,
++        pageSize,
++      };
++    },
++    { isolationLevel: 'RepeatableRead' },
++  );
++}
+diff --git a/server/src/routes/practice/practice.validation.ts b/server/src/routes/practice/practice.validation.ts
+new file mode 100644
+index 0000000..4821149
+--- /dev/null
++++ b/server/src/routes/practice/practice.validation.ts
+@@ -0,0 +1,39 @@
++import { z } from 'zod';
++const ids = (max: number, min = 0) =>
++  z
++    .array(z.string().min(1).max(100))
++    .min(min)
++    .max(max)
++    .refine(
++      (values) => new Set(values).size === values.length,
++      'شناسه تکراری مجاز نیست',
++    );
++export const createPracticeSchema = z
++  .object({
++    title: z.string().trim().min(2).max(160),
++    description: z.string().trim().max(2000).default(''),
++    groupIds: ids(100),
++    questionIds: ids(100, 1),
++  })
++  .strict();
++export const updatePracticeSchema = z
++  .object({
++    title: z.string().trim().min(2).max(160),
++    description: z.string().trim().max(2000).default(''),
++    groupIds: ids(100),
++    questionIds: ids(100, 1).optional(),
++  })
++  .strict();
++export const answerSchema = z
++  .object({
++    requestId: z.string().uuid(),
++    selectedOptionIndex: z.number().int().min(0).max(9),
++  })
++  .strict();
++export const statusSchema = z
++  .object({ status: z.enum(['Published', 'Archived']) })
++  .strict();
++export const questionFilterSchema = z.object({
++  difficulty: z.enum(['Easy', 'Medium', 'Hard']).optional(),
++  progress: z.enum(['all', 'unanswered', 'mistakes']).default('all'),
++});
+diff --git a/server/src/routes/questionBanks/bankQuestions.routes.ts b/server/src/routes/questionBanks/bankQuestions.routes.ts
+index 33a1dca..2eff86b 100644
+--- a/server/src/routes/questionBanks/bankQuestions.routes.ts
++++ b/server/src/routes/questionBanks/bankQuestions.routes.ts
+@@ -37,6 +37,7 @@ router.get(
+     const [questions, total] = await prisma.$transaction([
+       prisma.question.findMany({
+         where: filter,
++        include: { _count: { select: { practiceQuestions: { where: { practice: { publishedAt: { not: null } } } } } } },
+         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+         skip,
+         take: pageSize,
+diff --git a/server/src/routes/questionBanks/questionBanks.service.ts b/server/src/routes/questionBanks/questionBanks.service.ts
+index 5afc055..0259e61 100644
+--- a/server/src/routes/questionBanks/questionBanks.service.ts
++++ b/server/src/routes/questionBanks/questionBanks.service.ts
+@@ -23,6 +23,7 @@ export function serializeQuestion(q: {
+   options: string[];
+   correctOptionIndex: number;
+   difficulty: 'Easy' | 'Medium' | 'Hard';
++  _count?: { practiceQuestions: number };
+ }) {
+   return {
+     id: q.id,
+@@ -31,6 +32,7 @@ export function serializeQuestion(q: {
+     options: q.options,
+     correctOptionIndex: q.correctOptionIndex,
+     difficulty: q.difficulty,
++    usedInPractice: (q._count?.practiceQuestions ?? 0) > 0,
+   };
+ }
+ 
+diff --git a/server/src/server.ts b/server/src/server.ts
+index 8587f09..4283ad8 100644
+--- a/server/src/server.ts
++++ b/server/src/server.ts
+@@ -16,6 +16,7 @@ import studentsRouter from './routes/students';
+ import lessonSessionsRouter from './routes/lessonSessions';
+ import uploadsRouter from './routes/uploads';
+ import examsRouter from './routes/exams';
++import practiceRouter from './routes/practice';
+ import questionBanksRouter from './routes/questionBanks';
+ import examAttemptsRouter from './routes/examAttempts';
+ import myAttemptsRouter from './routes/myAttempts';
+@@ -119,6 +120,7 @@ app.use('/exams/:examId/attempts', examAttemptsRouter);
+ app.use('/exams/:examId/questions', examQuestionsRouter);
+ app.use('/banks', questionBanksRouter);
+ app.use('/exams', examsRouter);
++app.use('/practice', practiceRouter);
+ 
+ // این دوتا باید آخرِ همه‌ی route ها بیان: notFoundHandler برای مسیری که هیچ
+ // router‌ای match نکرده، errorHandler (چهار پارامتری) برای هر throw/next(err)
+diff --git a/server/tests/helpers/practiceApi.cjs b/server/tests/helpers/practiceApi.cjs
+new file mode 100644
+index 0000000..4e7f876
+--- /dev/null
++++ b/server/tests/helpers/practiceApi.cjs
+@@ -0,0 +1,48 @@
++const fs = require('node:fs');
++const path = require('node:path');
++const vm = require('node:vm');
++const ts = require('typescript');
++const express = require('express');
++
++// Real routes, validation and authorization. Tests can inject either the memory
++// fixture or a real PrismaClient; only JWT/session IO is replaced in both cases.
++function practiceApp(prisma) {
++  const src = path.resolve(__dirname, '../../src');
++  const cache = new Map();
++  const doubles = {
++    'lib/prisma.ts': { prisma },
++    'lib/jwt.ts': { verifyAccessToken(token) {
++      const [role, sub] = token.split(':');
++      if (!['Student','Instructor','SuperAdmin'].includes(role) || !sub) throw Error('invalid');
++      return { role, sub, sid: 'practice-test-session' };
++    } },
++    'lib/session.ts': { isSessionValid: async () => true },
++  };
++  function load(filename) {
++    const key = path.relative(src, filename).split(path.sep).join('/');
++    if (doubles[key]) return doubles[key];
++    if (cache.has(filename)) return cache.get(filename).exports;
++    const module = { exports: {} }; cache.set(filename,module);
++    const code = ts.transpileModule(fs.readFileSync(filename,'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
++    vm.runInNewContext(code, { module, exports: module.exports, console, Buffer, Date,
++      require: name => name.startsWith('.') ? load(path.resolve(path.dirname(filename),name+'.ts')) : require(name),
++    }, { filename });
++    return module.exports;
++  }
++  const app = express();app.use(express.json());app.use('/practice',load(path.join(src,'routes/practice.ts')).default);
++  app.use((err,_req,res,_next) => res.status(err.statusCode || 500).json({error:err.message}));
++  return app;
++}
++async function withPracticeApi(t, prisma, run) {
++  const server = practiceApp(prisma).listen(0,'127.0.0.1');
++  await new Promise(resolve => server.once('listening',resolve));
++  t.after(() => new Promise(resolve => { server.close(resolve);server.closeAllConnections(); }));
++  const request = async (actor, method, endpoint='', body) => {
++    const headers = actor ? {Authorization:`Bearer ${actor}`} : {};
++    if (body !== undefined) headers['Content-Type']='application/json';
++    const response = await fetch(`http://127.0.0.1:${server.address().port}/practice${endpoint}`,{method,headers,body:body === undefined ? undefined : JSON.stringify(body)});
++    return { status:response.status, body:await response.json() };
++  };
++  return run(request);
++}
++module.exports = { practiceApp, withPracticeApi };
+diff --git a/server/tests/helpers/practiceMemory.cjs b/server/tests/helpers/practiceMemory.cjs
+new file mode 100644
+index 0000000..adc53f1
+--- /dev/null
++++ b/server/tests/helpers/practiceMemory.cjs
+@@ -0,0 +1,62 @@
++// A behavioral double, not a substitute for practice.integration.test.cjs.
++function practiceMemory() {
++  let sequence=0;
++  const id=()=>`generated-${++sequence}`;
++  const groups=[{id:'group-a',instructorId:'teacher-a',name:'Group A',students:['student-a','student-b']},{id:'group-b',instructorId:'teacher-b',name:'Group B',students:['outsider']}];
++  const source=[{id:'qa',bank:{instructorId:'teacher-a'},text:'Source A',options:['One','Two'],correctOptionIndex:1,difficulty:'Easy'},{id:'qb',bank:{instructorId:'teacher-b'},text:'Source B',options:['One','Two'],correctOptionIndex:0,difficulty:'Hard'}];
++  const sets=[],access=[],questions=[],attempts=[];
++  const copy=x=>structuredClone(x);
++  const basic=(x,w={})=>Object.entries(w).every(([k,v])=>v===undefined || (v && typeof v==='object' ? v.in ? v.in.includes(x[k]) : v.contains ? x[k].includes(v.contains) : true : x[k]===v));
++  function setMatch(p,w={}) {
++    if(!basic(p,w))return false;
++    if(w.groups?.some) return access.some(a=>a.practiceId===p.id && groups.find(g=>g.id===a.groupId)?.students.includes(w.groups.some.group.students.some.id));
++    return true;
++  }
++  const expand=p=>p && ({...copy(p),groups:access.filter(a=>a.practiceId===p.id).map(a=>({...a,group:groups.find(g=>g.id===a.groupId)})),instructor:{name:p.instructorId},_count:{groups:access.filter(a=>a.practiceId===p.id).length,questions:questions.filter(q=>q.practiceId===p.id).length}});
++  function questionMatch(q,w={}) {
++    if(!basic(q,w))return false;
++    if(w.attempts?.none && attempts.some(a=>a.questionId===q.id && basic(a,w.attempts.none)))return false;
++    if(w.attempts?.some && !attempts.some(a=>a.questionId===q.id && basic(a,w.attempts.some)))return false;
++    return true;
++  }
++  const remove=(items,w,match=basic)=>{for(let i=items.length-1;i>=0;i--)if(match(items[i],w))items.splice(i,1);};
++  const slice=(items,args)=>items.slice(args.skip??0,(args.skip??0)+(args.take??items.length));
++  let chain=Promise.resolve();
++  const db={
++    $transaction(run){const result=chain.then(()=>run(db));chain=result.catch(()=>{});return result;},
++    async $queryRaw(strings,...values){
++      if(String(strings[0]).includes('DISTINCT ON')){
++        const student=values[0], ids=values[1].values, latest=new Map();
++        for(const a of attempts.filter(a=>a.studentId===student && ids.includes(a.questionId)))latest.set(a.questionId,a);
++        return [...latest.values()].map(a=>({questionId:a.questionId,isCorrect:a.isCorrect,createdAt:a.createdAt}));
++      }
++      return [];
++    },
++    user:{findUnique:async()=>({role:'Instructor',approvalStatus:'Approved'})},
++    group:{count:async({where})=>groups.filter(g=>basic(g,where)).length},
++    question:{findMany:async({where})=>source.filter(q=>basic(q,where)&&q.bank.instructorId===where.bank.instructorId).map(copy)},
++    practiceSet:{
++      async create({data}){const p={id:id(),title:data.title,description:data.description,instructorId:data.instructorId,status:'Draft',publishedAt:null,createdAt:new Date()};sets.push(p);access.push(...data.groups.create.map(a=>({...a,practiceId:p.id})));questions.push(...data.questions.create.map(q=>({...copy(q),practiceId:p.id,id:id()})));return {id:p.id};},
++      findFirst:async({where})=>expand(sets.find(p=>setMatch(p,where))),
++      findMany:async(args)=>slice(sets.filter(p=>setMatch(p,args.where)),args).map(expand),
++      count:async({where})=>sets.filter(p=>setMatch(p,where)).length,
++      async update({where,data}){const p=sets.find(p=>p.id===where.id);Object.assign(p,data);return {id:p.id};},
++    },
++    practiceSetGroup:{async deleteMany({where}){remove(access,where);},async createMany({data}){access.push(...copy(data));}},
++    practiceQuestion:{
++      async deleteMany({where}){remove(questions,where);},async createMany({data}){questions.push(...data.map(q=>({...copy(q),id:id()})));},
++      findFirst:async({where})=>copy(questions.find(q=>questionMatch(q,where))),
++      findMany:async(args)=>slice(questions.filter(q=>questionMatch(q,args.where)),args).map(copy),
++      count:async({where})=>questions.filter(q=>questionMatch(q,where)).length,
++    },
++    practiceAttempt:{
++      findUnique:async({where})=>copy(attempts.find(a=>basic(a,where.studentId_requestId))),
++      async create({data}){const a={...data,id:id(),createdAt:new Date()};attempts.push(a);return copy(a);},
++      async groupBy({where}){const sums=new Map();for(const a of attempts.filter(a=>basic(a,where))){const k=a.questionId+':'+a.isCorrect;const sum=sums.get(k)??{questionId:a.questionId,isCorrect:a.isCorrect,_count:{_all:0}};sum._count._all++;sums.set(k,sum);}return [...sums.values()];},
++      findMany:async(args)=>slice(attempts.filter(a=>basic(a,args.where)).reverse(),args).map(a=>({id:a.id,selectedOptionIndex:a.selectedOptionIndex,isCorrect:a.isCorrect,createdAt:a.createdAt})),
++      count:async({where})=>attempts.filter(a=>basic(a,where)).length,
++    },
++  };
++  return {db,sets,groups,source,questions,attempts};
++}
++module.exports={practiceMemory};
+diff --git a/server/tests/practice.integration.test.cjs b/server/tests/practice.integration.test.cjs
+new file mode 100644
+index 0000000..3ff6a50
+--- /dev/null
++++ b/server/tests/practice.integration.test.cjs
+@@ -0,0 +1,49 @@
++require('dotenv').config({ path: require('node:path').resolve(__dirname, '../.env') });
++const test=require('node:test');
++const assert=require('node:assert/strict');
++const {randomUUID}=require('node:crypto');
++const {PrismaClient}=require('@prisma/client');
++const {withPracticeApi}=require('./helpers/practiceApi.cjs');
++
++test('Postgres practice: concurrent retry, immutable snapshot, group revocation and retained history',async t=>{
++  const url=process.env.DATABASE_URL;
++  if(!url){if(process.env.REQUIRE_SERVICES==='1')throw Error('DATABASE_URL required');t.skip('Postgres URL not configured');return;}
++  const db=new PrismaClient({datasources:{db:{url}}});
++  t.after(()=>db.$disconnect());
++  try{await db.$queryRaw`SELECT 1`;}catch(e){if(process.env.REQUIRE_SERVICES==='1')throw e;t.skip('Postgres unavailable');return;}
++  const prefix='practice-test-'+randomUUID();
++  const owner=prefix+'-teacher',student=prefix+'-student',groupId=prefix+'-group',bankId=prefix+'-bank';
++  const questionId=prefix+'-question';
++  t.after(async()=>{
++    await db.practiceAttempt.deleteMany({where:{studentId:student}});
++    await db.practiceSet.deleteMany({where:{instructorId:owner}});
++    await db.questionBank.deleteMany({where:{id:bankId}});
++    await db.group.deleteMany({where:{id:groupId}});
++    await db.user.deleteMany({where:{id:{in:[owner,student]}}});
++  });
++  await db.user.createMany({data:[{id:owner,role:'Instructor',approvalStatus:'Approved'},{id:student,role:'Student'}]});
++  await db.group.create({data:{id:groupId,name:'Practice test',category:'test',joinCode:prefix,instructorId:owner,students:{connect:{id:student}}}});
++  await db.questionBank.create({data:{id:bankId,instructorId:owner,name:'Test',category:'test'}});
++  await db.question.create({data:{id:questionId,bankId,text:'Original',options:['A','B'],correctOptionIndex:1,difficulty:'Hard'}});
++  await withPracticeApi(t,db,async r=>{
++    const created=await r(`Instructor:${owner}`,'POST','',{title:'Integration practice',groupIds:[groupId],questionIds:[questionId]});assert.equal(created.status,201,JSON.stringify(created.body));const id=created.body.id;
++    assert.equal((await r(`Instructor:${owner}`,'POST',`/${id}/status`,{status:'Published'})).status,200);
++    const page=await r(`Student:${student}`,'GET',`/${id}/questions`);assert.equal(page.status,200,JSON.stringify(page.body));const q=page.body.items[0];assert.equal(q.correctOptionIndex,undefined);
++    await db.question.update({where:{id:questionId},data:{text:'Changed',correctOptionIndex:0}});
++    const input={requestId:randomUUID(),selectedOptionIndex:1};
++    const replies=await Promise.all(Array.from({length:8},()=>r(`Student:${student}`,'POST',`/${id}/questions/${q.id}/answers`,input)));
++    for(const result of replies){assert.equal(result.status,200,JSON.stringify(result.body));assert.equal(result.body.isCorrect,true);assert.equal(result.body.stats.attempts,1);}
++    assert.equal(await db.practiceAttempt.count({where:{studentId:student}}),1);
++    assert.equal((await r(`Student:${student}`,'POST',`/${id}/questions/${q.id}/answers`,{requestId:randomUUID(),selectedOptionIndex:0})).body.stats.incorrect,1);
++    await db.question.delete({where:{id:questionId}});
++    assert.equal((await r(`Student:${student}`,'GET',`/${id}/questions`)).body.items[0].text,'Original');
++    assert.equal((await r(`Instructor:${owner}`,'PUT',`/${id}`,{title:'Changed',groupIds:[groupId],questionIds:[questionId]})).status,409);
++    await db.group.update({where:{id:groupId},data:{students:{disconnect:{id:student}}}});
++    assert.equal((await r(`Student:${student}`,'POST',`/${id}/questions/${q.id}/answers`,input)).status,404);
++    await db.group.update({where:{id:groupId},data:{students:{connect:{id:student}}}});
++    const history=await r(`Student:${student}`,'GET',`/${id}/questions/${q.id}/history`);assert.equal(history.body.total,2);
++    await r(`Instructor:${owner}`,'POST',`/${id}/status`,{status:'Archived'});
++    assert.equal((await r(`Student:${student}`,'GET',`/${id}`)).status,404);
++    assert.equal(await db.practiceAttempt.count({where:{studentId:student}}),2);
++  });
++});
+diff --git a/server/tests/practice.test.cjs b/server/tests/practice.test.cjs
+new file mode 100644
+index 0000000..ae071cb
+--- /dev/null
++++ b/server/tests/practice.test.cjs
+@@ -0,0 +1,72 @@
++const test=require('node:test');
++const assert=require('node:assert/strict');
++const {randomUUID}=require('node:crypto');
++const {withPracticeApi}=require('./helpers/practiceApi.cjs');
++const {practiceMemory}=require('./helpers/practiceMemory.cjs');
++const input={title:'Practice A',description:'',groupIds:['group-a'],questionIds:['qa']};
++async function fixture(t,run){const memory=practiceMemory();await withPracticeApi(t,memory.db,request=>run(request,memory));}
++async function create(request,data=input){const r=await request('Instructor:teacher-a','POST','',data);assert.equal(r.status,201,JSON.stringify(r.body));return r.body.id;}
++async function publish(request,id){assert.equal((await request('Instructor:teacher-a','POST',`/${id}/status`,{status:'Published'})).status,200);}
++
++test('practice HTTP: anonymous and non-instructor creation fail; foreign groups/questions fail',t=>fixture(t,async r=>{
++  assert.equal((await r(null,'GET')).status,401);
++  for(const actor of ['Student:student-a','SuperAdmin:admin'])assert.equal((await r(actor,'POST','',input)).status,403);
++  for(const data of [{...input,groupIds:['group-b']},{...input,questionIds:['qb']}])assert.equal((await r('Instructor:teacher-a','POST','',data)).status,404);
++  assert.equal((await r('Instructor:teacher-a','POST','',{...input,questionIds:['qa','qa']})).status,400);
++}));
++test('practice HTTP: draft invisible to learners; publishing scopes list, count and detail to groups',t=>fixture(t,async r=>{
++  const id=await create(r);
++  assert.equal((await r('Student:student-a','GET',`/${id}`)).status,404);
++  assert.equal((await r('Instructor:teacher-b','GET',`/${id}`)).status,404);
++  await publish(r,id);
++  const own=await r('Student:student-a','GET');assert.equal(own.body.total,1);assert.deepEqual(own.body.items[0].groups,[]);
++  const other=await r('Student:outsider','GET');assert.equal(other.body.total,0);
++  assert.equal((await r('Student:outsider','GET',`/${id}/questions`)).status,404);
++  assert.equal((await r('Instructor:teacher-b','POST',`/${id}/status`,{status:'Archived'})).status,404);
++}));
++test('practice HTTP: answers hidden, grading server-side, retries idempotent, history isolated',t=>fixture(t,async(r,m)=>{
++  const id=await create(r);await publish(r,id);
++  const q=(await r('Student:student-a','GET',`/${id}/questions`)).body.items[0];
++  assert.equal(q.correctOptionIndex,undefined);assert.equal(q.sourceQuestionId,undefined);assert.equal(q.stats.attempts,0);
++  const url=`/${id}/questions/${q.id}/answers`,body={requestId:randomUUID(),selectedOptionIndex:1};
++  const results=await Promise.all(Array.from({length:5},()=>r('Student:student-a','POST',url,body)));
++  for(const result of results){assert.equal(result.status,200);assert.equal(result.body.isCorrect,true);assert.equal(result.body.stats.attempts,1);}
++  assert.equal(m.attempts.length,1);
++  assert.equal((await r('Student:student-a','POST',url,{...body,selectedOptionIndex:0})).status,409);
++  assert.equal((await r('Student:student-a','POST',url,{...body,requestId:randomUUID(),selectedOptionIndex:9})).status,400);
++  assert.equal((await r('Student:student-a','POST',url,{...body,requestId:randomUUID(),isCorrect:true})).status,400);
++  const wrong=await r('Student:student-a','POST',url,{requestId:randomUUID(),selectedOptionIndex:0});assert.equal(wrong.body.isCorrect,false);assert.deepEqual([wrong.body.stats.attempts,wrong.body.stats.correct,wrong.body.stats.incorrect],[2,1,1]);
++  assert.equal((await r('Student:student-b','GET',`/${id}/questions/${q.id}/history`)).body.total,0);
++  assert.equal((await r('Student:student-a','GET',`/${id}/questions/${q.id}/history`)).body.total,2);
++  assert.equal((await r('Instructor:teacher-a','POST',url,body)).status,403);
++}));
++test('practice HTTP: snapshots survive source changes; published content immutable; archive keeps history',t=>fixture(t,async(r,m)=>{
++  const id=await create(r);await publish(r,id);const q=m.questions[0];
++  m.source[0].correctOptionIndex=0;m.source[0].text='Changed source';
++  const answer={requestId:randomUUID(),selectedOptionIndex:1};
++  assert.equal((await r('Student:student-a','POST',`/${id}/questions/${q.id}/answers`,answer)).body.isCorrect,true);
++  assert.equal((await r('Instructor:teacher-a','PUT',`/${id}`,input)).status,409);
++  await r('Instructor:teacher-a','POST',`/${id}/status`,{status:'Archived'});
++  assert.equal((await r('Student:student-a','POST',`/${id}/questions/${q.id}/answers`,answer)).status,404);
++  await publish(r,id);
++  assert.equal((await r('Student:student-a','GET',`/${id}/questions/${q.id}/history`)).body.total,1);
++  assert.equal((await r('Student:student-a','GET',`/${id}/questions`)).body.items[0].text,'Source A');
++}));
++test('practice HTTP: paging/filters and parent question IDs cannot bypass access',t=>fixture(t,async r=>{
++  const id=await create(r);await publish(r,id);const id2=await create(r);await publish(r,id2);
++  const q=(await r('Student:student-a','GET',`/${id}/questions`)).body.items[0];
++  assert.equal((await r('Student:student-a','POST',`/${id2}/questions/${q.id}/answers`,{requestId:randomUUID(),selectedOptionIndex:1})).status,404);
++  for(const query of ['page=0','pageSize=101','difficulty=Bad','progress=Bad'])assert.equal((await r('Student:student-a','GET',`/${id}/questions?${query}`)).status,400);
++  assert.equal((await r('Student:student-a','GET',`/${id}/questions?difficulty=Hard`)).body.total,0);
++  assert.equal((await r('Student:student-a','GET',`/${id}/questions?progress=unanswered`)).body.total,1);
++  await r('Student:student-a','POST',`/${id}/questions/${q.id}/answers`,{requestId:randomUUID(),selectedOptionIndex:0});
++  assert.equal((await r('Student:student-a','GET',`/${id}/questions?progress=unanswered`)).body.total,0);
++  assert.equal((await r('Student:student-a','GET',`/${id}/questions?progress=mistakes`)).body.total,1);
++}));
++test('practice HTTP: empty-group drafts save but cannot publish, and removing membership revokes access',t=>fixture(t,async(r,m)=>{
++  const id=await create(r,{...input,groupIds:[]});
++  assert.equal((await r('Instructor:teacher-a','POST',`/${id}/status`,{status:'Published'})).status,400);
++  assert.equal((await r('Instructor:teacher-a','PUT',`/${id}`,input)).status,200);await publish(r,id);
++  m.groups[0].students=[];
++  assert.equal((await r('Student:student-a','GET',`/${id}`)).status,404);
++}));

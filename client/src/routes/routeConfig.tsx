@@ -39,6 +39,9 @@ const ExamReviewPage = lazy(() =>
   import('../pages/ExamReviewPage/ExamReviewPage')
 );
 
+const PracticePage = lazy(() => import('../pages/PracticePage/PracticePage'));
+const PracticeEditorPage = lazy(() => import('../pages/PracticePage/PracticeEditorPage'));
+const PracticeDetailPage = lazy(() => import('../pages/PracticePage/PracticeDetailPage'));
 const QuestionsPage = lazy(() =>
   import('../pages/QuestionsPage/QuestionsPage')
 );
@@ -140,6 +143,10 @@ export const routes: RouteConfig[] = [
     protected: true,
     skipOnboardingGate: true,
   },
+  { path: '/practice', Component: PracticePage, protected: true },
+  { path: '/practice/new', Component: PracticeEditorPage, protected: true, allowedRoles: ['Instructor'] },
+  { path: '/practice/:practiceId/edit', Component: PracticeEditorPage, protected: true, allowedRoles: ['Instructor'] },
+  { path: '/practice/:practiceId', Component: PracticeDetailPage, protected: true },
   {
     path: '/exams',
     Component: ExamsPage,

@@ -19,6 +19,7 @@ export type QuestionBank = {
 };
 
 export type BankQuestion = {
+  usedInPractice?: boolean;
   id: string;
   bankId: string;
   text: string;

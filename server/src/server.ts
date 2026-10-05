@@ -16,6 +16,7 @@ import studentsRouter from './routes/students';
 import lessonSessionsRouter from './routes/lessonSessions';
 import uploadsRouter from './routes/uploads';
 import examsRouter from './routes/exams';
+import practiceRouter from './routes/practice';
 import questionBanksRouter from './routes/questionBanks';
 import examAttemptsRouter from './routes/examAttempts';
 import myAttemptsRouter from './routes/myAttempts';
@@ -119,6 +120,7 @@ app.use('/exams/:examId/attempts', examAttemptsRouter);
 app.use('/exams/:examId/questions', examQuestionsRouter);
 app.use('/banks', questionBanksRouter);
 app.use('/exams', examsRouter);
+app.use('/practice', practiceRouter);
 
 // این دوتا باید آخرِ همه‌ی route ها بیان: notFoundHandler برای مسیری که هیچ
 // router‌ای match نکرده، errorHandler (چهار پارامتری) برای هر throw/next(err)

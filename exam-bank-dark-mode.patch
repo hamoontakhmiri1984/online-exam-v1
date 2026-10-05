@@ -1,0 +1,17 @@
+--- a/client/src/pages/QuestionsPage/components/BankQuestionPicker.tsx
++++ b/client/src/pages/QuestionsPage/components/BankQuestionPicker.tsx
+@@ -90,11 +90,11 @@
+               setBankId(event.target.value);
+               setSelected([]);
+             }}
+-            className="my-2 w-full rounded-xl border border-gray-300 bg-transparent p-3 dark:border-gray-700"
++            className="my-2 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 [color-scheme:light] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:[color-scheme:dark]"
+           >
+-            <option value="">بانک را انتخاب کنید</option>
++            <option value="" className="bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100">بانک را انتخاب کنید</option>
+             {banks.map((bank) => (
+-              <option key={bank.id} value={bank.id}>
++              <option key={bank.id} value={bank.id} className="bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+                 {bank.name} ({bank.questionCount})
+               </option>
+             ))}

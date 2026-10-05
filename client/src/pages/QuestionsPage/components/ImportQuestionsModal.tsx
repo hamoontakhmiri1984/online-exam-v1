@@ -1,5 +1,5 @@
 import { Upload, Download, AlertTriangle } from 'lucide-react';
-import Modal from '../../../components/Modal/Modal';
+import Modal from './ExamQuestionDialog';
 import {
   downloadQuestionTemplate,
   type ParsedQuestion,
@@ -29,7 +29,7 @@ function ImportQuestionsModal({
   onClose,
 }: ImportQuestionsModalProps) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
+    <Modal label="ورود سؤال از اکسل" isOpen={isOpen} onClose={onClose}>
       <h2 className="text-lg font-bold mb-2 dark:text-white">
         ایمپورت سوال از اکسل
       </h2>
@@ -45,14 +45,15 @@ function ImportQuestionsModal({
         دانلود قالب نمونه
       </button>
 
-      <label className="mb-4 flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-gray-200 px-4 py-8 text-center text-sm text-gray-500 hover:border-brand-300 hover:bg-brand-50/50 dark:border-gray-700 dark:text-gray-400 dark:hover:border-brand-800 dark:hover:bg-brand-950/20 transition">
+      <label className="mb-4 flex cursor-pointer focus-within:ring-2 focus-within:ring-brand-500 flex-col items-center gap-2 rounded-xl border-2 border-dashed border-gray-200 px-4 py-8 text-center text-sm text-gray-500 hover:border-brand-300 hover:bg-brand-50/50 dark:border-gray-700 dark:text-gray-400 dark:hover:border-brand-800 dark:hover:bg-brand-950/20 transition">
         <Upload size={20} />
-        فایل را انتخاب کن (xlsx یا csv)
+        فایل را انتخاب کن (xlsx، xls یا csv)
         <input
           type="file"
+          disabled={isParsing || isImporting}
           accept=".xlsx,.xls,.csv"
           onChange={onFileSelected}
-          className="hidden"
+          className="sr-only"
         />
       </label>
 
@@ -95,14 +96,14 @@ function ImportQuestionsModal({
 
       <div className="flex gap-3">
         <button
-          onClick={onClose}
+          disabled={isImporting} onClick={onClose}
           className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
         >
           انصراف
         </button>
         <button
           onClick={onConfirm}
-          disabled={preview.length === 0 || isImporting}
+          disabled={preview.length === 0 || isImporting || isParsing}
           className="flex-1 rounded-xl bg-brand-600 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40 transition"
         >
           {isImporting

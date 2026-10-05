@@ -1,9 +1,10 @@
 import { Plus, X } from 'lucide-react';
-import Modal from '../../../components/Modal/Modal';
+import Modal from './ExamQuestionDialog';
 import { MIN_OPTIONS, MAX_OPTIONS } from '../../../hooks/useQuestionFormModal';
 
 type QuestionFormModalProps = {
   isOpen: boolean;
+  error?: string;
   isEditing: boolean;
   isSubmitting?: boolean;
   text: string;
@@ -21,6 +22,7 @@ type QuestionFormModalProps = {
 function QuestionFormModal({
   isOpen,
   isEditing,
+  error,
   isSubmitting = false,
   text,
   onTextChange,
@@ -34,11 +36,11 @@ function QuestionFormModal({
   onClose,
 }: QuestionFormModalProps) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
+    <Modal label="نوشتن و ویرایش سؤال" isOpen={isOpen} onClose={onClose}>
       <h2 className="text-lg font-bold mb-4 dark:text-white">
         {isEditing ? 'ویرایش سوال' : 'سوال جدید'}
       </h2>
-      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      <form onSubmit={onSubmit}><fieldset disabled={isSubmitting} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
           <label
             htmlFor="question-text"
@@ -50,7 +52,11 @@ function QuestionFormModal({
             id="question-text"
             value={text}
             onChange={(e) => onTextChange(e.target.value)}
-            rows={2}
+            rows={4}
+            autoFocus
+            minLength={2}
+            maxLength={5000}
+            required
             className="border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-400 focus:ring-4 focus:ring-brand-50 dark:focus:ring-brand-900 transition resize-none"
             placeholder="متن سوال را بنویسید..."
           />
@@ -81,9 +87,11 @@ function QuestionFormModal({
               </button>
               <input
                 value={option}
+                required
+                maxLength={1000}
                 aria-label={`متن گزینه ${String.fromCharCode(65 + index)}`}
                 onChange={(e) => onOptionTextChange(index, e.target.value)}
-                className="flex-1 border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-400 focus:ring-4 focus:ring-brand-50 dark:focus:ring-brand-900 transition"
+                className="min-w-0 flex-1 border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-400 focus:ring-4 focus:ring-brand-50 dark:focus:ring-brand-900 transition"
                 placeholder={`گزینه ${String.fromCharCode(65 + index)}`}
               />
               {options.length > MIN_OPTIONS && (
@@ -112,14 +120,15 @@ function QuestionFormModal({
           )}
         </div>
 
+        {error && <p role="alert" className="text-sm text-danger-600">{error}</p>}
         <button
           type="submit"
           disabled={isSubmitting}
           className="w-full bg-brand-600 text-white font-medium px-4 py-2.5 rounded-xl hover:bg-brand-700 transition disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isEditing ? 'ذخیره تغییرات' : 'افزودن سوال'}
+          {isSubmitting ? 'در حال ذخیره…' : isEditing ? 'ذخیره تغییرات' : 'افزودن سؤال به آزمون'}
         </button>
-      </form>
+      </fieldset></form>
     </Modal>
   );
 }

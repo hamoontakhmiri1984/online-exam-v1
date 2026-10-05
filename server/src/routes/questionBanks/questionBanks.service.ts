@@ -23,6 +23,7 @@ export function serializeQuestion(q: {
   options: string[];
   correctOptionIndex: number;
   difficulty: 'Easy' | 'Medium' | 'Hard';
+  _count?: { practiceQuestions: number };
 }) {
   return {
     id: q.id,
@@ -31,6 +32,7 @@ export function serializeQuestion(q: {
     options: q.options,
     correctOptionIndex: q.correctOptionIndex,
     difficulty: q.difficulty,
+    usedInPractice: (q._count?.practiceQuestions ?? 0) > 0,
   };
 }
 

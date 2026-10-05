@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Question } from '../api/questionApi';
 
 export const MIN_OPTIONS = 2;
@@ -15,6 +15,7 @@ function useQuestionFormModal({
   addItem,
   updateItem,
 }: UseQuestionFormModalParams) {
+  const pending = useRef(false);
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [text, setText] = useState('');
@@ -24,6 +25,7 @@ function useQuestionFormModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   function openAdd() {
+    setValidationError(null);
     setEditingId(null);
     setText('');
     setOptions(['', '']);
@@ -32,6 +34,7 @@ function useQuestionFormModal({
   }
 
   function openEdit(question: Question) {
+    setValidationError(null);
     setEditingId(question.id);
     setText(question.text);
     setOptions(question.options);
@@ -68,7 +71,7 @@ function useQuestionFormModal({
 
     // جلوگیری از ثبت دوباره با دوبار کلیک / Enter پشت‌سرهم (وگرنه دوتا سوالِ
     // یکسان ساخته می‌شد)
-    if (isSubmitting) return;
+    if (pending.current) return;
 
     const trimmedOptions = options.map((opt) => opt.trim());
 
@@ -83,6 +86,8 @@ function useQuestionFormModal({
       correctOptionIndex,
     };
 
+    pending.current = true;
+    setValidationError(null);
     setIsSubmitting(true);
 
     let saved: unknown;
@@ -92,6 +97,7 @@ function useQuestionFormModal({
         ? await updateItem(editingId, questionData)
         : await addItem(questionData);
     } finally {
+      pending.current = false;
       setIsSubmitting(false);
     }
 

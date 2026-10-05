@@ -3,6 +3,7 @@ import { apiRequest } from '../lib/apiClient';
 export type Question = {
   id: string;
   examId: string;
+  questionId?: string | null;
   text: string;
   options: string[];
   // نکته: سرور این فیلد رو برای نقش Student اصلاً برنمی‌گردونه (امنیت
@@ -71,5 +72,12 @@ export function updateQuestion(
 export function deleteQuestion(examId: string, id: string): Promise<void> {
   return apiRequest<void>(`/exams/${examId}/questions/${id}`, {
     method: 'DELETE',
+  });
+}
+
+// Keep bank identity on the server; copying via /bulk would consume quota again.
+export function addQuestionsFromBank(examId: string, questionIds: string[]): Promise<Question[]> {
+  return apiRequest<Question[]>(`/exams/${examId}/questions/from-bank`, {
+    method: 'POST', body: { questionIds },
   });
 }
