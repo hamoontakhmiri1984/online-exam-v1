@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, type ReactNode, type Ref } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 
 type TextBoxProps = {
@@ -21,10 +21,26 @@ type TextBoxProps = {
   toggleablePassword?: boolean;
   /** پیام خطای مختص همین فیلد (اختیاری) - حاشیه‌ی قرمز + متن زیر فیلد */
   error?: string;
+  /**
+   * اگه true باشه جای پیام خطا از قبل رزرو می‌شه تا با ظاهر/ناپدیدشدن خطا
+   * فرم بالا و پایین نپره. پیش‌فرض false تا صفحه‌های قبلی تغییر نکنن.
+   */
+  reserveErrorSpace?: boolean;
+  /**
+   * برای ایمیل/شماره: تا وقتی فیلد خالیه راست‌چین می‌مونه (placeholder فارسی
+   * درست دیده بشه)، با شروع تایپ چپ‌به‌راست می‌شه (ایمیل و رقم به‌هم نریزن)
+   */
+  ltrInput?: boolean;
   /** کیبورد مناسب موبایل (مثلاً numeric برای کد تایید) */
   inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
   /** حداکثر تعداد کاراکتر مجاز */
   maxLength?: number;
+  /** برای اعتبارسنجی بعد از خروج از فیلد */
+  onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
+  /** مثلاً هنگام ارسال فرم برای جلوگیری از تغییر و کلیک تکراری */
+  disabled?: boolean;
+  /** برای فوکوس‌کردن روی اولین فیلد خطادار بعد از ارسال */
+  ref?: Ref<HTMLInputElement>;
 };
 
 function TextBox({
@@ -39,8 +55,13 @@ function TextBox({
   icon,
   toggleablePassword = false,
   error,
+  reserveErrorSpace = false,
+  ltrInput = false,
   inputMode,
   maxLength,
+  onBlur,
+  disabled,
+  ref,
 }: TextBoxProps) {
   const [revealed, setRevealed] = useState(false);
   const isPasswordField = type === 'password';
@@ -52,6 +73,10 @@ function TextBox({
   // چپ فیلد (انتهای متن در RTL): جا برای دکمه‌ی toggle یا پدینگ معمولی
   const leftPadding = showToggle ? 'pl-10' : 'pl-4';
 
+  const errorId = id ? `${id}-error` : undefined;
+  const inputDirection = ltrInput ? (value ? 'ltr' : 'rtl') : undefined;
+  const showErrorSlot = Boolean(error) || reserveErrorSpace;
+
   return (
     <div className="flex flex-col gap-1">
       <div className="relative">
@@ -61,17 +86,23 @@ function TextBox({
           </span>
         )}
         <input
+          ref={ref}
           type={resolvedType}
           placeholder={placeholder}
           value={value}
           onChange={onChange}
+          onBlur={onBlur}
           id={id}
           name={name}
           autoComplete={autoComplete}
           autoFocus={autoFocus}
           inputMode={inputMode}
           maxLength={maxLength}
-          className={`w-full border rounded-xl py-2.5 text-sm outline-none transition duration-300 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white
+          disabled={disabled}
+          dir={inputDirection}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
+          className={`w-full border rounded-xl py-2.5 text-sm outline-none transition duration-300 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white disabled:cursor-not-allowed disabled:opacity-60
             ${rightPadding} ${leftPadding}
             ${
               error
@@ -94,15 +125,26 @@ function TextBox({
             onTouchEnd={() => setRevealed(false)}
             onTouchCancel={() => setRevealed(false)}
             tabIndex={-1}
+            disabled={disabled}
             className="absolute inset-y-0 left-3 flex items-center text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 cursor-pointer select-none"
-            aria-label="نگه دار تا رمز عبور نمایش داده بشه"
+            aria-label="نگه دارید تا رمز عبور نمایش داده شود"
           >
             {revealed ? <EyeOff size={17} /> : <Eye size={17} />}
           </button>
         )}
       </div>
-      {error && (
-        <p className="text-xs text-danger-600 dark:text-danger-400">{error}</p>
+      {showErrorSlot && (
+        // این عنصر همیشه توی DOM می‌مونه (وقتی reserveErrorSpace فعاله) تا
+        // aria-live تغییر متن رو اعلام کنه و ارتفاع فرم هم ثابت بمونه
+        <p
+          id={errorId}
+          aria-live="polite"
+          className={`text-xs text-danger-600 dark:text-danger-400 ${
+            reserveErrorSpace ? 'min-h-4' : ''
+          }`}
+        >
+          {error}
+        </p>
       )}
     </div>
   );
