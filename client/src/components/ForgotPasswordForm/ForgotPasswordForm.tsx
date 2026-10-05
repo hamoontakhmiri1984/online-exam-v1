@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useOtpCaptcha } from '../../hooks/useOtpCaptcha';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../Button/Button';
 import StepIndicator from '../StepIndicator/StepIndicator';
@@ -9,7 +10,6 @@ import {
   requestOtp,
   verifyResetPasswordOtp,
   resetPassword,
-  type CaptchaAnswer,
 } from '../../api/authApi';
 import { OTP_CODE_LENGTH, RESEND_COOLDOWN_SECONDS } from '../../constants/otp';
 
@@ -25,8 +25,8 @@ function ForgotPasswordForm() {
   const [resetTicket, setResetTicket] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [captcha, setCaptcha] = useState<CaptchaAnswer | null>(null);
-  const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
+  const otpCaptcha = useOtpCaptcha();
+  const requesting = useRef(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
@@ -45,27 +45,28 @@ function ForgotPasswordForm() {
 
   async function handleIdentifierSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (requesting.current) return;
     if (!identifier.trim()) {
       setError('ایمیل یا شماره موبایلت رو وارد کن');
       return;
     }
-    if (!captcha) {
+    if (!otpCaptcha.ready) {
       setError('کد تصویر امنیتی رو وارد کن');
       return;
     }
 
     setError('');
+    requesting.current = true;
     setLoading(true);
     try {
       const result = await requestOtp(
-        identifier,
+        identifier.trim(),
         'RESET_PASSWORD',
-        captcha ?? undefined
+        otpCaptcha.captcha ?? undefined
       );
-      // کپچا یک‌بارمصرفه؛ چه موفق چه ناموفق، چالش جدید بگیر
-      setCaptcha(null);
-      setCaptchaResetSignal((current) => current + 1);
+      otpCaptcha.afterRequest(result);
       if (result.status === 'sent') {
+        setIdentifier(identifier.trim());
         setCode('');
         setCooldown(RESEND_COOLDOWN_SECONDS);
         setStep('code');
@@ -73,44 +74,49 @@ function ForgotPasswordForm() {
         setError(result.message);
       }
     } finally {
+      requesting.current = false;
       setLoading(false);
     }
   }
 
   async function handleResendCode() {
-    if (cooldown > 0 || resending || !captcha) {
+    if (cooldown > 0 || requesting.current || !otpCaptcha.ready) {
       return;
     }
 
     setError('');
+    requesting.current = true;
     setResending(true);
     try {
       const result = await requestOtp(
-        identifier,
+        identifier.trim(),
         'RESET_PASSWORD',
-        captcha ?? undefined
+        otpCaptcha.captcha ?? undefined
       );
-      setCaptcha(null);
-      setCaptchaResetSignal((current) => current + 1);
+      otpCaptcha.afterRequest(result);
       if (result.status === 'sent') {
+        setIdentifier(identifier.trim());
         setCode('');
         setCooldown(RESEND_COOLDOWN_SECONDS);
       } else {
         setError(result.message);
       }
     } finally {
+      requesting.current = false;
       setResending(false);
     }
   }
 
   async function handleCodeSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (requesting.current) return;
     if (code.length !== OTP_CODE_LENGTH) {
       setError('کد ۶ رقمی ارسال‌شده رو کامل وارد کن');
       return;
     }
 
     setError('');
+    requesting.current = true;
     setLoading(true);
     try {
       const result = await verifyResetPasswordOtp(identifier, code);
@@ -121,12 +127,14 @@ function ForgotPasswordForm() {
         setError(result.message);
       }
     } finally {
+      requesting.current = false;
       setLoading(false);
     }
   }
 
   async function handleNewPasswordSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (requesting.current) return;
     if (newPassword.length < MIN_PASSWORD_LENGTH) {
       setError(`رمز عبور باید حداقل ${MIN_PASSWORD_LENGTH} کاراکتر باشه`);
       return;
@@ -137,6 +145,7 @@ function ForgotPasswordForm() {
     }
 
     setError('');
+    requesting.current = true;
     setLoading(true);
     try {
       const result = await resetPassword(resetTicket, newPassword);
@@ -146,6 +155,7 @@ function ForgotPasswordForm() {
         setError(result.message);
       }
     } finally {
+      requesting.current = false;
       setLoading(false);
     }
   }
@@ -179,9 +189,10 @@ function ForgotPasswordForm() {
         <IdentifierStep
           identifier={identifier}
           onIdentifierChange={setIdentifier}
-          captcha={captcha}
-          onCaptchaChange={setCaptcha}
-          captchaResetSignal={captchaResetSignal}
+          captcha={otpCaptcha.captcha}
+          captchaRequired={otpCaptcha.required}
+          onCaptchaChange={otpCaptcha.setCaptcha}
+          captchaResetSignal={otpCaptcha.resetSignal}
           loading={loading}
           onSubmit={handleIdentifierSubmit}
         />
@@ -194,9 +205,10 @@ function ForgotPasswordForm() {
           onCodeChange={setCode}
           hasError={Boolean(error)}
           cooldown={cooldown}
-          captcha={captcha}
-          onCaptchaChange={setCaptcha}
-          captchaResetSignal={captchaResetSignal}
+          captcha={otpCaptcha.captcha}
+          captchaRequired={otpCaptcha.required}
+          onCaptchaChange={otpCaptcha.setCaptcha}
+          captchaResetSignal={otpCaptcha.resetSignal}
           resending={resending}
           onResend={() => void handleResendCode()}
           loading={loading}

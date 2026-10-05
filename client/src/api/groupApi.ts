@@ -3,6 +3,7 @@ import type { Category } from '../constants/categories';
 import { apiRequest, ApiError } from '../lib/apiClient';
 
 export type Group = {
+  approvalStatus?: 'Pending' | 'Approved' | 'Rejected';
   id: string;
   name: string;
   category: Category; // فقط یه برچسب موضوعی برای دسته‌بندی/فیلتر، نه ابزار دسترسی
@@ -19,7 +20,7 @@ export function getGroupsPage(query: ListQuery = {}): Promise<ListPage<Group>> {
 }
 
 export function getGroups(): Promise<Group[]> {
-  return collectListPages(getGroupsPage);
+  return collectListPages(getGroupsPage).then(groups => groups.filter(g => !g.approvalStatus || g.approvalStatus === 'Approved'));
 }
 
 // سرور دسترسی رو خودش چک می‌کنه (403 اگه نه مالک/عضو/SuperAdmin باشی) - اینجا

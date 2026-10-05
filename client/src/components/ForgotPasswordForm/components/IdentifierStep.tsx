@@ -8,6 +8,7 @@ type Props = {
   identifier: string;
   onIdentifierChange: (value: string) => void;
   captcha: CaptchaAnswer | null;
+  captchaRequired: boolean;
   onCaptchaChange: (value: CaptchaAnswer | null) => void;
   captchaResetSignal: number;
   loading: boolean;
@@ -18,6 +19,7 @@ function IdentifierStep({
   identifier,
   onIdentifierChange,
   captcha,
+  captchaRequired,
   onCaptchaChange,
   captchaResetSignal,
   loading,
@@ -25,6 +27,7 @@ function IdentifierStep({
 }: Props) {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      <fieldset disabled={loading} className="contents">
       <div className="flex flex-col gap-1">
         <label
           htmlFor="forgot-identifier"
@@ -48,11 +51,12 @@ function IdentifierStep({
         </p>
       </div>
 
-      <Captcha onChange={onCaptchaChange} resetSignal={captchaResetSignal} />
+      {captchaRequired && <Captcha onChange={onCaptchaChange} resetSignal={captchaResetSignal} />}
 
-      <Button type="submit" disabled={loading || !captcha}>
+      <Button type="submit" disabled={loading || (captchaRequired && !captcha)}>
         {loading ? 'در حال ارسال کد...' : 'ارسال کد تایید'}
       </Button>
+      </fieldset>
     </form>
   );
 }

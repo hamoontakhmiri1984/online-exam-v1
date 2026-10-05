@@ -12,6 +12,7 @@ type Props = {
   hasError: boolean;
   cooldown: number;
   captcha: CaptchaAnswer | null;
+  captchaRequired: boolean;
   onCaptchaChange: (value: CaptchaAnswer | null) => void;
   captchaResetSignal: number;
   resending: boolean;
@@ -28,6 +29,7 @@ function CodeStep({
   hasError,
   cooldown,
   captcha,
+  captchaRequired,
   onCaptchaChange,
   captchaResetSignal,
   resending,
@@ -50,6 +52,7 @@ function CodeStep({
       </p>
 
       <OtpInput
+        disabled={loading || resending}
         length={OTP_CODE_LENGTH}
         value={code}
         onChange={onCodeChange}
@@ -62,11 +65,11 @@ function CodeStep({
         </p>
       ) : (
         <div className="flex flex-col items-center gap-2">
-          <Captcha onChange={onCaptchaChange} resetSignal={captchaResetSignal} />
+          {captchaRequired && <Captcha onChange={onCaptchaChange} resetSignal={captchaResetSignal} />}
           <button
             type="button"
             onClick={onResend}
-            disabled={resending || !captcha}
+            disabled={loading || resending || (captchaRequired && !captcha)}
             className="cursor-pointer text-xs text-brand-600 hover:underline disabled:cursor-not-allowed disabled:text-gray-400 disabled:no-underline dark:text-brand-400"
           >
             {resending ? 'در حال ارسال...' : 'ارسال مجدد کد'}
@@ -74,11 +77,12 @@ function CodeStep({
         </div>
       )}
 
-      <Button type="submit" disabled={loading || code.length !== OTP_CODE_LENGTH}>
+      <Button type="submit" disabled={loading || resending || code.length !== OTP_CODE_LENGTH}>
         {loading ? 'در حال بررسی...' : 'تایید کد'}
       </Button>
       <button
         type="button"
+        disabled={loading || resending}
         onClick={onBack}
         className="text-xs text-brand-600 hover:underline dark:text-brand-400 cursor-pointer"
       >

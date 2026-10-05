@@ -1,3 +1,4 @@
+import { readCreationPolicy } from '../../lib/approvalPolicy';
 import { parseListQuery } from '../../lib/listPagination';
 import { Router } from 'express';
 import { prisma } from '../../lib/prisma';
@@ -26,7 +27,7 @@ router.get(
         ? {}
         : role === 'Instructor'
         ? { instructorId: sub }
-        : { students: { some: { id: sub } } };
+        : { approvalStatus: 'Approved' as const, students: { some: { id: sub } } };
 
     const { page, pageSize, skip, search } = parseListQuery(req.query);
     const filter = { ...where, ...(search ? { name: { contains: search, mode: 'insensitive' as const } } : {}) };
@@ -56,7 +57,7 @@ router.get(
     const { role, sub } = req.user!;
     const isOwner = role === 'Instructor' && group.instructorId === sub;
     const isMember =
-      role === 'Student' && group.students.some((s) => s.id === sub);
+      role === 'Student' && group.approvalStatus === 'Approved' && group.students.some((s) => s.id === sub);
     if (role !== 'SuperAdmin' && !isOwner && !isMember) {
       return res.status(403).json({ error: 'دسترسی غیرمجاز' });
     }
@@ -87,9 +88,11 @@ router.post(
     // چک می‌کنه؛ اینجا سمت سرور و *اتمیک با ساخت* اعمال می‌شه (چک و create
     // داخل یه تراکنش پشت قفل مدرس - lib/quota.ts). خطای ۴۰۳ همون شکل قبلی
     // {error, reason} رو داره (AppError → errorHandler)
-    const group = await withQuotaLock(req.user!.sub, 'groups', 1, (db) =>
-      db.group.create({
+    const group = await withQuotaLock(req.user!.sub, 'groups', 1, async (db) => {
+      const policy = await readCreationPolicy(db);
+      return db.group.create({
         data: {
+          approvalStatus: policy.requireGroupApproval ? 'Pending' : 'Approved',
           name: parsed.data.name,
           category: parsed.data.category,
           instructorId: req.user!.sub,
@@ -97,8 +100,8 @@ router.post(
           students: { connect: studentConnect },
         },
         include: withStudents,
-      })
-    );
+      });
+    }, { requireTransaction: true });
 
     res.status(201).json(serializeGroup(group));
   })

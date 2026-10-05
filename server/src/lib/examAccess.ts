@@ -42,7 +42,7 @@ export async function loadAccessibleExam(
   if (exam.status !== 'Published') return { exam, allowed: false };
 
   const isMember = await prisma.group.count({
-    where: { id: { in: groupIds }, students: { some: { id: userId } } },
+    where: { id: { in: groupIds }, approvalStatus: 'Approved', students: { some: { id: userId } } },
   });
   if (isMember > 0) return { exam, allowed: true };
 
@@ -62,6 +62,7 @@ export async function isStudentInExamGroups(
 ): Promise<boolean> {
   const count = await db.group.count({
     where: {
+      approvalStatus: 'Approved',
       exams: { some: { id: examId } },
       students: { some: { id: studentId } },
     },

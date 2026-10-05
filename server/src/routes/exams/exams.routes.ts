@@ -37,7 +37,7 @@ router.get(
         ? { instructorId: sub }
         : {
             status: 'Published' as const,
-            groups: { some: { students: { some: { id: sub } } } },
+            groups: { some: { approvalStatus: 'Approved' as const, students: { some: { id: sub } } } },
           };
 
     const exams = await prisma.exam.findMany({

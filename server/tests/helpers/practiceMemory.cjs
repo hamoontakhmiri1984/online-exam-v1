@@ -2,14 +2,14 @@
 function practiceMemory() {
   let sequence=0;
   const id=()=>`generated-${++sequence}`;
-  const groups=[{id:'group-a',instructorId:'teacher-a',name:'Group A',students:['student-a','student-b']},{id:'group-b',instructorId:'teacher-b',name:'Group B',students:['outsider']}];
+  const groups=[{id:'group-a',approvalStatus:'Approved',instructorId:'teacher-a',name:'Group A',students:['student-a','student-b']},{id:'group-b',approvalStatus:'Approved',instructorId:'teacher-b',name:'Group B',students:['outsider']}];
   const source=[{id:'qa',bank:{instructorId:'teacher-a'},text:'Source A',options:['One','Two'],correctOptionIndex:1,difficulty:'Easy'},{id:'qb',bank:{instructorId:'teacher-b'},text:'Source B',options:['One','Two'],correctOptionIndex:0,difficulty:'Hard'}];
   const sets=[],access=[],questions=[],attempts=[];
   const copy=x=>structuredClone(x);
   const basic=(x,w={})=>Object.entries(w).every(([k,v])=>v===undefined || (v && typeof v==='object' ? v.in ? v.in.includes(x[k]) : v.contains ? x[k].includes(v.contains) : true : x[k]===v));
   function setMatch(p,w={}) {
     if(!basic(p,w))return false;
-    if(w.groups?.some) return access.some(a=>a.practiceId===p.id && groups.find(g=>g.id===a.groupId)?.students.includes(w.groups.some.group.students.some.id));
+    if(w.groups?.some) return access.some(a=>a.practiceId===p.id && groups.some(g=>g.id===a.groupId && basic(g,w.groups.some.group) && g.students.includes(w.groups.some.group.students.some.id)));
     return true;
   }
   const expand=p=>p && ({...copy(p),groups:access.filter(a=>a.practiceId===p.id).map(a=>({...a,group:groups.find(g=>g.id===a.groupId)})),instructor:{name:p.instructorId},_count:{groups:access.filter(a=>a.practiceId===p.id).length,questions:questions.filter(q=>q.practiceId===p.id).length}});

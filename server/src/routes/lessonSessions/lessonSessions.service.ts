@@ -129,7 +129,7 @@ export async function assertGroupsExist(groupIds: string[]) {
   const unique = new Set(groupIds);
   if (unique.size === 0) return;
   const found = await prisma.group.count({
-    where: { id: { in: [...unique] } },
+    where: { id: { in: [...unique] }, approvalStatus: 'Approved' },
   });
   if (found !== unique.size) throw badRequest('گروه یافت نشد');
 }
@@ -138,7 +138,7 @@ export async function assertGroupsExist(groupIds: string[]) {
 // groupIds ارسالی تو بدنه‌ی درخواست، همه واقعاً متعلق به خودشن
 export async function ownedGroupIds(userId: string): Promise<Set<string>> {
   const groups = await prisma.group.findMany({
-    where: { instructorId: userId },
+    where: { instructorId: userId, approvalStatus: 'Approved' },
     select: { id: true },
   });
   return new Set(groups.map((g) => g.id));
@@ -172,7 +172,7 @@ export async function loadAccessibleSession(
   }
 
   const isMember = await prisma.group.count({
-    where: { id: { in: groupIds }, students: { some: { id: userId } } },
+    where: { id: { in: groupIds }, approvalStatus: 'Approved', students: { some: { id: userId } } },
   });
   return { session, allowed: isMember > 0 };
 }

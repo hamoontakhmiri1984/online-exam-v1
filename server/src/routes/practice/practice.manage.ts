@@ -13,7 +13,7 @@ async function ownedGroups(
   ids: string[],
 ) {
   const count = await db.group.count({
-    where: { id: { in: ids }, instructorId: owner },
+    where: { id: { in: ids }, instructorId: owner, approvalStatus: 'Approved' },
   });
   if (count !== ids.length) throw notFound('یک یا چند گروه متعلق به شما نیست.');
 }

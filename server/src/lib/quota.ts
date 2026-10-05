@@ -197,11 +197,11 @@ export async function withQuotaLock<T>(
   kind: QuotaKind,
   count: number,
   run: (db: QuotaDb) => Promise<T>,
-  opts: { timeoutMs?: number } = {}
+  opts: { timeoutMs?: number; requireTransaction?: boolean } = {}
 ): Promise<T> {
   const plan = await resolveQuotaPlan(instructorId, kind);
   if (plan.expired) throw planLimitError('plan_expired');
-  if (plan.limit === null) return run(prisma);
+  if (plan.limit === null && !opts.requireTransaction) return run(prisma);
 
   return prisma.$transaction(
     async (tx) => {
@@ -219,7 +219,7 @@ export async function withQuotaForRole<T>(
   kind: QuotaKind,
   count: number,
   run: (db: QuotaDb) => Promise<T>,
-  opts: { timeoutMs?: number } = {}
+  opts: { timeoutMs?: number; requireTransaction?: boolean } = {}
 ): Promise<T> {
   if (role === 'Instructor') {
     return withQuotaLock(instructorId, kind, count, run, opts);

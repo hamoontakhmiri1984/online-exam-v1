@@ -1,0 +1,1655 @@
+diff --git a/client/src/api/approvalPolicyApi.ts b/client/src/api/approvalPolicyApi.ts
+new file mode 100644
+index 0000000..1a0e2b4
+--- /dev/null
++++ b/client/src/api/approvalPolicyApi.ts
+@@ -0,0 +1,52 @@
++import { apiRequest } from '../lib/apiClient';
++import {
++  listQueryString,
++  type ListQuery,
++  type ListPage,
++} from '../lib/listPagination';
++export type ApprovalPolicy = {
++  revision: number;
++  requireInstructorApproval: boolean;
++  requireGroupApproval: boolean;
++  pendingInstructors: number;
++  pendingGroups: number;
++};
++export type PendingDecision = '' | 'keep' | 'approve';
++export type PolicyUpdate = Pick<
++  ApprovalPolicy,
++  'revision' | 'requireInstructorApproval' | 'requireGroupApproval'
++> & {
++  pendingInstructors?: Exclude<PendingDecision, ''>;
++  pendingGroups?: Exclude<PendingDecision, ''>;
++};
++export const getApprovalPolicy = () =>
++  apiRequest<ApprovalPolicy>('/admin/approval-policy');
++export const saveApprovalPolicy = (body: PolicyUpdate) =>
++  apiRequest<ApprovalPolicy>('/admin/approval-policy', { method: 'PUT', body });
++export type GroupReview = {
++  id: string;
++  name: string;
++  category: string;
++  approvalStatus: 'Pending' | 'Approved' | 'Rejected';
++  instructor: { name: string | null; username: string | null };
++};
++export function getGroupReviews(
++  status: GroupReview['approvalStatus'],
++  query: ListQuery,
++) {
++  return apiRequest<ListPage<GroupReview>>(
++    `/admin/group-approvals${listQueryString(query)}&status=${status}`,
++  );
++}
++export function reviewGroup(
++  group: GroupReview,
++  status: 'Approved' | 'Rejected',
++) {
++  return apiRequest(
++    `/admin/group-approvals/${encodeURIComponent(group.id)}/decision`,
++    {
++      method: 'POST',
++      body: { status, expectedStatus: group.approvalStatus },
++    },
++  );
++}
+diff --git a/client/src/api/groupApi.ts b/client/src/api/groupApi.ts
+index 816781d..482d9b6 100644
+--- a/client/src/api/groupApi.ts
++++ b/client/src/api/groupApi.ts
+@@ -3,6 +3,7 @@ import type { Category } from '../constants/categories';
+ import { apiRequest, ApiError } from '../lib/apiClient';
+ 
+ export type Group = {
++  approvalStatus?: 'Pending' | 'Approved' | 'Rejected';
+   id: string;
+   name: string;
+   category: Category; // فقط یه برچسب موضوعی برای دسته‌بندی/فیلتر، نه ابزار دسترسی
+@@ -19,7 +20,7 @@ export function getGroupsPage(query: ListQuery = {}): Promise<ListPage<Group>> {
+ }
+ 
+ export function getGroups(): Promise<Group[]> {
+-  return collectListPages(getGroupsPage);
++  return collectListPages(getGroupsPage).then(groups => groups.filter(g => !g.approvalStatus || g.approvalStatus === 'Approved'));
+ }
+ 
+ // سرور دسترسی رو خودش چک می‌کنه (403 اگه نه مالک/عضو/SuperAdmin باشی) - اینجا
+diff --git a/client/src/pages/GroupsPage/components/GroupCard.tsx b/client/src/pages/GroupsPage/components/GroupCard.tsx
+index dd49c39..54171f7 100644
+--- a/client/src/pages/GroupsPage/components/GroupCard.tsx
++++ b/client/src/pages/GroupsPage/components/GroupCard.tsx
+@@ -48,11 +48,16 @@ function GroupCard({
+       <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+         {group.category}
+       </p>
++      {group.approvalStatus && group.approvalStatus !== 'Approved' && (
++        <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
++          {group.approvalStatus === 'Pending' ? 'منتظر تأیید مدیر؛ عضویت و استفاده از گروه هنوز فعال نیست.' : 'گروه تأیید نشده است؛ برای بررسی دوباره با مدیر تماس بگیرید.'}
++        </p>
++      )}
+       <p className="mt-3 text-xs text-gray-400">
+         {group.studentIds.length.toLocaleString('fa-IR')} دانشجو عضو
+       </p>
+ 
+-      <div className="mt-4 flex items-center justify-between gap-2 rounded-xl bg-gray-50 px-3 py-2 dark:bg-gray-800/60">
++      {(!group.approvalStatus || group.approvalStatus === 'Approved') && <><div className="mt-4 flex items-center justify-between gap-2 rounded-xl bg-gray-50 px-3 py-2 dark:bg-gray-800/60">
+         <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
+           <KeyRound size={14} />
+           <span className="text-xs">کد عضویت</span>
+@@ -84,7 +89,7 @@ function GroupCard({
+       </div>
+       <p className="mt-2 text-xs leading-5 text-gray-400">
+         این کد رو به دانشجوهات بده تا از صفحه‌ی ثبت‌نام مستقیم عضو همین گروه بشن
+-      </p>
++      </p></>}
+     </div>
+   );
+ }
+diff --git a/client/src/pages/SettingsPage/SettingsPage.tsx b/client/src/pages/SettingsPage/SettingsPage.tsx
+index eb0467b..9523d9e 100644
+--- a/client/src/pages/SettingsPage/SettingsPage.tsx
++++ b/client/src/pages/SettingsPage/SettingsPage.tsx
+@@ -1,3 +1,4 @@
++import ApprovalPolicySection from './components/ApprovalPolicySection';
+ import { XCircle } from 'lucide-react';
+ import AppLayout from '../../components/AppLayout/AppLayout';
+ import Toast from '../../components/Toast/Toast';
+@@ -47,6 +48,7 @@ function SettingsPage() {
+       <h1 className="text-2xl font-bold mb-6 dark:text-white">تنظیمات</h1>
+ 
+       <div className="flex flex-col gap-4 max-w-xl">
++        {currentUser?.role === 'SuperAdmin' && <ApprovalPolicySection />}
+         <ProfileSection currentUser={currentUser} />
+ 
+         <ConnectedAccountsSection />
+diff --git a/client/src/pages/SettingsPage/components/ApprovalPolicyChoice.tsx b/client/src/pages/SettingsPage/components/ApprovalPolicyChoice.tsx
+new file mode 100644
+index 0000000..e7bc6d0
+--- /dev/null
++++ b/client/src/pages/SettingsPage/components/ApprovalPolicyChoice.tsx
+@@ -0,0 +1,62 @@
++import type { PendingDecision } from '../../../api/approvalPolicyApi';
++const selectClass =
++  'w-full rounded-lg border border-gray-300 bg-white p-2 text-gray-900 [color-scheme:light] dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:[color-scheme:dark]';
++type Props = {
++  label: string;
++  required: boolean;
++  count: number;
++  disabled: boolean;
++  decision: PendingDecision;
++  onRequired: (value: boolean) => void;
++  onDecision: (value: PendingDecision) => void;
++};
++export default function ApprovalPolicyChoice({
++  label,
++  required,
++  count,
++  disabled,
++  decision,
++  onRequired,
++  onDecision,
++}: Props) {
++  return (
++    <fieldset
++      disabled={disabled}
++      className="space-y-3 rounded-xl border border-gray-200 p-4 dark:border-gray-700"
++    >
++      <legend className="px-2 font-semibold">{label}</legend>
++      <label className="flex cursor-pointer items-center gap-3">
++        <input
++          type="checkbox"
++          checked={required}
++          onChange={(e) => onRequired(e.target.checked)}
++          className="h-5 w-5 accent-brand-600"
++        />
++        نیاز به تأیید مدیر برای ثبت‌های جدید
++      </label>
++      <p className="text-sm text-gray-500 dark:text-gray-400">
++        {required
++          ? 'ثبت جدید تا تأیید مدیر فعال نمی‌شود.'
++          : 'ثبت جدید به‌صورت خودکار فعال می‌شود.'}
++      </p>
++      <p className="text-sm">
++        {count.toLocaleString('fa-IR')} درخواست منتظر بررسی
++      </p>
++      {!required && count > 0 && (
++        <label className="block space-y-2 text-sm">
++          <span>تکلیف درخواست‌های معلقِ {label}</span>
++          <select
++            className={selectClass}
++            value={decision}
++            onChange={(e) => onDecision(e.target.value as PendingDecision)}
++            required
++          >
++            <option value="">انتخاب کنید</option>
++            <option value="keep">برای بررسی دستی باقی بمانند</option>
++            <option value="approve">همهٔ درخواست‌های معلق تأیید شوند</option>
++          </select>
++        </label>
++      )}
++    </fieldset>
++  );
++}
+diff --git a/client/src/pages/SettingsPage/components/ApprovalPolicySection.tsx b/client/src/pages/SettingsPage/components/ApprovalPolicySection.tsx
+new file mode 100644
+index 0000000..4446b20
+--- /dev/null
++++ b/client/src/pages/SettingsPage/components/ApprovalPolicySection.tsx
+@@ -0,0 +1,174 @@
++import { useEffect, useRef, useState } from 'react';
++import {
++  getApprovalPolicy,
++  saveApprovalPolicy,
++  type ApprovalPolicy,
++  type PendingDecision,
++} from '../../../api/approvalPolicyApi';
++import ApprovalPolicyChoice from './ApprovalPolicyChoice';
++import GroupApprovalQueue from './GroupApprovalQueue';
++export default function ApprovalPolicySection() {
++  const [policy, setPolicy] = useState<ApprovalPolicy | null>(null);
++  const [instructors, setInstructors] = useState(true);
++  const [groups, setGroups] = useState(false);
++  const [instructorDecision, setInstructorDecision] =
++    useState<PendingDecision>('');
++  const [groupDecision, setGroupDecision] = useState<PendingDecision>('');
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState('');
++  const [message, setMessage] = useState('');
++  const [reload, setReload] = useState(0);
++  const pending = useRef(false);
++  function accept(value: ApprovalPolicy) {
++    setPolicy(value);
++    setInstructors(value.requireInstructorApproval);
++    setGroups(value.requireGroupApproval);
++    setInstructorDecision('');
++    setGroupDecision('');
++  }
++  useEffect(() => {
++    let active = true;
++    setError('');
++    setPolicy(null);
++    getApprovalPolicy()
++      .then((value) => {
++        if (active) accept(value);
++      })
++      .catch((e) => {
++        if (active) setError(e.message || 'دریافت تنظیمات ناموفق بود.');
++      });
++    return () => {
++      active = false;
++    };
++  }, [reload]);
++  async function save(event: React.FormEvent) {
++    event.preventDefault();
++    if (!policy || pending.current) return;
++    if (
++      (!instructors && policy.pendingInstructors && !instructorDecision) ||
++      (!groups && policy.pendingGroups && !groupDecision)
++    ) {
++      setError('تکلیف درخواست‌های معلق را انتخاب کنید.');
++      return;
++    }
++    pending.current = true;
++    setBusy(true);
++    setError('');
++    setMessage('');
++    try {
++      accept(
++        await saveApprovalPolicy({
++          revision: policy.revision,
++          requireInstructorApproval: instructors,
++          requireGroupApproval: groups,
++          ...(!instructors && instructorDecision
++            ? { pendingInstructors: instructorDecision }
++            : {}),
++          ...(!groups && groupDecision ? { pendingGroups: groupDecision } : {}),
++        }),
++      );
++      setMessage('تنظیمات و تصمیم درخواست‌های معلق ذخیره شد.');
++    } catch (e) {
++      setError(e instanceof Error ? e.message : 'ذخیره ناموفق بود.');
++    } finally {
++      pending.current = false;
++      setBusy(false);
++    }
++  }
++  return (
++    <section className="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:text-white">
++      <h2 className="text-lg font-bold">قوانین تأیید مدرس و گروه</h2>
++      <p className="text-sm leading-7 text-gray-500 dark:text-gray-400">
++        این تنظیمات مستقل هستند. فعال‌کردن تأیید، مدرس‌ها و گروه‌های تأییدشده را
++        غیرفعال نمی‌کند. درخواست‌های ردشده نیز خودکار تأیید نمی‌شوند.
++      </p>
++      {error && (
++        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
++          {error}
++        </p>
++      )}
++      {message && (
++        <p
++          role="status"
++          className="text-sm text-emerald-700 dark:text-emerald-400"
++        >
++          {message}
++        </p>
++      )}
++      {!policy && !error && <p role="status">دریافت تنظیمات…</p>}
++      {policy && (
++        <form onSubmit={save} className="space-y-4">
++          <ApprovalPolicyChoice
++            label="مدرس"
++            required={instructors}
++            count={policy.pendingInstructors}
++            disabled={busy}
++            decision={instructorDecision}
++            onRequired={(value) => {
++              setInstructors(value);
++              setMessage('');
++            }}
++            onDecision={(value) => {
++              setInstructorDecision(value);
++              setMessage('');
++            }}
++          />
++          <ApprovalPolicyChoice
++            label="گروه"
++            required={groups}
++            count={policy.pendingGroups}
++            disabled={busy}
++            decision={groupDecision}
++            onRequired={(value) => {
++              setGroups(value);
++              setMessage('');
++            }}
++            onDecision={(value) => {
++              setGroupDecision(value);
++              setMessage('');
++            }}
++          />
++          <button
++            disabled={busy}
++            className="rounded-lg bg-brand-600 px-4 py-2 text-white disabled:opacity-50"
++          >
++            {busy ? 'در حال ذخیره…' : 'ذخیرهٔ قوانین تأیید'}
++          </button>
++        </form>
++      )}
++      <button
++        type="button"
++        disabled={busy}
++        onClick={() => {
++          setMessage('');
++          setReload((x) => x + 1);
++        }}
++        className="text-sm text-brand-600 underline dark:text-brand-400"
++      >
++        دریافت دوبارهٔ تنظیمات
++      </button>
++      <GroupApprovalQueue
++        key={`${reload}-${policy?.revision}`}
++        onChanged={() => {
++          getApprovalPolicy()
++            .then((value) =>
++              setPolicy((current) =>
++                current
++                  ? {
++                      ...current,
++                      pendingInstructors: value.pendingInstructors,
++                      pendingGroups: value.pendingGroups,
++                    }
++                  : current,
++              ),
++            )
++            .catch(() =>
++              setError(
++                'تعداد درخواست‌های معلق به‌روز نشد؛ تنظیمات را دوباره دریافت کنید.',
++              ),
++            );
++        }}
++      />
++    </section>
++  );
++}
+diff --git a/client/src/pages/SettingsPage/components/GroupApprovalQueue.tsx b/client/src/pages/SettingsPage/components/GroupApprovalQueue.tsx
+new file mode 100644
+index 0000000..18e5c20
+--- /dev/null
++++ b/client/src/pages/SettingsPage/components/GroupApprovalQueue.tsx
+@@ -0,0 +1,168 @@
++import { useEffect, useRef, useState } from 'react';
++import {
++  getGroupReviews,
++  reviewGroup,
++  type GroupReview,
++} from '../../../api/approvalPolicyApi';
++const labels = {
++  Pending: 'منتظر بررسی',
++  Approved: 'تأییدشده',
++  Rejected: 'ردشده',
++};
++export default function GroupApprovalQueue({
++  onChanged,
++}: {
++  onChanged: () => void;
++}) {
++  const [status, setStatus] =
++    useState<GroupReview['approvalStatus']>('Pending');
++  const [page, setPage] = useState(1);
++  const [items, setItems] = useState<GroupReview[]>([]);
++  const [total, setTotal] = useState(0);
++  const [loading, setLoading] = useState(true);
++  const [error, setError] = useState('');
++  const [busy, setBusy] = useState('');
++  const [reload, setReload] = useState(0);
++  const pending = useRef(false);
++  useEffect(() => {
++    let active = true;
++    setLoading(true);
++    setError('');
++    getGroupReviews(status, { page, pageSize: 10 })
++      .then((data) => {
++        if (!active) return;
++        if (!data.items.length && page > 1) {
++          setPage(page - 1);
++          return;
++        }
++        setItems(data.items);
++        setTotal(data.total);
++      })
++      .catch((e) => {
++        if (active) setError(e.message || 'دریافت فهرست ناموفق بود.');
++      })
++      .finally(() => {
++        if (active) setLoading(false);
++      });
++    return () => {
++      active = false;
++    };
++  }, [status, page, reload]);
++  async function decide(group: GroupReview, decision: 'Approved' | 'Rejected') {
++    if (pending.current) return;
++    pending.current = true;
++    setBusy(group.id);
++    setError('');
++    try {
++      await reviewGroup(group, decision);
++      onChanged();
++      setReload((x) => x + 1);
++    } catch (e) {
++      setError(e instanceof Error ? e.message : 'ثبت تصمیم ناموفق بود.');
++    } finally {
++      pending.current = false;
++      setBusy('');
++    }
++  }
++  return (
++    <div className="space-y-4 border-t border-gray-200 pt-5 dark:border-gray-700">
++      <h3 className="font-bold">بررسی گروه‌ها</h3>
++      <label className="flex items-center gap-3 text-sm">
++        وضعیت گروه
++        <select
++          disabled={!!busy}
++          value={status}
++          onChange={(e) => {
++            setStatus(e.target.value as GroupReview['approvalStatus']);
++            setPage(1);
++          }}
++          className="rounded-lg border bg-white p-2 text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:[color-scheme:dark]"
++        >
++          {Object.entries(labels).map(([value, label]) => (
++            <option key={value} value={value}>
++              {label}
++            </option>
++          ))}
++        </select>
++      </label>
++      {error && (
++        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
++          {error}
++        </p>
++      )}
++      {loading ? (
++        <p role="status">دریافت گروه‌ها…</p>
++      ) : (
++        !error &&
++        (items.length ? (
++          items.map((group) => (
++            <article
++              key={group.id}
++              className="space-y-3 rounded-xl bg-gray-50 p-4 dark:bg-gray-950"
++            >
++              <h4 className="font-semibold">{group.name}</h4>
++              <p className="text-sm text-gray-500 dark:text-gray-400">
++                مدرس:{' '}
++                {group.instructor.name ||
++                  group.instructor.username ||
++                  'بدون نام'}{' '}
++                • {group.category}
++              </p>
++              {group.approvalStatus !== 'Approved' && (
++                <div className="flex gap-3">
++                  <button
++                    disabled={!!busy}
++                    onClick={() => decide(group, 'Approved')}
++                    className="rounded-lg bg-emerald-700 px-4 py-2 text-sm text-white disabled:opacity-50"
++                  >
++                    تأیید گروه
++                  </button>
++                  {group.approvalStatus === 'Pending' && (
++                    <button
++                      disabled={!!busy}
++                      onClick={() => decide(group, 'Rejected')}
++                      className="rounded-lg border border-red-300 px-4 py-2 text-sm text-red-700 dark:text-red-300 disabled:opacity-50"
++                    >
++                      رد درخواست
++                    </button>
++                  )}
++                </div>
++              )}
++            </article>
++          ))
++        ) : (
++          <p className="text-sm text-gray-500">
++            گروهی با این وضعیت وجود ندارد.
++          </p>
++        ))
++      )}
++      <div className="flex flex-wrap items-center gap-3 text-sm">
++        <button
++          disabled={loading || !!busy || page === 1}
++          onClick={() => setPage((p) => p - 1)}
++          className="disabled:opacity-40"
++        >
++          قبلی
++        </button>
++        <span>
++          صفحهٔ {page.toLocaleString('fa-IR')} • {total.toLocaleString('fa-IR')}{' '}
++          گروه
++        </span>
++        <button
++          disabled={loading || !!busy || page * 10 >= total}
++          onClick={() => setPage((p) => p + 1)}
++          className="disabled:opacity-40"
++        >
++          بعدی
++        </button>
++        <button
++          disabled={!!busy}
++          onClick={() => setReload((x) => x + 1)}
++          className="text-brand-600 underline dark:text-brand-400"
++        >
++          تازه‌سازی
++        </button>
++      </div>
++    </div>
++  );
++}
+diff --git a/client/tests/approvalPolicy.test.ts b/client/tests/approvalPolicy.test.ts
+new file mode 100644
+index 0000000..07a0817
+--- /dev/null
++++ b/client/tests/approvalPolicy.test.ts
+@@ -0,0 +1,34 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createElement } from 'react';
++import { renderToString } from 'react-dom/server';
++import ApprovalPolicyChoice from '../src/pages/SettingsPage/components/ApprovalPolicyChoice';
++import GroupCard from '../src/pages/GroupsPage/components/GroupCard';
++import { getGroups, getGroupsPage } from '../src/api/groupApi';
++import { saveApprovalPolicy, getGroupReviews, reviewGroup } from '../src/api/approvalPolicyApi';
++
++test('approval choice requires an explicit decision for pending records in free mode and supports dark mode', () => {
++  const props = { label:'مدرس', required:false, count:2, disabled:false, decision:'' as const, onRequired:()=>{}, onDecision:()=>{} };
++  const html=renderToString(createElement(ApprovalPolicyChoice,props));
++  assert.ok(html.includes('برای بررسی دستی باقی بمانند'));assert.ok(html.includes('همهٔ درخواست‌های معلق تأیید شوند'));assert.ok(html.includes('required'));assert.ok(html.includes('dark:bg-gray-950'));
++  assert.ok(!renderToString(createElement(ApprovalPolicyChoice,{...props,required:true})).includes('<select'));
++});
++test('pending group card explains its status and never offers an invitation code',()=>{
++  const html=renderToString(createElement(GroupCard,{group:{id:'g',name:'Group',category:'General',instructorId:'owner',studentIds:[],joinCode:'SECRET',approvalStatus:'Pending'},isCopied:false,isRegenerating:false,onCopyCode:()=>{},onRegenerateCode:()=>{},onEdit:()=>{},onDelete:()=>{}}));
++  assert.ok(html.includes('منتظر تأیید مدیر'));assert.ok(!html.includes('SECRET'));assert.ok(!html.includes('کپی کد'));
++});
++test('group selectors exclude pending/rejected while group management keeps all records',async()=>{
++  const original=globalThis.fetch;
++  globalThis.fetch=(async()=>new Response(JSON.stringify({items:[{id:'a',approvalStatus:'Approved'},{id:'p',approvalStatus:'Pending'},{id:'r',approvalStatus:'Rejected'}],total:3,page:1,pageSize:100}),{status:200})) as typeof fetch;
++  try{assert.deepEqual((await getGroups()).map(g=>g.id),['a']);assert.equal((await getGroupsPage()).items.length,3);}finally{globalThis.fetch=original;}
++});
++test('approval API carries revision, independent toggles and review precondition',async()=>{
++  const original=globalThis.fetch;const calls:{url:URL;body:unknown}[]=[];
++  globalThis.fetch=(async(input,init)=>{calls.push({url:new URL(String(input)),body:init?.body?JSON.parse(String(init.body)):null});return new Response('{}',{status:200});}) as typeof fetch;
++  try{
++    const payload={revision:3,requireInstructorApproval:false,requireGroupApproval:true,pendingInstructors:'keep' as const};await saveApprovalPolicy(payload);
++    await getGroupReviews('Pending',{page:2,pageSize:10});await reviewGroup({id:'group/id',name:'g',category:'General',approvalStatus:'Pending',instructor:{name:null,username:null}},'Approved');
++    assert.deepEqual(calls[0].body,payload);assert.equal(calls[1].url.searchParams.get('status'),'Pending');assert.equal(calls[1].url.searchParams.get('page'),'2');
++    assert.deepEqual(calls[2].body,{status:'Approved',expectedStatus:'Pending'});assert.ok(calls[2].url.pathname.includes('group%2Fid'));
++  }finally{globalThis.fetch=original;}
++});
+diff --git a/docs/approval-policy.fa.md b/docs/approval-policy.fa.md
+new file mode 100644
+index 0000000..5786247
+--- /dev/null
++++ b/docs/approval-policy.fa.md
+@@ -0,0 +1,41 @@
++# قوانین تأیید مدرس و گروه
++
++مسیر مدیر: «تنظیمات» ← «قوانین تأیید مدرس و گروه». دو گزینه مستقل‌اند و فقط با زدن «ذخیرهٔ قوانین تأیید» اعمال می‌شوند.
++
++- پیش‌فرض: مدرس جدید نیازمند تأیید؛ گروه جدید آزاد. گروه‌های موجود پس از مهاجرت تأییدشده هستند.
++- تغییر قوانین، مدرس‌ها و گروه‌های تأییدشده را معلق نمی‌کند.
++- در حالت آزاد، برای درخواست‌های معلق باید «باقی‌ماندن برای بررسی دستی» یا «تأیید همهٔ معلق‌ها» انتخاب شود. ردشده‌ها هرگز در تأیید جمعی وارد نمی‌شوند.
++- تصمیم مدرس‌های معلقِ موجود در صفحهٔ «تأیید مدرس‌ها» قابل بررسی است. گروه‌ها از صف «بررسی گروه‌ها» در همین بخش تنظیمات تأیید یا رد می‌شوند. گروه ردشده را مدیر می‌تواند بعداً تأیید کند.
++- گروه منتظر تأیید/ردشده برای مدرس در مدیریت گروه‌ها دیده می‌شود، ولی عضویت با کد و تخصیص درس، آزمون و تمرین به آن مجاز نیست. گروه‌های تأییدشده از این صف تعلیق نمی‌شوند.
++- بررسی قوانین روی سرور انجام می‌شود؛ دست‌کاری درخواست کلاینت وضعیت گروه را تغییر نمی‌دهد. تنظیمات و تأیید جمعی به همراه گزارش اقدام مدیر در یک تراکنش ذخیره می‌شوند. ذخیرهٔ نسخهٔ قدیمی تنظیمات خطای 409 می‌دهد تا تغییر مدیر دیگر بازنویسی نشود.
++
++## نصب در Codespaces
++
++پیش‌نیاز: پچ مجموعه‌های تمرین قبلاً اعمال شده باشد. با PostgreSQL روشن، از server:
++
++```bash
++npx prisma generate &&
++npx prisma migrate deploy &&
++REQUIRE_SERVICES=1 node --test tests/approvalPolicy.test.cjs tests/approvalPolicy.integration.test.cjs &&
++npm run build
++```
++
++تست PostgreSQL یک schema موقت با نام تصادفی می‌سازد و در پایان حذف می‌کند؛ قوانین و کاربران پروژه را تغییر نمی‌دهد. اتصال آزمون باید مجوز ساخت schema داشته باشد. در CI و با REQUIRE_SERVICES=1 نبود دیتابیس خطاست، نه skip.
++
++از ریشه:
++
++```bash
++npm test -w client &&
++npm run build -w client &&
++npm run lint -w client
++```
++
++سرور را پس از مهاجرت دوباره اجرا کنید. از migrate reset استفاده نکنید.
++
++## سناریوی پذیرش
++
++1. گروه موجود همچنان فعال باشد. نیاز به تأیید گروه را روشن کنید و با مدرس یک گروه تازه بسازید: «منتظر تأیید» نمایش داده شود.
++2. کارآموز نتواند با کد گروه معلق عضو شود؛ گروه معلق در انتخاب‌گر گروه درس، آزمون و تمرین نباشد.
++3. از تنظیمات مدیر، گروه را تأیید کنید؛ سپس عضویت و انتخاب گروه ممکن باشد.
++4. نیاز به تأیید مدرس را خاموش کنید، تکلیف معلق‌ها را انتخاب و ذخیره کنید؛ مدرس تازه پس از تأیید هویت وارد شود. مدرس ردشده فعال نشود.
++5. دو صفحهٔ تنظیمات باز کنید؛ پس از ذخیره در اولی، ذخیرهٔ قدیمی در دومی باید پیام تازه‌سازی بدهد.
+diff --git a/server/package.json b/server/package.json
+index 595ee04..6d39d3a 100644
+--- a/server/package.json
++++ b/server/package.json
+@@ -5,7 +5,7 @@
+   "scripts": {
+     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+     "build": "tsc",
+-    "test": "node --require ts-node/register/transpile-only --test tests/examTiming.test.ts tests/session.integration.test.ts tests/payments.integration.test.ts tests/quota.integration.test.ts tests/examStartGroups.integration.test.ts tests/otp.integration.test.ts tests/otp.test.cjs tests/sessionAccess.test.cjs tests/adminSuperAdmin.test.cjs tests/questionExcel.test.ts tests/uploadValidation.test.ts tests/questionBankAccess.test.cjs tests/listPagination.test.cjs tests/blogAdmin.test.cjs tests/adminInstructorContent.test.cjs tests/redisRateLimit.test.cjs tests/imageContent.test.ts tests/pdfContent.test.ts tests/videoContent.test.ts tests/practice.test.cjs tests/practice.integration.test.cjs",
++    "test": "node --require ts-node/register/transpile-only --test tests/examTiming.test.ts tests/session.integration.test.ts tests/payments.integration.test.ts tests/quota.integration.test.ts tests/examStartGroups.integration.test.ts tests/otp.integration.test.ts tests/otp.test.cjs tests/sessionAccess.test.cjs tests/adminSuperAdmin.test.cjs tests/questionExcel.test.ts tests/uploadValidation.test.ts tests/questionBankAccess.test.cjs tests/listPagination.test.cjs tests/blogAdmin.test.cjs tests/adminInstructorContent.test.cjs tests/redisRateLimit.test.cjs tests/imageContent.test.ts tests/pdfContent.test.ts tests/videoContent.test.ts tests/practice.test.cjs tests/practice.integration.test.cjs tests/approvalPolicy.test.cjs tests/approvalPolicy.integration.test.cjs",
+     "start": "node dist/server.js",
+     "postinstall": "prisma generate",
+     "prisma:generate": "prisma generate",
+diff --git a/server/prisma/migrations/20261005060000_approval_policy/migration.sql b/server/prisma/migrations/20261005060000_approval_policy/migration.sql
+new file mode 100644
+index 0000000..d29ccc3
+--- /dev/null
++++ b/server/prisma/migrations/20261005060000_approval_policy/migration.sql
+@@ -0,0 +1,14 @@
++BEGIN;
++ALTER TABLE "groups" ADD COLUMN "approvalStatus" "ApprovalStatus" NOT NULL DEFAULT 'Approved';
++CREATE TABLE "approval_policy" (
++  "id" TEXT NOT NULL DEFAULT 'global',
++  "requireInstructorApproval" BOOLEAN NOT NULL DEFAULT true,
++  "requireGroupApproval" BOOLEAN NOT NULL DEFAULT false,
++  "revision" INTEGER NOT NULL DEFAULT 0,
++  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
++  CONSTRAINT "approval_policy_pkey" PRIMARY KEY ("id"),
++  CONSTRAINT "approval_policy_singleton" CHECK ("id" = 'global')
++);
++INSERT INTO "approval_policy" ("id") VALUES ('global');
++CREATE INDEX "groups_approvalStatus_createdAt_idx" ON "groups"("approvalStatus", "createdAt");
++COMMIT;
+diff --git a/server/prisma/schema.prisma b/server/prisma/schema.prisma
+index 98af5ef..bfe9ef6 100644
+--- a/server/prisma/schema.prisma
++++ b/server/prisma/schema.prisma
+@@ -135,6 +135,7 @@ model OtpCode {
+ }
+ 
+ model Group {
++  approvalStatus ApprovalStatus @default(Approved)
+   id           String   @id @default(cuid())
+   name         String
+   category     String
+@@ -152,6 +153,7 @@ model Group {
+ 
+   @@index([instructorId])
+   @@map("groups")
++  @@index([approvalStatus, createdAt])
+ }
+ 
+ model LessonSession {
+@@ -529,3 +531,13 @@ model PracticeAttempt {
+   @@index([questionId])
+   @@map("practice_attempts")
+ }
++
++// Singleton; policy changes do not rewrite already approved records.
++model ApprovalPolicy {
++  id String @id @default("global")
++  requireInstructorApproval Boolean @default(true)
++  requireGroupApproval Boolean @default(false)
++  revision Int @default(0)
++  updatedAt DateTime @updatedAt
++  @@map("approval_policy")
++}
+diff --git a/server/src/lib/adminAudit.ts b/server/src/lib/adminAudit.ts
+index c309734..71a11de 100644
+--- a/server/src/lib/adminAudit.ts
++++ b/server/src/lib/adminAudit.ts
+@@ -3,12 +3,15 @@ import { Prisma } from '@prisma/client';
+ export type AdminAuditAction =
+   | 'instructor.approve'
+   | 'instructor.reject'
+-  | 'instructor.plan_change';
++  | 'instructor.plan_change'
++  | 'approval_policy.update'
++  | 'group.approve'
++  | 'group.reject';
+ 
+ export type AdminAuditEntry = {
+   adminId: string;
+   action: AdminAuditAction;
+-  targetType: 'User';
++  targetType: 'User' | 'Group' | 'ApprovalPolicy';
+   targetId: string;
+   before?: Prisma.InputJsonValue;
+   after?: Prisma.InputJsonValue;
+diff --git a/server/src/lib/approvalPolicy.ts b/server/src/lib/approvalPolicy.ts
+new file mode 100644
+index 0000000..d7912d3
+--- /dev/null
++++ b/server/src/lib/approvalPolicy.ts
+@@ -0,0 +1,32 @@
++import type { Prisma } from '@prisma/client';
++import { prisma } from './prisma';
++import { conflict } from './errors';
++
++// Held until the creation transaction commits: policy updates cannot race creation.
++export async function readCreationPolicy(db: Prisma.TransactionClient) {
++  await db.$queryRaw`SELECT id FROM approval_policy WHERE id = 'global' FOR SHARE`;
++  return db.approvalPolicy.findUniqueOrThrow({ where: { id: 'global' } });
++}
++export async function approvalPolicySnapshot() {
++  return prisma.$transaction(
++    async (db) => {
++      const policy = await db.approvalPolicy.findUniqueOrThrow({
++        where: { id: 'global' },
++      });
++      const pendingInstructors = await db.user.count({
++        where: { role: 'Instructor', approvalStatus: 'Pending' },
++      });
++      const pendingGroups = await db.group.count({
++        where: { approvalStatus: 'Pending' },
++      });
++      return { ...policy, pendingInstructors, pendingGroups };
++    },
++    { isolationLevel: 'RepeatableRead' },
++  );
++}
++export function assertPolicyRevision(actual: number, expected: number) {
++  if (actual !== expected)
++    throw conflict(
++      'تنظیمات توسط مدیر دیگری تغییر کرده است؛ صفحه را تازه کنید.',
++    );
++}
+diff --git a/server/src/lib/examAccess.ts b/server/src/lib/examAccess.ts
+index 793ef08..67d1fab 100644
+--- a/server/src/lib/examAccess.ts
++++ b/server/src/lib/examAccess.ts
+@@ -42,7 +42,7 @@ export async function loadAccessibleExam(
+   if (exam.status !== 'Published') return { exam, allowed: false };
+ 
+   const isMember = await prisma.group.count({
+-    where: { id: { in: groupIds }, students: { some: { id: userId } } },
++    where: { id: { in: groupIds }, approvalStatus: 'Approved', students: { some: { id: userId } } },
+   });
+   if (isMember > 0) return { exam, allowed: true };
+ 
+@@ -62,6 +62,7 @@ export async function isStudentInExamGroups(
+ ): Promise<boolean> {
+   const count = await db.group.count({
+     where: {
++      approvalStatus: 'Approved',
+       exams: { some: { id: examId } },
+       students: { some: { id: studentId } },
+     },
+diff --git a/server/src/lib/quota.ts b/server/src/lib/quota.ts
+index 2b8dc8c..1536441 100644
+--- a/server/src/lib/quota.ts
++++ b/server/src/lib/quota.ts
+@@ -197,11 +197,11 @@ export async function withQuotaLock<T>(
+   kind: QuotaKind,
+   count: number,
+   run: (db: QuotaDb) => Promise<T>,
+-  opts: { timeoutMs?: number } = {}
++  opts: { timeoutMs?: number; requireTransaction?: boolean } = {}
+ ): Promise<T> {
+   const plan = await resolveQuotaPlan(instructorId, kind);
+   if (plan.expired) throw planLimitError('plan_expired');
+-  if (plan.limit === null) return run(prisma);
++  if (plan.limit === null && !opts.requireTransaction) return run(prisma);
+ 
+   return prisma.$transaction(
+     async (tx) => {
+@@ -219,7 +219,7 @@ export async function withQuotaForRole<T>(
+   kind: QuotaKind,
+   count: number,
+   run: (db: QuotaDb) => Promise<T>,
+-  opts: { timeoutMs?: number } = {}
++  opts: { timeoutMs?: number; requireTransaction?: boolean } = {}
+ ): Promise<T> {
+   if (role === 'Instructor') {
+     return withQuotaLock(instructorId, kind, count, run, opts);
+diff --git a/server/src/routes/admin.ts b/server/src/routes/admin.ts
+index 5a99ba9..3c09f84 100644
+--- a/server/src/routes/admin.ts
++++ b/server/src/routes/admin.ts
+@@ -5,6 +5,9 @@ import instructorsRoutes from './admin/instructors.routes';
+ import categoriesRoutes from './admin/categories.routes';
+ import usersRoutes from './admin/users.routes';
+ 
++import approvalPolicyRoutes from './admin/approvalPolicy.routes';
++import groupApprovalsRoutes from './admin/groupApprovals.routes';
++
+ const router = Router();
+ // فقط SuperAdmin به این route ها دسترسی داره
+ router.use(requireAuth, requireRole('SuperAdmin'));
+@@ -12,5 +15,7 @@ router.use(requireAuth, requireRole('SuperAdmin'));
+ router.use('/instructors', instructorsRoutes);
+ router.use('/categories', categoriesRoutes);
+ router.use('/users', usersRoutes);
++router.use('/approval-policy', approvalPolicyRoutes);
++router.use('/group-approvals', groupApprovalsRoutes);
+ 
+ export default router;
+\ No newline at end of file
+diff --git a/server/src/routes/admin/approvalPolicy.routes.ts b/server/src/routes/admin/approvalPolicy.routes.ts
+new file mode 100644
+index 0000000..0bd45a4
+--- /dev/null
++++ b/server/src/routes/admin/approvalPolicy.routes.ts
+@@ -0,0 +1,122 @@
++import { Router } from 'express';
++import { z } from 'zod';
++import { prisma } from '../../lib/prisma';
++import { asyncHandler } from '../../lib/asyncHandler';
++import { badRequest } from '../../lib/errors';
++import {
++  approvalPolicySnapshot,
++  assertPolicyRevision,
++} from '../../lib/approvalPolicy';
++import { recordAdminAction } from '../../lib/adminAudit';
++
++const router = Router();
++const schema = z
++  .object({
++    revision: z.number().int().nonnegative(),
++    requireInstructorApproval: z.boolean(),
++    requireGroupApproval: z.boolean(),
++    pendingInstructors: z.enum(['keep', 'approve']).optional(),
++    pendingGroups: z.enum(['keep', 'approve']).optional(),
++  })
++  .strict();
++router.get(
++  '/',
++  asyncHandler(async (_req, res) => {
++    res.json(await approvalPolicySnapshot());
++  }),
++);
++router.put(
++  '/',
++  asyncHandler(async (req, res) => {
++    const parsed = schema.safeParse(req.body);
++    if (!parsed.success) throw badRequest('تنظیمات تأیید نامعتبر است.');
++    const input = parsed.data;
++    const result = await prisma.$transaction(async (db) => {
++      await db.$queryRaw`SELECT id FROM approval_policy WHERE id = 'global' FOR UPDATE`;
++      const before = await db.approvalPolicy.findUniqueOrThrow({
++        where: { id: 'global' },
++      });
++      assertPolicyRevision(before.revision, input.revision);
++      const instructorCount = await db.user.count({
++        where: { role: 'Instructor', approvalStatus: 'Pending' },
++      });
++      const groupCount = await db.group.count({
++        where: { approvalStatus: 'Pending' },
++      });
++      if (
++        before.requireInstructorApproval &&
++        !input.requireInstructorApproval &&
++        instructorCount &&
++        !input.pendingInstructors
++      )
++        throw badRequest('تکلیف مدرس‌های منتظر تأیید را انتخاب کنید.');
++      if (
++        before.requireGroupApproval &&
++        !input.requireGroupApproval &&
++        groupCount &&
++        !input.pendingGroups
++      )
++        throw badRequest('تکلیف گروه‌های منتظر تأیید را انتخاب کنید.');
++      if (
++        (input.requireInstructorApproval &&
++          input.pendingInstructors === 'approve') ||
++        (input.requireGroupApproval && input.pendingGroups === 'approve')
++      )
++        throw badRequest('تأیید جمعی فقط در حالت آزاد مجاز است.');
++      const approvedInstructors =
++        !input.requireInstructorApproval &&
++        input.pendingInstructors === 'approve'
++          ? (
++              await db.user.updateMany({
++                where: { role: 'Instructor', approvalStatus: 'Pending' },
++                data: { approvalStatus: 'Approved' },
++              })
++            ).count
++          : 0;
++      const approvedGroups =
++        !input.requireGroupApproval && input.pendingGroups === 'approve'
++          ? (
++              await db.group.updateMany({
++                where: { approvalStatus: 'Pending' },
++                data: { approvalStatus: 'Approved' },
++              })
++            ).count
++          : 0;
++      const policy = await db.approvalPolicy.update({
++        where: { id: 'global' },
++        data: {
++          requireInstructorApproval: input.requireInstructorApproval,
++          requireGroupApproval: input.requireGroupApproval,
++          revision: { increment: 1 },
++        },
++      });
++      await recordAdminAction(db, {
++        adminId: req.user!.sub,
++        action: 'approval_policy.update',
++        targetType: 'ApprovalPolicy',
++        targetId: 'global',
++        before: {
++          requireInstructorApproval: before.requireInstructorApproval,
++          requireGroupApproval: before.requireGroupApproval,
++          revision: before.revision,
++        },
++        after: {
++          requireInstructorApproval: policy.requireInstructorApproval,
++          requireGroupApproval: policy.requireGroupApproval,
++          revision: policy.revision,
++          pendingInstructors: input.pendingInstructors ?? 'keep',
++          pendingGroups: input.pendingGroups ?? 'keep',
++          approvedInstructors,
++          approvedGroups,
++        },
++      });
++      return {
++        ...policy,
++        pendingInstructors: instructorCount - approvedInstructors,
++        pendingGroups: groupCount - approvedGroups,
++      };
++    });
++    res.json(result);
++  }),
++);
++export default router;
+diff --git a/server/src/routes/admin/groupApprovals.routes.ts b/server/src/routes/admin/groupApprovals.routes.ts
+new file mode 100644
+index 0000000..d5acad3
+--- /dev/null
++++ b/server/src/routes/admin/groupApprovals.routes.ts
+@@ -0,0 +1,84 @@
++import { Router } from 'express';
++import { z } from 'zod';
++import { prisma } from '../../lib/prisma';
++import { asyncHandler } from '../../lib/asyncHandler';
++import { badRequest, conflict, notFound } from '../../lib/errors';
++import { parseListQuery } from '../../lib/listPagination';
++import { recordAdminAction } from '../../lib/adminAudit';
++
++const router = Router();
++router.get(
++  '/',
++  asyncHandler(async (req, res) => {
++    const { page, pageSize, skip, search } = parseListQuery(req.query);
++    const parsed = z
++      .enum(['Pending', 'Approved', 'Rejected'])
++      .safeParse(req.query.status ?? 'Pending');
++    if (!parsed.success) throw badRequest('وضعیت نامعتبر است.');
++    const where = {
++      approvalStatus: parsed.data,
++      ...(search
++        ? { name: { contains: search, mode: 'insensitive' as const } }
++        : {}),
++    };
++    const [items, total] = await prisma.$transaction(
++      [
++        prisma.group.findMany({
++          where,
++          skip,
++          take: pageSize,
++          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
++          select: {
++            id: true,
++            name: true,
++            category: true,
++            approvalStatus: true,
++            createdAt: true,
++            instructor: { select: { name: true, username: true } },
++          },
++        }),
++        prisma.group.count({ where }),
++      ],
++      { isolationLevel: 'RepeatableRead' },
++    );
++    res.json({ items, total, page, pageSize });
++  }),
++);
++router.post(
++  '/:id/decision',
++  asyncHandler(async (req, res) => {
++    const parsed = z
++      .object({
++        status: z.enum(['Approved', 'Rejected']),
++        expectedStatus: z.enum(['Pending', 'Rejected']),
++      })
++      .strict()
++      .safeParse(req.body);
++    if (!parsed.success) throw badRequest('تصمیم نامعتبر است.');
++    const result = await prisma.$transaction(async (db) => {
++      await db.$queryRaw`SELECT id FROM groups WHERE id = ${req.params.id} FOR UPDATE`;
++      const group = await db.group.findUnique({ where: { id: req.params.id } });
++      if (!group) throw notFound('گروه یافت نشد.');
++      if (group.approvalStatus === parsed.data.status) return group;
++      if (group.approvalStatus !== parsed.data.expectedStatus)
++        throw conflict('وضعیت گروه تغییر کرده است؛ فهرست را تازه کنید.');
++      // This queue approves/rejects new groups; it never suspends an active class.
++      const updated = await db.group.update({
++        where: { id: group.id },
++        data: { approvalStatus: parsed.data.status },
++      });
++      await recordAdminAction(db, {
++        adminId: req.user!.sub,
++        action:
++          parsed.data.status === 'Approved' ? 'group.approve' : 'group.reject',
++        targetType: 'Group',
++        targetId: group.id,
++        before: { approvalStatus: group.approvalStatus },
++        after: { approvalStatus: updated.approvalStatus },
++      });
++      return updated;
++    });
++    res.json({ id: result.id, approvalStatus: result.approvalStatus });
++  }),
++);
++export default router;
+diff --git a/server/src/routes/auth/register/register.service.ts b/server/src/routes/auth/register/register.service.ts
+index cff1880..c1c44b0 100644
+--- a/server/src/routes/auth/register/register.service.ts
++++ b/server/src/routes/auth/register/register.service.ts
+@@ -1,3 +1,4 @@
++import { readCreationPolicy } from '../../../lib/approvalPolicy';
+ import { prisma } from '../../../lib/prisma';
+ 
+ import {
+@@ -110,7 +111,7 @@ export async function registerUser(data: RegisterData, ip: string) {
+       },
+     });
+ 
+-    if (!group) {
++    if (!group || group.approvalStatus !== 'Approved') {
+       throw badRequest('کد دعوت نامعتبره');
+     }
+ 
+@@ -119,68 +120,78 @@ export async function registerUser(data: RegisterData, ip: string) {
+ 
+   const isNewUser = !user;
+ 
+-  if (!user) {
+-    user = await prisma.user.create({
+-      data: {
+-        username,
+-        usernameNormalized: normalizeUsername(username),
+-
+-        name: data.name?.trim() || null,
+-
+-        passwordHash,
+-
+-        role: data.role,
+-
+-        approvalStatus: data.role === 'Instructor' ? 'Pending' : 'Approved',
+-
+-        ...(type === 'EMAIL'
+-          ? {
+-              email: value,
+-            }
+-          : {
+-              phone: value,
+-            }),
+-
+-        ...(groupId
+-          ? {
+-              groupsMember: {
+-                connect: {
+-                  id: groupId,
++  user = await prisma.$transaction(async db => {
++    const policy = await readCreationPolicy(db);
++    if (user) await db.$queryRaw`SELECT id FROM users WHERE id = ${user.id} FOR UPDATE`;
++    let candidate = user ? await db.user.findUnique({ where: { id: user.id } }) : null;
++    // Re-registering an unverified account must not override a review decision.
++    const approvalStatus = data.role !== 'Instructor' ? 'Approved'
++      : candidate?.role === 'Instructor' ? candidate.approvalStatus
++      : policy.requireInstructorApproval ? 'Pending' : 'Approved';
++    if (!candidate) {
++      candidate = await db.user.create({
++        data: {
++          username,
++          usernameNormalized: normalizeUsername(username),
++
++          name: data.name?.trim() || null,
++
++          passwordHash,
++
++          role: data.role,
++
++          approvalStatus,
++
++          ...(type === 'EMAIL'
++            ? {
++                email: value,
++              }
++            : {
++                phone: value,
++              }),
++
++          ...(groupId
++            ? {
++                groupsMember: {
++                  connect: {
++                    id: groupId,
++                  },
+                 },
+-              },
+-            }
+-          : {}),
+-      },
+-    });
+-  } else {
+-    user = await prisma.user.update({
+-      where: {
+-        id: user.id,
+-      },
+-      data: {
+-        username,
+-        usernameNormalized: normalizeUsername(username),
++              }
++            : {}),
++        },
++      });
++    } else {
++      candidate = await db.user.update({
++        where: {
++          id: candidate.id,
++        },
++        data: {
++          username,
++          usernameNormalized: normalizeUsername(username),
+ 
+-        name: data.name?.trim() || user.name,
++          name: data.name?.trim() || candidate.name,
+ 
+-        // این کاربر هنوز تایید نشده (alreadyVerified بالا رد شده) - رمز قبلیش
+-        // رو کسی گذاشته که مالکیت شناسه رو ثابت نکرده. اگه اینجا حفظ بشه
+-        // (`?? user.passwordHash`)، یه نفر می‌تونست ایمیل/شماره‌ی قربانی رو
+-        // با رمز خودش پیش‌ثبت‌نام کنه و بعد از اینکه صاحب واقعی بدون رمز
+-        // ثبت‌نام و تایید کرد، با اون رمز وارد حسابش بشه.
+-        passwordHash,
++          // این کاربر هنوز تایید نشده (alreadyVerified بالا رد شده) - رمز قبلیش
++          // رو کسی گذاشته که مالکیت شناسه رو ثابت نکرده. اگه اینجا حفظ بشه
++          // (`?? candidate.passwordHash`)، یه نفر می‌تونست ایمیل/شماره‌ی قربانی رو
++          // با رمز خودش پیش‌ثبت‌نام کنه و بعد از اینکه صاحب واقعی بدون رمز
++          // ثبت‌نام و تایید کرد، با اون رمز وارد حسابش بشه.
++          passwordHash,
+ 
+-        role: data.role,
++          role: data.role,
+ 
+-        approvalStatus: data.role === 'Instructor' ? 'Pending' : 'Approved',
++          approvalStatus,
+ 
+-        // کد دعوت تلاش دوم (بعد از ثبت‌نام ناتمام) قبلاً نادیده گرفته می‌شد
+-        groupsMember: {
+-          set: groupId ? [{ id: groupId }] : [],
++          // کد دعوت تلاش دوم (بعد از ثبت‌نام ناتمام) قبلاً نادیده گرفته می‌شد
++          groupsMember: {
++            set: groupId ? [{ id: groupId }] : [],
++          },
+         },
+-      },
+-    });
+-  }
++      });
++    }
++    return candidate;
++  });
+ 
+   if (isNewUser) {
+     await notifyUser(user.id, 'ثبت‌نام با موفقیت انجام شد', 'info').catch(
+@@ -189,7 +200,7 @@ export async function registerUser(data: RegisterData, ip: string) {
+       }
+     );
+ 
+-    if (data.role === 'Instructor') {
++    if (data.role === 'Instructor' && user.approvalStatus === 'Pending') {
+       await notifyRoles(
+         ['SuperAdmin'],
+         `مدرس جدید ${user.name || user.username} منتظر تایید حساب است`,
+diff --git a/server/src/routes/exams/exams.routes.ts b/server/src/routes/exams/exams.routes.ts
+index d8c682b..5a5caf2 100644
+--- a/server/src/routes/exams/exams.routes.ts
++++ b/server/src/routes/exams/exams.routes.ts
+@@ -37,7 +37,7 @@ router.get(
+         ? { instructorId: sub }
+         : {
+             status: 'Published' as const,
+-            groups: { some: { students: { some: { id: sub } } } },
++            groups: { some: { approvalStatus: 'Approved' as const, students: { some: { id: sub } } } },
+           };
+ 
+     const exams = await prisma.exam.findMany({
+diff --git a/server/src/routes/exams/exams.service.ts b/server/src/routes/exams/exams.service.ts
+index 2f33e19..1dde7f6 100644
+--- a/server/src/routes/exams/exams.service.ts
++++ b/server/src/routes/exams/exams.service.ts
+@@ -42,10 +42,10 @@ export async function assertOwnsAllGroups(
+   role: Role,
+   userId: string
+ ): Promise<void> {
+-  if (role === 'SuperAdmin' || groupIds.length === 0) return;
++  if (groupIds.length === 0) return;
+ 
+   const owned = await prisma.group.count({
+-    where: { id: { in: groupIds }, instructorId: userId },
++    where: { id: { in: groupIds }, approvalStatus: 'Approved', ...(role === 'SuperAdmin' ? {} : { instructorId: userId }) },
+   });
+   if (owned !== groupIds.length) {
+     throw forbidden('نمی‌تونی آزمون رو به گروهی که مال تو نیست وصل کنی');
+diff --git a/server/src/routes/groups/groupMembership.routes.ts b/server/src/routes/groups/groupMembership.routes.ts
+index b60a7ae..9da8892 100644
+--- a/server/src/routes/groups/groupMembership.routes.ts
++++ b/server/src/routes/groups/groupMembership.routes.ts
+@@ -28,6 +28,8 @@ router.post(
+     });
+     if (!group) return res.status(404).json({ error: 'کد عضویت نامعتبره' });
+ 
++    if (group.approvalStatus !== 'Approved') return res.status(403).json({ error: 'این گروه هنوز تأیید نشده است.' });
++
+     const alreadyMember = group.students.some((s) => s.id === req.user!.sub);
+     if (!alreadyMember) {
+       await prisma.group.update({
+diff --git a/server/src/routes/groups/groups.routes.ts b/server/src/routes/groups/groups.routes.ts
+index 8cd87b1..87b95c9 100644
+--- a/server/src/routes/groups/groups.routes.ts
++++ b/server/src/routes/groups/groups.routes.ts
+@@ -1,3 +1,4 @@
++import { readCreationPolicy } from '../../lib/approvalPolicy';
+ import { parseListQuery } from '../../lib/listPagination';
+ import { Router } from 'express';
+ import { prisma } from '../../lib/prisma';
+@@ -26,7 +27,7 @@ router.get(
+         ? {}
+         : role === 'Instructor'
+         ? { instructorId: sub }
+-        : { students: { some: { id: sub } } };
++        : { approvalStatus: 'Approved' as const, students: { some: { id: sub } } };
+ 
+     const { page, pageSize, skip, search } = parseListQuery(req.query);
+     const filter = { ...where, ...(search ? { name: { contains: search, mode: 'insensitive' as const } } : {}) };
+@@ -56,7 +57,7 @@ router.get(
+     const { role, sub } = req.user!;
+     const isOwner = role === 'Instructor' && group.instructorId === sub;
+     const isMember =
+-      role === 'Student' && group.students.some((s) => s.id === sub);
++      role === 'Student' && group.approvalStatus === 'Approved' && group.students.some((s) => s.id === sub);
+     if (role !== 'SuperAdmin' && !isOwner && !isMember) {
+       return res.status(403).json({ error: 'دسترسی غیرمجاز' });
+     }
+@@ -87,9 +88,11 @@ router.post(
+     // چک می‌کنه؛ اینجا سمت سرور و *اتمیک با ساخت* اعمال می‌شه (چک و create
+     // داخل یه تراکنش پشت قفل مدرس - lib/quota.ts). خطای ۴۰۳ همون شکل قبلی
+     // {error, reason} رو داره (AppError → errorHandler)
+-    const group = await withQuotaLock(req.user!.sub, 'groups', 1, (db) =>
+-      db.group.create({
++    const group = await withQuotaLock(req.user!.sub, 'groups', 1, async (db) => {
++      const policy = await readCreationPolicy(db);
++      return db.group.create({
+         data: {
++          approvalStatus: policy.requireGroupApproval ? 'Pending' : 'Approved',
+           name: parsed.data.name,
+           category: parsed.data.category,
+           instructorId: req.user!.sub,
+@@ -97,8 +100,8 @@ router.post(
+           students: { connect: studentConnect },
+         },
+         include: withStudents,
+-      })
+-    );
++      });
++    }, { requireTransaction: true });
+ 
+     res.status(201).json(serializeGroup(group));
+   })
+diff --git a/server/src/routes/groups/groups.service.ts b/server/src/routes/groups/groups.service.ts
+index fbed67d..406d64f 100644
+--- a/server/src/routes/groups/groups.service.ts
++++ b/server/src/routes/groups/groups.service.ts
+@@ -11,10 +11,12 @@ export function serializeGroup(group: {
+   category: string;
+   instructorId: string;
+   joinCode: string;
++  approvalStatus: 'Pending' | 'Approved' | 'Rejected';
+   students: { id: string }[];
+ }) {
+   return {
+     id: group.id,
++    approvalStatus: group.approvalStatus,
+     name: group.name,
+     category: group.category,
+     instructorId: group.instructorId,
+diff --git a/server/src/routes/lessonSessions/lessonSessions.routes.ts b/server/src/routes/lessonSessions/lessonSessions.routes.ts
+index 8177259..0fc7e14 100644
+--- a/server/src/routes/lessonSessions/lessonSessions.routes.ts
++++ b/server/src/routes/lessonSessions/lessonSessions.routes.ts
+@@ -53,7 +53,7 @@ router.get(
+       const isMember =
+         role === 'Student' &&
+         (await prisma.group.count({
+-          where: { id: groupId, students: { some: { id: sub } } },
++          where: { id: groupId, approvalStatus: 'Approved' as const, students: { some: { id: sub } } },
+         })) > 0;
+       if (role !== 'SuperAdmin' && !isOwner && !isMember) {
+         throw forbidden();
+@@ -72,7 +72,7 @@ router.get(
+         ? {}
+         : role === 'Instructor'
+         ? { groups: { some: { instructorId: sub } } }
+-        : { groups: { some: { students: { some: { id: sub } } } } };
++        : { groups: { some: { approvalStatus: 'Approved' as const, students: { some: { id: sub } } } } };
+ 
+     const sessions = await prisma.lessonSession.findMany({
+       where,
+diff --git a/server/src/routes/lessonSessions/lessonSessions.service.ts b/server/src/routes/lessonSessions/lessonSessions.service.ts
+index 3efade0..f229f21 100644
+--- a/server/src/routes/lessonSessions/lessonSessions.service.ts
++++ b/server/src/routes/lessonSessions/lessonSessions.service.ts
+@@ -129,7 +129,7 @@ export async function assertGroupsExist(groupIds: string[]) {
+   const unique = new Set(groupIds);
+   if (unique.size === 0) return;
+   const found = await prisma.group.count({
+-    where: { id: { in: [...unique] } },
++    where: { id: { in: [...unique] }, approvalStatus: 'Approved' },
+   });
+   if (found !== unique.size) throw badRequest('گروه یافت نشد');
+ }
+@@ -138,7 +138,7 @@ export async function assertGroupsExist(groupIds: string[]) {
+ // groupIds ارسالی تو بدنه‌ی درخواست، همه واقعاً متعلق به خودشن
+ export async function ownedGroupIds(userId: string): Promise<Set<string>> {
+   const groups = await prisma.group.findMany({
+-    where: { instructorId: userId },
++    where: { instructorId: userId, approvalStatus: 'Approved' },
+     select: { id: true },
+   });
+   return new Set(groups.map((g) => g.id));
+@@ -172,7 +172,7 @@ export async function loadAccessibleSession(
+   }
+ 
+   const isMember = await prisma.group.count({
+-    where: { id: { in: groupIds }, students: { some: { id: userId } } },
++    where: { id: { in: groupIds }, approvalStatus: 'Approved', students: { some: { id: userId } } },
+   });
+   return { session, allowed: isMember > 0 };
+ }
+\ No newline at end of file
+diff --git a/server/src/routes/practice/practice.access.ts b/server/src/routes/practice/practice.access.ts
+index 3f3a909..8f580e2 100644
+--- a/server/src/routes/practice/practice.access.ts
++++ b/server/src/routes/practice/practice.access.ts
+@@ -6,7 +6,7 @@ export function practiceScope(actor: Actor): Prisma.PracticeSetWhereInput {
+   if (actor.role === 'Instructor') return { instructorId: actor.sub };
+   return {
+     status: 'Published',
+-    groups: { some: { group: { students: { some: { id: actor.sub } } } } },
++    groups: { some: { group: { approvalStatus: 'Approved', students: { some: { id: actor.sub } } } } },
+   };
+ }
+ export async function accessiblePractice(
+diff --git a/server/src/routes/practice/practice.manage.ts b/server/src/routes/practice/practice.manage.ts
+index 05df742..5750ecb 100644
+--- a/server/src/routes/practice/practice.manage.ts
++++ b/server/src/routes/practice/practice.manage.ts
+@@ -13,7 +13,7 @@ async function ownedGroups(
+   ids: string[],
+ ) {
+   const count = await db.group.count({
+-    where: { id: { in: ids }, instructorId: owner },
++    where: { id: { in: ids }, instructorId: owner, approvalStatus: 'Approved' },
+   });
+   if (count !== ids.length) throw notFound('یک یا چند گروه متعلق به شما نیست.');
+ }
+diff --git a/server/tests/approvalPolicy.integration.test.cjs b/server/tests/approvalPolicy.integration.test.cjs
+new file mode 100644
+index 0000000..0fea4c4
+--- /dev/null
++++ b/server/tests/approvalPolicy.integration.test.cjs
+@@ -0,0 +1,50 @@
++require('dotenv').config({path:require('node:path').resolve(__dirname,'../.env')});
++const test=require('node:test');
++const assert=require('node:assert/strict');
++const {randomUUID}=require('node:crypto');
++const {execFile}=require('node:child_process');
++const {promisify}=require('node:util');
++const path=require('node:path');
++const {PrismaClient}=require('@prisma/client');
++const {withApprovalApi}=require('./helpers/approvalPolicyApi.cjs');
++
++test('Postgres approval: isolated schema, concurrent revisions, registration and group eligibility',async t=>{
++  const url=process.env.DATABASE_URL;
++  if(!url){if(process.env.REQUIRE_SERVICES==='1')throw Error('DATABASE_URL required');t.skip('Postgres not configured');return;}
++  const admin=new PrismaClient({datasources:{db:{url}}});
++  try{await admin.$queryRaw`SELECT 1`;}catch(e){await admin.$disconnect();if(process.env.REQUIRE_SERVICES==='1')throw e;t.skip('Postgres unavailable');return;}
++  // Never change the live singleton: every run has its own fresh schema.
++  const schema='approval_test_'+randomUUID().replaceAll('-','');
++  await admin.$executeRawUnsafe(`CREATE SCHEMA "${schema}"`);
++  t.after(async()=>{try{await admin.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);}finally{await admin.$disconnect();}});
++  const isolated=new URL(url);isolated.searchParams.set('schema',schema);
++  await promisify(execFile)(process.execPath,[require.resolve('prisma/build/index.js'),'db','push','--skip-generate','--schema',path.resolve(__dirname,'../prisma/schema.prisma')],
++    {env:{...process.env,DATABASE_URL:isolated.toString()},timeout:60000});
++  const db=new PrismaClient({datasources:{db:{url:isolated.toString()}}});t.after(()=>db.$disconnect());
++  await db.approvalPolicy.create({data:{id:'global'}});
++  await db.user.createMany({data:[{id:'admin',role:'SuperAdmin'},{id:'owner',role:'Instructor'},{id:'student',role:'Student'},
++    {id:'waiting',role:'Instructor',approvalStatus:'Pending'},{id:'rejected',role:'Instructor',approvalStatus:'Rejected'}]});
++  await withApprovalApi(t,db,async(r,load)=>{
++    const actor='SuperAdmin:admin',url='/admin/approval-policy';
++    const body={revision:0,requireInstructorApproval:false,requireGroupApproval:true,pendingInstructors:'keep'};
++    const concurrent=await Promise.all(Array.from({length:4},()=>r(actor,'PUT',url,body)));
++    assert.equal(concurrent.filter(x=>x.status===200).length,1,JSON.stringify(concurrent));assert.equal(concurrent.filter(x=>x.status===409).length,3);
++    assert.equal((await db.user.findUnique({where:{id:'waiting'}})).approvalStatus,'Pending');
++    const created=await r('Instructor:owner','POST','/groups',{name:'Pending group',category:'test',studentIds:[]});assert.equal(created.status,201,JSON.stringify(created.body));
++    const group=created.body;assert.equal(group.approvalStatus,'Pending');
++    assert.equal((await r('Student:student','POST','/groups/join',{joinCode:group.joinCode})).status,403);
++    const {assertOwnsAllGroups}=load('routes/exams/exams.service.ts');
++    await assert.rejects(assertOwnsAllGroups([group.id],'Instructor','owner'));
++    const {ownedGroupIds}=load('routes/lessonSessions/lessonSessions.service.ts');
++    assert.equal((await ownedGroupIds('owner')).has(group.id),false);
++    const free=await r(null,'POST','/register',{identifier:'free@example.test',username:'free_instructor',role:'Instructor'});assert.equal(free.status,200,JSON.stringify(free.body));
++    assert.equal((await db.user.findUnique({where:{email:'free@example.test'}})).approvalStatus,'Approved');
++    const current=await r(actor,'GET',url);
++    assert.equal((await r(actor,'PUT',url,{revision:current.body.revision,requireInstructorApproval:false,requireGroupApproval:false,pendingInstructors:'approve',pendingGroups:'approve'})).status,200);
++    assert.equal((await db.user.findUnique({where:{id:'waiting'}})).approvalStatus,'Approved');
++    assert.equal((await db.user.findUnique({where:{id:'rejected'}})).approvalStatus,'Rejected');
++    await assertOwnsAllGroups([group.id],'Instructor','owner');assert.equal((await ownedGroupIds('owner')).has(group.id),true);
++    assert.equal((await r('Student:student','POST','/groups/join',{joinCode:group.joinCode})).status,200);
++    assert.equal(await db.adminAuditLog.count(),2);
++  });
++});
+diff --git a/server/tests/approvalPolicy.test.cjs b/server/tests/approvalPolicy.test.cjs
+new file mode 100644
+index 0000000..44f0919
+--- /dev/null
++++ b/server/tests/approvalPolicy.test.cjs
+@@ -0,0 +1,68 @@
++const test=require('node:test');const assert=require('node:assert/strict');
++const {withApprovalApi}=require('./helpers/approvalPolicyApi.cjs');
++const {approvalMemory}=require('./helpers/approvalPolicyMemory.cjs');
++const admin='SuperAdmin:admin';
++const url='/admin/approval-policy';
++const update={revision:0,requireInstructorApproval:false,requireGroupApproval:false,pendingInstructors:'keep',pendingGroups:'keep'};
++async function fixture(t,run){const m=approvalMemory();await withApprovalApi(t,m.db,(r,load)=>run(r,m,load));}
++test('approval HTTP: only SuperAdmin can read or change policy and review queue',t=>fixture(t,async r=>{
++  for(const actor of [null,'Student:student','Instructor:owner']){
++    for(const path of [url,'/admin/group-approvals'])assert.equal((await r(actor,'GET',path)).status,actor?403:401);
++    assert.equal((await r(actor,'PUT',url,update)).status,actor?403:401);
++    assert.equal((await r(actor,'POST','/admin/group-approvals/waiting-group/decision',{status:'Approved',expectedStatus:'Pending'})).status,actor?403:401);
++  }
++}));
++test('approval HTTP: independent toggles preserve approved/rejected and require explicit pending choice',t=>fixture(t,async(r,m)=>{
++  const first=await r(admin,'GET',url);assert.equal(first.body.pendingInstructors,1);assert.equal(first.body.requireGroupApproval,false);
++  assert.equal((await r(admin,'PUT',url,{revision:0,requireInstructorApproval:false,requireGroupApproval:true})).status,400);
++  const saved=await r(admin,'PUT',url,{...update,requireGroupApproval:true});assert.equal(saved.status,200);assert.equal(saved.body.revision,1);
++  assert.equal(m.users.find(x=>x.id==='waiting').approvalStatus,'Pending');assert.equal(m.groups[0].approvalStatus,'Approved');
++  assert.equal((await r(admin,'PUT',url,update)).status,409);
++  assert.equal((await r(admin,'PUT',url,{...update,revision:1,pendingInstructors:'approve',pendingGroups:'approve'})).status,200);
++  assert.equal(m.users.find(x=>x.id==='waiting').approvalStatus,'Approved');assert.equal(m.users.find(x=>x.id==='rejected').approvalStatus,'Rejected');
++  assert.equal(m.groups.find(x=>x.id==='waiting-group').approvalStatus,'Approved');assert.equal(m.groups.find(x=>x.id==='rejected-group').approvalStatus,'Rejected');
++  assert.equal(m.audits.length,2);assert.equal(m.audits[1].after.approvedInstructors,1);
++}));
++test('approval HTTP: failure to audit rolls back policy and mass approvals',t=>fixture(t,async(r,m)=>{
++  m.failAudit();assert.equal((await r(admin,'PUT',url,{...update,pendingInstructors:'approve',pendingGroups:'approve'})).status,500);
++  assert.equal(m.policy.revision,0);assert.equal(m.users.find(x=>x.id==='waiting').approvalStatus,'Pending');assert.equal(m.groups[1].approvalStatus,'Pending');
++}));
++test('approval HTTP: group creation obeys policy; pending is visible to owner but cannot join',t=>fixture(t,async(r,m)=>{
++  m.policy.requireGroupApproval=true;
++  const created=await r('Instructor:owner','POST','/groups',{name:'New group',category:'General',studentIds:[]});assert.equal(created.status,201,JSON.stringify(created.body));assert.equal(created.body.approvalStatus,'Pending');
++  assert.equal((await r('Instructor:owner','GET','/groups/'+created.body.id)).status,200);
++  assert.equal((await r('Student:student','POST','/groups/join',{joinCode:'WAIT123'})).status,403);
++  assert.equal((await r('Student:student','GET','/groups/waiting-group')).status,403);
++  const list=await r('Student:student','GET','/groups');assert.deepEqual(list.body.items.map(x=>x.id),['old']);
++  m.policy.requireGroupApproval=false;
++  assert.equal((await r('Instructor:owner','POST','/groups',{name:'Free group',category:'General',studentIds:[]})).body.approvalStatus,'Approved');
++}));
++test('approval HTTP: review is idempotent, stale decisions conflict, active groups cannot be rejected',t=>fixture(t,async(r,m)=>{
++  const path='/admin/group-approvals/waiting-group/decision';const body={status:'Approved',expectedStatus:'Pending'};
++  assert.equal((await r(admin,'POST',path,body)).status,200);assert.equal((await r(admin,'POST',path,body)).status,200);assert.equal(m.audits.length,1);
++  assert.equal((await r(admin,'POST',path,{status:'Rejected',expectedStatus:'Pending'})).status,409);
++  assert.equal((await r(admin,'POST','/admin/group-approvals/missing/decision',body)).status,404);
++  assert.equal((await r(admin,'GET','/admin/group-approvals?pageSize=101')).status,400);
++}));
++test('approval registration: new instructors follow policy; student and prior review decisions are preserved',t=>fixture(t,async(r,m)=>{
++  const signup=(identifier,role='Instructor',extra={})=>r(null,'POST','/register',{identifier,role,username:identifier.split('@')[0],...extra});
++  assert.equal((await signup('first@test.local')).status,200);assert.equal(m.users.find(x=>x.email==='first@test.local').approvalStatus,'Pending');
++  m.policy.requireInstructorApproval=false;
++  assert.equal((await signup('second@test.local')).status,200);assert.equal(m.users.find(x=>x.email==='second@test.local').approvalStatus,'Approved');
++  assert.equal((await signup('first@test.local')).status,200);assert.equal(m.users.find(x=>x.email==='first@test.local').approvalStatus,'Pending');
++  assert.equal((await signup('student@test.local','Student')).status,200);assert.equal(m.users.find(x=>x.email==='student@test.local').approvalStatus,'Approved');
++  assert.equal((await signup('blocked@test.local','Student',{joinCode:'WAIT123'})).status,400);
++}));
++test('approval eligibility: pending/rejected groups cannot be assigned to exams, lessons or practices',t=>fixture(t,async(_r,m,load)=>{
++  const {assertOwnsAllGroups}=load('routes/exams/exams.service.ts');
++  const {ownedGroupIds,assertGroupsExist}=load('routes/lessonSessions/lessonSessions.service.ts');
++  const {createPractice}=load('routes/practice/practice.manage.ts');
++  for(const id of ['waiting-group','rejected-group']){
++    await assert.rejects(assertOwnsAllGroups([id],'Instructor','owner'));
++    await assert.rejects(assertOwnsAllGroups([id],'SuperAdmin','admin'));
++    await assert.rejects(assertGroupsExist([id]));
++    await assert.rejects(createPractice('owner',{title:'test',description:'',groupIds:[id],questionIds:['q']}));
++  }
++  assert.deepEqual([...(await ownedGroupIds('owner'))],['old']);
++  await assertOwnsAllGroups(['old'],'Instructor','owner');await assertGroupsExist(['old']);
++}));
+diff --git a/server/tests/helpers/approvalPolicyApi.cjs b/server/tests/helpers/approvalPolicyApi.cjs
+new file mode 100644
+index 0000000..ec86d09
+--- /dev/null
++++ b/server/tests/helpers/approvalPolicyApi.cjs
+@@ -0,0 +1,53 @@
++const fs = require('node:fs');
++const path = require('node:path');
++const vm = require('node:vm');
++const ts = require('typescript');
++const express = require('express');
++function approvalApp(db) {
++  const src = path.resolve(__dirname, '../../src');
++  const cache = new Map();
++  const doubles = {
++    'lib/prisma.ts': { prisma: db },
++    'lib/jwt.ts': { verifyAccessToken(token) { const [role, sub] = token.split(':'); if (!['Student','Instructor','SuperAdmin'].includes(role) || !sub) throw Error('invalid'); return { role, sub, sid:'test' }; } },
++    'lib/session.ts': { isSessionValid: async () => true },
++    'lib/notifications.ts': { notifyUser: async () => {}, notifyRoles: async () => {} },
++    'lib/quota.ts': { withQuotaLock: async (_id,_kind,_count,run) => db.$transaction(run) },
++    'lib/joinCode.ts': { generateUniqueJoinCode: async () => 'CODE' + Date.now() },
++    'middleware/rateLimiters.ts': { joinGroupLimiter: (_req,_res,next) => next() },
++    'lib/otpAbuseGuard.ts': { assertOtpSendAllowed: async () => {} },
++    'lib/username.ts': { normalizeUsername: x => x.toLowerCase(), validateUsernameFormat: () => ({ valid:true }), isUsernameTaken: async () => false, suggestUsernameAlternatives: async x => [x] },
++    'lib/password.ts': { hashPassword: async () => 'test-only-hash' },
++    'lib/otp.ts': { createOtp: async () => ({ code:'000000' }) },
++    'services/otpSender.ts': { sendOtp: async () => {} },
++    'routes/auth/auth.helpers.ts': { resolveIdentifier: value => ({ type:'EMAIL', value, channel:'EMAIL' }) },
++  };
++  function load(filename) {
++    const key = path.relative(src,filename).split(path.sep).join('/');
++    if (doubles[key]) return doubles[key];
++    if (cache.has(filename)) return cache.get(filename).exports;
++    const module={exports:{}};cache.set(filename,module);
++    const code=ts.transpileModule(fs.readFileSync(filename,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText;
++    vm.runInNewContext(code,{module,exports:module.exports,console,Buffer,Date,require:name=>name.startsWith('.')?load(path.resolve(path.dirname(filename),name+'.ts')):require(name)},{filename});
++    return module.exports;
++  }
++  const app=express();app.use(express.json());
++  const {requireAuth,requireRole}=load(path.join(src,'middleware/requireAuth.ts'));
++  app.use('/admin',requireAuth,requireRole('SuperAdmin'));
++  app.use('/admin/approval-policy',load(path.join(src,'routes/admin/approvalPolicy.routes.ts')).default);
++  app.use('/admin/group-approvals',load(path.join(src,'routes/admin/groupApprovals.routes.ts')).default);
++  app.use('/groups',load(path.join(src,'routes/groups.ts')).default);
++  app.post('/register',async(req,res,next)=>{try{res.json(await load(path.join(src,'routes/auth/register/register.service.ts')).registerUser(req.body,'127.0.0.1'));}catch(e){next(e);}});
++  app.use((err,_req,res,_next)=>res.status(err.statusCode||500).json({error:err.message}));
++  return {app,load: file=>load(path.join(src,file))};
++}
++async function withApprovalApi(t,db,run) {
++  const {app,load}=approvalApp(db);const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));
++  t.after(()=>new Promise(resolve=>{server.close(resolve);server.closeAllConnections();}));
++  async function request(actor,method,url,body) {
++    const headers=actor?{Authorization:`Bearer ${actor}`}:{ };if(body!==undefined)headers['Content-Type']='application/json';
++    const response=await fetch(`http://127.0.0.1:${server.address().port}${url}`,{method,headers,body:body===undefined?undefined:JSON.stringify(body)});
++    return {status:response.status,body:await response.json()};
++  }
++  return run(request,load);
++}
++module.exports={approvalApp,withApprovalApi};
+diff --git a/server/tests/helpers/approvalPolicyMemory.cjs b/server/tests/helpers/approvalPolicyMemory.cjs
+new file mode 100644
+index 0000000..041a57d
+--- /dev/null
++++ b/server/tests/helpers/approvalPolicyMemory.cjs
+@@ -0,0 +1,34 @@
++function approvalMemory() {
++  const policy={id:'global',revision:0,requireInstructorApproval:true,requireGroupApproval:false};
++  const users=[{id:'admin',role:'SuperAdmin',approvalStatus:'Approved'},{id:'owner',role:'Instructor',approvalStatus:'Approved'},
++    {id:'waiting',role:'Instructor',approvalStatus:'Pending'},{id:'rejected',role:'Instructor',approvalStatus:'Rejected'},
++    {id:'student',role:'Student',approvalStatus:'Approved'}];
++  const groups=[{id:'old',name:'Old',category:'General',instructorId:'owner',approvalStatus:'Approved',joinCode:'OLD123',students:[{id:'student'}]},
++    {id:'waiting-group',name:'Waiting',category:'General',instructorId:'owner',approvalStatus:'Pending',joinCode:'WAIT123',students:[{id:'student'}]},
++    {id:'rejected-group',name:'Rejected',category:'General',instructorId:'owner',approvalStatus:'Rejected',students:[]}];
++  const audits=[];let failAudit=false;let sequence=0;
++  const copy=x=>structuredClone(x);
++  function match(row,where={}) { return Object.entries(where).every(([k,v])=>!v || typeof v!=='object'?v===undefined||row[k]===v:v.in?v.in.includes(row[k]):v.contains?row[k].toLowerCase().includes(v.contains.toLowerCase()):v.some?(row[k]||[]).some(x=>match(x,v.some)):true); }
++  const model=rows=>({
++    findUnique:async({where})=>copy(rows.find(x=>match(x,where))||null),
++    findFirst:async({where})=>copy(rows.find(x=>match(x,where))||null),
++    count:async({where})=>rows.filter(x=>match(x,where)).length,
++    findMany:async({where,skip=0,take=100})=>copy(rows.filter(x=>match(x,where)).slice(skip,skip+take).map(x=>({...x,instructor:{name:'Owner',username:'owner'}}))),
++    create:async({data})=>{const row={id:'new-'+(++sequence),...copy(data)};if(data.students)row.students=data.students.connect;rows.push(row);return copy(row);},
++    update:async({where,data})=>{const row=rows.find(x=>match(x,where));Object.assign(row,copy(data));return copy(row);},
++    updateMany:async({where,data})=>{const selected=rows.filter(x=>match(x,where));selected.forEach(x=>Object.assign(x,copy(data)));return {count:selected.length};},
++  });
++  const db={
++    $queryRaw:async()=>[],
++    async $transaction(run) {
++      if(Array.isArray(run))return Promise.all(run);
++      const before=copy({policy,users,groups,audits});
++      try{return await run(db);}catch(e){Object.assign(policy,before.policy);users.splice(0,users.length,...before.users);groups.splice(0,groups.length,...before.groups);audits.splice(0,audits.length,...before.audits);throw e;}
++    },
++    approvalPolicy:{findUniqueOrThrow:async()=>copy(policy),update:async({data})=>{Object.assign(policy,{...data,revision:policy.revision+data.revision.increment});return copy(policy);}},
++    user:model(users),group:model(groups),
++    adminAuditLog:{create:async({data})=>{if(failAudit)throw Error('audit unavailable');audits.push(copy(data));return data;}},
++  };
++  return {db,policy,users,groups,audits,failAudit:()=>{failAudit=true;}};
++}
++module.exports={approvalMemory};
+diff --git a/server/tests/helpers/practiceMemory.cjs b/server/tests/helpers/practiceMemory.cjs
+index adc53f1..a29adae 100644
+--- a/server/tests/helpers/practiceMemory.cjs
++++ b/server/tests/helpers/practiceMemory.cjs
+@@ -2,14 +2,14 @@
+ function practiceMemory() {
+   let sequence=0;
+   const id=()=>`generated-${++sequence}`;
+-  const groups=[{id:'group-a',instructorId:'teacher-a',name:'Group A',students:['student-a','student-b']},{id:'group-b',instructorId:'teacher-b',name:'Group B',students:['outsider']}];
++  const groups=[{id:'group-a',approvalStatus:'Approved',instructorId:'teacher-a',name:'Group A',students:['student-a','student-b']},{id:'group-b',approvalStatus:'Approved',instructorId:'teacher-b',name:'Group B',students:['outsider']}];
+   const source=[{id:'qa',bank:{instructorId:'teacher-a'},text:'Source A',options:['One','Two'],correctOptionIndex:1,difficulty:'Easy'},{id:'qb',bank:{instructorId:'teacher-b'},text:'Source B',options:['One','Two'],correctOptionIndex:0,difficulty:'Hard'}];
+   const sets=[],access=[],questions=[],attempts=[];
+   const copy=x=>structuredClone(x);
+   const basic=(x,w={})=>Object.entries(w).every(([k,v])=>v===undefined || (v && typeof v==='object' ? v.in ? v.in.includes(x[k]) : v.contains ? x[k].includes(v.contains) : true : x[k]===v));
+   function setMatch(p,w={}) {
+     if(!basic(p,w))return false;
+-    if(w.groups?.some) return access.some(a=>a.practiceId===p.id && groups.find(g=>g.id===a.groupId)?.students.includes(w.groups.some.group.students.some.id));
++    if(w.groups?.some) return access.some(a=>a.practiceId===p.id && groups.some(g=>g.id===a.groupId && basic(g,w.groups.some.group) && g.students.includes(w.groups.some.group.students.some.id)));
+     return true;
+   }
+   const expand=p=>p && ({...copy(p),groups:access.filter(a=>a.practiceId===p.id).map(a=>({...a,group:groups.find(g=>g.id===a.groupId)})),instructor:{name:p.instructorId},_count:{groups:access.filter(a=>a.practiceId===p.id).length,questions:questions.filter(q=>q.practiceId===p.id).length}});

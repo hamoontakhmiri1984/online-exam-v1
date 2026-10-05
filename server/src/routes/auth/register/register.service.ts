@@ -1,3 +1,4 @@
+import { readCreationPolicy } from '../../../lib/approvalPolicy';
 import { prisma } from '../../../lib/prisma';
 
 import {
@@ -110,7 +111,7 @@ export async function registerUser(data: RegisterData, ip: string) {
       },
     });
 
-    if (!group) {
+    if (!group || group.approvalStatus !== 'Approved') {
       throw badRequest('کد دعوت نامعتبره');
     }
 
@@ -119,68 +120,78 @@ export async function registerUser(data: RegisterData, ip: string) {
 
   const isNewUser = !user;
 
-  if (!user) {
-    user = await prisma.user.create({
-      data: {
-        username,
-        usernameNormalized: normalizeUsername(username),
+  user = await prisma.$transaction(async db => {
+    const policy = await readCreationPolicy(db);
+    if (user) await db.$queryRaw`SELECT id FROM users WHERE id = ${user.id} FOR UPDATE`;
+    let candidate = user ? await db.user.findUnique({ where: { id: user.id } }) : null;
+    // Re-registering an unverified account must not override a review decision.
+    const approvalStatus = data.role !== 'Instructor' ? 'Approved'
+      : candidate?.role === 'Instructor' ? candidate.approvalStatus
+      : policy.requireInstructorApproval ? 'Pending' : 'Approved';
+    if (!candidate) {
+      candidate = await db.user.create({
+        data: {
+          username,
+          usernameNormalized: normalizeUsername(username),
 
-        name: data.name?.trim() || null,
+          name: data.name?.trim() || null,
 
-        passwordHash,
+          passwordHash,
 
-        role: data.role,
+          role: data.role,
 
-        approvalStatus: data.role === 'Instructor' ? 'Pending' : 'Approved',
+          approvalStatus,
 
-        ...(type === 'EMAIL'
-          ? {
-              email: value,
-            }
-          : {
-              phone: value,
-            }),
+          ...(type === 'EMAIL'
+            ? {
+                email: value,
+              }
+            : {
+                phone: value,
+              }),
 
-        ...(groupId
-          ? {
-              groupsMember: {
-                connect: {
-                  id: groupId,
+          ...(groupId
+            ? {
+                groupsMember: {
+                  connect: {
+                    id: groupId,
+                  },
                 },
-              },
-            }
-          : {}),
-      },
-    });
-  } else {
-    user = await prisma.user.update({
-      where: {
-        id: user.id,
-      },
-      data: {
-        username,
-        usernameNormalized: normalizeUsername(username),
-
-        name: data.name?.trim() || user.name,
-
-        // این کاربر هنوز تایید نشده (alreadyVerified بالا رد شده) - رمز قبلیش
-        // رو کسی گذاشته که مالکیت شناسه رو ثابت نکرده. اگه اینجا حفظ بشه
-        // (`?? user.passwordHash`)، یه نفر می‌تونست ایمیل/شماره‌ی قربانی رو
-        // با رمز خودش پیش‌ثبت‌نام کنه و بعد از اینکه صاحب واقعی بدون رمز
-        // ثبت‌نام و تایید کرد، با اون رمز وارد حسابش بشه.
-        passwordHash,
-
-        role: data.role,
-
-        approvalStatus: data.role === 'Instructor' ? 'Pending' : 'Approved',
-
-        // کد دعوت تلاش دوم (بعد از ثبت‌نام ناتمام) قبلاً نادیده گرفته می‌شد
-        groupsMember: {
-          set: groupId ? [{ id: groupId }] : [],
+              }
+            : {}),
         },
-      },
-    });
-  }
+      });
+    } else {
+      candidate = await db.user.update({
+        where: {
+          id: candidate.id,
+        },
+        data: {
+          username,
+          usernameNormalized: normalizeUsername(username),
+
+          name: data.name?.trim() || candidate.name,
+
+          // این کاربر هنوز تایید نشده (alreadyVerified بالا رد شده) - رمز قبلیش
+          // رو کسی گذاشته که مالکیت شناسه رو ثابت نکرده. اگه اینجا حفظ بشه
+          // (`?? candidate.passwordHash`)، یه نفر می‌تونست ایمیل/شماره‌ی قربانی رو
+          // با رمز خودش پیش‌ثبت‌نام کنه و بعد از اینکه صاحب واقعی بدون رمز
+          // ثبت‌نام و تایید کرد، با اون رمز وارد حسابش بشه.
+          passwordHash,
+
+          role: data.role,
+
+          approvalStatus,
+
+          // کد دعوت تلاش دوم (بعد از ثبت‌نام ناتمام) قبلاً نادیده گرفته می‌شد
+          groupsMember: {
+            set: groupId ? [{ id: groupId }] : [],
+          },
+        },
+      });
+    }
+    return candidate;
+  });
 
   if (isNewUser) {
     await notifyUser(user.id, 'ثبت‌نام با موفقیت انجام شد', 'info').catch(
@@ -189,7 +200,7 @@ export async function registerUser(data: RegisterData, ip: string) {
       }
     );
 
-    if (data.role === 'Instructor') {
+    if (data.role === 'Instructor' && user.approvalStatus === 'Pending') {
       await notifyRoles(
         ['SuperAdmin'],
         `مدرس جدید ${user.name || user.username} منتظر تایید حساب است`,

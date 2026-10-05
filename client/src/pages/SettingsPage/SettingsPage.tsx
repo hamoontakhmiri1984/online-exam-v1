@@ -1,3 +1,4 @@
+import ApprovalPolicySection from './components/ApprovalPolicySection';
 import { XCircle } from 'lucide-react';
 import AppLayout from '../../components/AppLayout/AppLayout';
 import Toast from '../../components/Toast/Toast';
@@ -47,6 +48,7 @@ function SettingsPage() {
       <h1 className="text-2xl font-bold mb-6 dark:text-white">تنظیمات</h1>
 
       <div className="flex flex-col gap-4 max-w-xl">
+        {currentUser?.role === 'SuperAdmin' && <ApprovalPolicySection />}
         <ProfileSection currentUser={currentUser} />
 
         <ConnectedAccountsSection />

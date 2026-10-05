@@ -42,10 +42,10 @@ export async function assertOwnsAllGroups(
   role: Role,
   userId: string
 ): Promise<void> {
-  if (role === 'SuperAdmin' || groupIds.length === 0) return;
+  if (groupIds.length === 0) return;
 
   const owned = await prisma.group.count({
-    where: { id: { in: groupIds }, instructorId: userId },
+    where: { id: { in: groupIds }, approvalStatus: 'Approved', ...(role === 'SuperAdmin' ? {} : { instructorId: userId }) },
   });
   if (owned !== groupIds.length) {
     throw forbidden('نمی‌تونی آزمون رو به گروهی که مال تو نیست وصل کنی');

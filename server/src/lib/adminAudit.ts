@@ -3,12 +3,15 @@ import { Prisma } from '@prisma/client';
 export type AdminAuditAction =
   | 'instructor.approve'
   | 'instructor.reject'
-  | 'instructor.plan_change';
+  | 'instructor.plan_change'
+  | 'approval_policy.update'
+  | 'group.approve'
+  | 'group.reject';
 
 export type AdminAuditEntry = {
   adminId: string;
   action: AdminAuditAction;
-  targetType: 'User';
+  targetType: 'User' | 'Group' | 'ApprovalPolicy';
   targetId: string;
   before?: Prisma.InputJsonValue;
   after?: Prisma.InputJsonValue;

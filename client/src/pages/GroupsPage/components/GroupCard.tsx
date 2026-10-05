@@ -48,11 +48,16 @@ function GroupCard({
       <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
         {group.category}
       </p>
+      {group.approvalStatus && group.approvalStatus !== 'Approved' && (
+        <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+          {group.approvalStatus === 'Pending' ? 'منتظر تأیید مدیر؛ عضویت و استفاده از گروه هنوز فعال نیست.' : 'گروه تأیید نشده است؛ برای بررسی دوباره با مدیر تماس بگیرید.'}
+        </p>
+      )}
       <p className="mt-3 text-xs text-gray-400">
         {group.studentIds.length.toLocaleString('fa-IR')} دانشجو عضو
       </p>
 
-      <div className="mt-4 flex items-center justify-between gap-2 rounded-xl bg-gray-50 px-3 py-2 dark:bg-gray-800/60">
+      {(!group.approvalStatus || group.approvalStatus === 'Approved') && <><div className="mt-4 flex items-center justify-between gap-2 rounded-xl bg-gray-50 px-3 py-2 dark:bg-gray-800/60">
         <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
           <KeyRound size={14} />
           <span className="text-xs">کد عضویت</span>
@@ -84,7 +89,7 @@ function GroupCard({
       </div>
       <p className="mt-2 text-xs leading-5 text-gray-400">
         این کد رو به دانشجوهات بده تا از صفحه‌ی ثبت‌نام مستقیم عضو همین گروه بشن
-      </p>
+      </p></>}
     </div>
   );
 }

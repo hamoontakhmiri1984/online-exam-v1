@@ -53,7 +53,7 @@ router.get(
       const isMember =
         role === 'Student' &&
         (await prisma.group.count({
-          where: { id: groupId, students: { some: { id: sub } } },
+          where: { id: groupId, approvalStatus: 'Approved' as const, students: { some: { id: sub } } },
         })) > 0;
       if (role !== 'SuperAdmin' && !isOwner && !isMember) {
         throw forbidden();
@@ -72,7 +72,7 @@ router.get(
         ? {}
         : role === 'Instructor'
         ? { groups: { some: { instructorId: sub } } }
-        : { groups: { some: { students: { some: { id: sub } } } } };
+        : { groups: { some: { approvalStatus: 'Approved' as const, students: { some: { id: sub } } } } };
 
     const sessions = await prisma.lessonSession.findMany({
       where,

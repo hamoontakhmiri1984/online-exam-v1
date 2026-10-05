@@ -28,6 +28,8 @@ router.post(
     });
     if (!group) return res.status(404).json({ error: 'کد عضویت نامعتبره' });
 
+    if (group.approvalStatus !== 'Approved') return res.status(403).json({ error: 'این گروه هنوز تأیید نشده است.' });
+
     const alreadyMember = group.students.some((s) => s.id === req.user!.sub);
     if (!alreadyMember) {
       await prisma.group.update({

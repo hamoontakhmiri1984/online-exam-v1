@@ -11,10 +11,12 @@ export function serializeGroup(group: {
   category: string;
   instructorId: string;
   joinCode: string;
+  approvalStatus: 'Pending' | 'Approved' | 'Rejected';
   students: { id: string }[];
 }) {
   return {
     id: group.id,
+    approvalStatus: group.approvalStatus,
     name: group.name,
     category: group.category,
     instructorId: group.instructorId,

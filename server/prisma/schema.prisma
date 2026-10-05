@@ -135,6 +135,7 @@ model OtpCode {
 }
 
 model Group {
+  approvalStatus ApprovalStatus @default(Approved)
   id           String   @id @default(cuid())
   name         String
   category     String
@@ -152,6 +153,7 @@ model Group {
 
   @@index([instructorId])
   @@map("groups")
+  @@index([approvalStatus, createdAt])
 }
 
 model LessonSession {
@@ -528,4 +530,14 @@ model PracticeAttempt {
   @@index([studentId, questionId, createdAt])
   @@index([questionId])
   @@map("practice_attempts")
+}
+
+// Singleton; policy changes do not rewrite already approved records.
+model ApprovalPolicy {
+  id String @id @default("global")
+  requireInstructorApproval Boolean @default(true)
+  requireGroupApproval Boolean @default(false)
+  revision Int @default(0)
+  updatedAt DateTime @updatedAt
+  @@map("approval_policy")
 }

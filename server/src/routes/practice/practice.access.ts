@@ -6,7 +6,7 @@ export function practiceScope(actor: Actor): Prisma.PracticeSetWhereInput {
   if (actor.role === 'Instructor') return { instructorId: actor.sub };
   return {
     status: 'Published',
-    groups: { some: { group: { students: { some: { id: actor.sub } } } } },
+    groups: { some: { group: { approvalStatus: 'Approved', students: { some: { id: actor.sub } } } } },
   };
 }
 export async function accessiblePractice(
