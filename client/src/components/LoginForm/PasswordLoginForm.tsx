@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 
 import { loginWithPassword, type CaptchaAnswer } from '../../api/authApi';
 
+import IdentifierSummary from './IdentifierSummary';
 import Button from '../Button/Button';
 import Captcha from '../Captcha/Captcha';
 import PasswordField from '../PasswordField/PasswordField';
@@ -20,6 +21,7 @@ type Props = {
 
   /** برگشت به انتخاب روش ورود */
   onChangeMethod: () => void;
+  codeLabel: string;
 
   onRememberMeChange: (value: boolean) => void;
 
@@ -39,6 +41,7 @@ function PasswordLoginForm({
   captcha,
   onEdit,
   onChangeMethod,
+  codeLabel,
   onRememberMeChange,
   onCaptchaChange,
   onCaptchaRequired,
@@ -146,23 +149,7 @@ function PasswordLoginForm({
         </p>
       )}
 
-      <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-600 dark:bg-gray-800">
-        <span
-          dir="ltr"
-          className="truncate text-sm text-gray-800 dark:text-gray-100"
-        >
-          {identifier}
-        </span>
-
-        <button
-          type="button"
-          onClick={onEdit}
-          disabled={loading}
-          className="shrink-0 cursor-pointer text-xs font-medium text-brand-600 hover:underline disabled:cursor-not-allowed disabled:opacity-60 dark:text-brand-400"
-        >
-          ویرایش
-        </button>
-      </div>
+      <IdentifierSummary identifier={identifier} onEdit={onEdit} disabled={loading} />
 
       {/* فیلد نام کاربری مخفی: مدیر رمز مرورگر برای ذخیره‌ی درست به آن نیاز دارد */}
       <input
@@ -232,7 +219,7 @@ function PasswordLoginForm({
         disabled={loading}
         className="mx-auto cursor-pointer text-xs text-gray-500 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-60 dark:text-gray-400 dark:hover:text-brand-400"
       >
-        تغییر روش ورود
+        {codeLabel}
       </button>
     </form>
   );

@@ -44,7 +44,13 @@ test('OTP fields are labelled, support full-code autofill and fit narrow screens
         identifier: 'user@example.com',
         rememberMe: false,
         onSuccess() {},
-        onBack() {},
+        onEdit() {},
+        onPassword() {},
+        sent: true,
+        sending: false,
+        cooldown: 90,
+        sendError: '',
+        onResend() {},
       }),
     ),
   );
@@ -101,4 +107,45 @@ test('Google account creation is explicit and pending approval does not create a
   } finally {
     globalThis.fetch = original;
   }
+});
+
+test('unsent OTP shows retry and edit without claiming delivery or accepting a code', () => {
+  const html = renderToString(
+    createElement(OtpVerifyForm, {
+      identifier: '09123456789',
+      rememberMe: false,
+      onSuccess() {},
+      onEdit() {},
+      onPassword() {},
+      sent: false,
+      sending: false,
+      cooldown: 0,
+      sendError: 'سرویس در دسترس نیست',
+      onResend() {},
+    }),
+  );
+  assert.ok(html.includes('کد هنوز ارسال نشده'));
+  assert.ok(html.includes('ویرایش'));
+  assert.ok(html.includes('ورود با رمز عبور'));
+  assert.ok(!html.includes('one-time-code'));
+});
+
+test('OTP send in flight disables edit, resend, verification and method switching', () => {
+  const html = renderToString(
+    createElement(OtpVerifyForm, {
+      identifier: 'user@example.com',
+      rememberMe: false,
+      onSuccess() {},
+      onEdit() {},
+      onPassword() {},
+      sent: true,
+      sending: true,
+      cooldown: 0,
+      sendError: '',
+      onResend() {},
+    }),
+  );
+  const controls = html.match(/<(?:button|input)\b[^>]*>/g) ?? [];
+  assert.equal(controls.length, 10);
+  assert.ok(controls.every((tag) => tag.includes('disabled')));
 });

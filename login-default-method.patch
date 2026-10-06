@@ -1,0 +1,983 @@
+diff --git a/client/src/components/LoginForm/IdentifierSummary.tsx b/client/src/components/LoginForm/IdentifierSummary.tsx
+new file mode 100644
+index 0000000..2270d46
+--- /dev/null
++++ b/client/src/components/LoginForm/IdentifierSummary.tsx
+@@ -0,0 +1,26 @@
++type Props = { identifier: string; onEdit: () => void; disabled?: boolean };
++export default function IdentifierSummary({
++  identifier,
++  onEdit,
++  disabled,
++}: Props) {
++  return (
++    <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-600 dark:bg-gray-800">
++      <span
++        dir="ltr"
++        className="min-w-0 truncate text-sm text-gray-800 dark:text-gray-100"
++        title={identifier}
++      >
++        {identifier}
++      </span>
++      <button
++        type="button"
++        onClick={onEdit}
++        disabled={disabled}
++        className="shrink-0 text-sm font-medium text-brand-600 hover:underline disabled:opacity-50 dark:text-brand-400"
++      >
++        ویرایش
++      </button>
++    </div>
++  );
++}
+diff --git a/client/src/components/LoginForm/LoginForm.tsx b/client/src/components/LoginForm/LoginForm.tsx
+index 084147d..60b53f9 100644
+--- a/client/src/components/LoginForm/LoginForm.tsx
++++ b/client/src/components/LoginForm/LoginForm.tsx
+@@ -1,183 +1,111 @@
+-import { useRef, useState } from 'react';
++import { useState } from 'react';
+ import { useNavigate, useSearchParams } from 'react-router-dom';
+-import { AlertTriangle, Info } from 'lucide-react';
+-
+-import {
+-  requestOtp,
+-  type CaptchaAnswer,
+-} from '../../api/authApi';
+-import { useOtpCaptcha } from '../../hooks/useOtpCaptcha';
+-
++import type { CaptchaAnswer } from '../../api/authApi';
++import { detectIdentifierType } from '../../utils/identifier';
+ import Captcha from '../Captcha/Captcha';
+-
+ import IdentifierStep from './IdentifierStep';
+-import MethodStep from './MethodStep';
+ import OtpVerifyForm from './OtpVerifyForm';
+ import PasswordLoginForm from './PasswordLoginForm';
++import useLoginCode from './useLoginCode';
+ 
+-type Step = 'identifier' | 'method' | 'password' | 'otp-verify';
+-
+-function LoginForm() {
++type Step = 'identifier' | 'password' | 'otp';
++export default function LoginForm() {
+   const navigate = useNavigate();
+   const [searchParams] = useSearchParams();
+-
+   const [step, setStep] = useState<Step>('identifier');
+-
+-  // شناسه‌ی نرمال‌شده؛ بعد از «ادامه» تو مرحله‌ی اول مقدار می‌گیره
+   const [identifier, setIdentifier] = useState('');
+-
+   const [rememberMe, setRememberMe] = useState(false);
+-
+   const [captcha, setCaptcha] = useState<CaptchaAnswer | null>(null);
+-
+   const [captchaRequired, setCaptchaRequired] = useState(false);
+-
+-  // خطای سطح فرم (گوگل، ارسال کد)؛ خطای رمز تو خود PasswordLoginForm نمایش داده می‌شه
+-  const [error, setError] = useState('');
+-
+-  const sending = useRef(false);
+-  const [otpSending, setOtpSending] = useState(false);
+-
+-  const otpCaptcha = useOtpCaptcha();
+-
+-  const externalNotice = searchParams.get('forceLogout')
++  const code = useLoginCode();
++  const notice = searchParams.get('forceLogout')
+     ? 'این حساب در دستگاه دیگری وارد شده است. لطفاً دوباره وارد شوید.'
+     : searchParams.get('sessionExpired')
+       ? 'نشست شما منقضی شده است. لطفاً دوباره وارد شوید.'
+       : '';
+-
+-  function goToStep(next: Step) {
+-    setError('');
+-    setStep(next);
+-  }
+-
+-  function handleLoginSuccess(onboardingCompleted: boolean) {
+-    setCaptcha(null);
+-    setCaptchaRequired(false);
+-
+-    navigate(onboardingCompleted ? '/dashboard' : '/onboarding');
++  function success(completed: boolean) {
++    navigate(completed ? '/dashboard' : '/onboarding');
+   }
+-
+-  function handleCaptchaRequired() {
++  function go(next: Step) {
++    code.clearError();
+     setCaptcha(null);
+-    setCaptchaRequired(true);
+-  }
+-
+-  function handleIdentifierContinue(normalizedIdentifier: string) {
+-    setIdentifier(normalizedIdentifier);
+-    goToStep('method');
++    setStep(next);
+   }
+-
+-  async function handleChooseCode() {
+-    // جلوگیری از کلیک تکراری
+-    if (sending.current) {
+-      return;
+-    }
+-
+-    if (!otpCaptcha.ready) {
+-      setError('ابتدا کد تصویر امنیتی را وارد کنید');
+-      return;
+-    }
+-
+-    setError('');
+-    sending.current = true;
+-    setOtpSending(true);
+-
+-    try {
+-      const result = await requestOtp(
+-        identifier,
+-        'LOGIN',
+-        otpCaptcha.captcha ?? undefined
+-      );
+-
+-      otpCaptcha.afterRequest(result);
+-
+-      if (result.status === 'sent') {
+-        setStep('otp-verify');
+-        return;
+-      }
+-
+-      setError(result.message);
+-    } finally {
+-      sending.current = false;
+-      setOtpSending(false);
+-    }
++  function showCode(value = identifier) {
++    go('otp');
++    void code.send(value);
+   }
+-
+-  if (step === 'otp-verify') {
+-    return (
+-      <OtpVerifyForm
+-        identifier={identifier}
+-        rememberMe={rememberMe}
+-        onSuccess={handleLoginSuccess}
+-        onBack={() => goToStep('method')}
+-      />
+-    );
++  function continueWith(value: string) {
++    setIdentifier(value);
++    if (detectIdentifierType(value) === 'PHONE') showCode(value);
++    else go('password');
+   }
+-
+   return (
+     <div className="flex flex-col gap-4">
+-      {error ? (
+-        <p
+-          role="alert"
+-          className="flex items-start gap-2 rounded-lg border border-danger-100 bg-danger-50 px-3 py-2 text-sm text-danger-600 dark:border-danger-900 dark:bg-danger-950/40 dark:text-danger-400"
+-        >
+-          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+-
+-          <span>{error}</span>
+-        </p>
+-      ) : externalNotice && step === 'identifier' ? (
+-        <p className="flex items-start gap-2 rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-sm text-brand-700 dark:border-brand-900 dark:bg-brand-950/40 dark:text-brand-300">
+-          <Info size={16} className="mt-0.5 shrink-0" />
+-
+-          <span>{externalNotice}</span>
+-        </p>
+-      ) : null}
+-
+       {step === 'identifier' && (
+-        <IdentifierStep
+-          identifier={identifier}
+-          onIdentifierChange={setIdentifier}
+-          onContinue={handleIdentifierContinue}
+-          onSuccess={handleLoginSuccess}
+-        />
+-      )}
+-
+-      {step === 'method' && (
+         <>
+-          <MethodStep
++          {notice && (
++            <p
++              role="status"
++              className="text-sm text-brand-700 dark:text-brand-300"
++            >
++              {notice}
++            </p>
++          )}
++          <IdentifierStep
+             identifier={identifier}
+-            onChoosePassword={() => goToStep('password')}
+-            onChooseCode={handleChooseCode}
+-            onEdit={() => goToStep('identifier')}
+-            codeLoading={otpSending}
++            onIdentifierChange={setIdentifier}
++            onContinue={continueWith}
++            onSuccess={success}
+           />
+-
+-          {otpCaptcha.required && (
+-            <Captcha
+-              onChange={otpCaptcha.setCaptcha}
+-              resetSignal={otpCaptcha.resetSignal}
+-            />
+-          )}
+         </>
+       )}
+-
+       {step === 'password' && (
+         <PasswordLoginForm
+           identifier={identifier}
+           rememberMe={rememberMe}
+           captchaRequired={captchaRequired}
+           captcha={captcha}
+-          onEdit={() => goToStep('identifier')}
+-          onChangeMethod={() => goToStep('method')}
++          onEdit={() => go('identifier')}
++          onChangeMethod={() => showCode()}
++          codeLabel={
++            code.hasSent(identifier)
++              ? 'ورود با کد تأیید'
++              : detectIdentifierType(identifier) === 'PHONE'
++                ? 'دریافت کد پیامکی'
++                : 'دریافت کد با ایمیل'
++          }
+           onRememberMeChange={setRememberMe}
+           onCaptchaChange={setCaptcha}
+-          onCaptchaRequired={handleCaptchaRequired}
+-          onSuccess={handleLoginSuccess}
++          onCaptchaRequired={() => {
++            setCaptcha(null);
++            setCaptchaRequired(true);
++          }}
++          onSuccess={success}
++        />
++      )}
++      {step === 'otp' && (
++        <OtpVerifyForm
++          identifier={identifier}
++          rememberMe={rememberMe}
++          onSuccess={success}
++          onEdit={() => go('identifier')}
++          onPassword={() => go('password')}
++          sent={code.hasSent(identifier)}
++          sending={code.sending}
++          cooldown={code.remaining(identifier)}
++          sendError={code.error}
++          onResend={() => void code.send(identifier, true)}
++          captchaSlot={
++            code.captcha.required ? (
++              <Captcha
++                onChange={code.captcha.setCaptcha}
++                resetSignal={code.captcha.resetSignal}
++              />
++            ) : undefined
++          }
+         />
+       )}
+     </div>
+   );
+ }
+-
+-export default LoginForm;
+\ No newline at end of file
+diff --git a/client/src/components/LoginForm/MethodStep.tsx b/client/src/components/LoginForm/MethodStep.tsx
+deleted file mode 100644
+index 0c47a51..0000000
+--- a/client/src/components/LoginForm/MethodStep.tsx
++++ /dev/null
+@@ -1,99 +0,0 @@
+-import { useEffect, useRef } from 'react';
+-import { Loader2 } from 'lucide-react';
+-
+-import { detectIdentifierType } from '../../utils/identifier';
+-
+-import Button from '../Button/Button';
+-
+-type Props = {
+-  /** شناسه‌ی نرمال‌شده (مرحله‌ی قبل) */
+-  identifier: string;
+-  onChoosePassword: () => void;
+-  onChooseCode: () => void;
+-  /** برگشت به مرحله‌ی اول برای ویرایش شناسه */
+-  onEdit: () => void;
+-  /** true وقتی درخواست ارسال کد در جریانه */
+-  codeLoading?: boolean;
+-};
+-
+-function MethodStep({
+-  identifier,
+-  onChoosePassword,
+-  onChooseCode,
+-  onEdit,
+-  codeLoading = false,
+-}: Props) {
+-  const headingRef = useRef<HTMLParagraphElement>(null);
+-
+-  // با ورود به مرحله، فوکوس می‌ره روی عنوان تا screen reader تغییر مرحله رو اعلام کنه
+-  useEffect(() => {
+-    headingRef.current?.focus();
+-  }, []);
+-
+-  const channelLabel =
+-    detectIdentifierType(identifier) === 'PHONE' ? 'پیامک' : 'ایمیل';
+-
+-  return (
+-    <div className="flex flex-col gap-4">
+-      <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-600 dark:bg-gray-800">
+-        <span
+-          dir="ltr"
+-          className="truncate text-sm text-gray-800 dark:text-gray-100"
+-        >
+-          {identifier}
+-        </span>
+-
+-        <button
+-          type="button"
+-          onClick={onEdit}
+-          disabled={codeLoading}
+-          className="shrink-0 cursor-pointer text-xs font-medium text-brand-600 hover:underline disabled:cursor-not-allowed disabled:opacity-60 dark:text-brand-400"
+-        >
+-          ویرایش
+-        </button>
+-      </div>
+-
+-      <p
+-        ref={headingRef}
+-        tabIndex={-1}
+-        className="text-sm text-gray-600 outline-none dark:text-gray-300"
+-      >
+-        روش ورود را انتخاب کنید
+-      </p>
+-
+-      <div className="flex flex-col gap-3">
+-        <Button
+-          type="button"
+-          onClick={onChoosePassword}
+-          disabled={codeLoading}
+-        >
+-          ورود با رمز عبور
+-        </Button>
+-
+-        <div className="flex flex-col gap-1">
+-          <button
+-            type="button"
+-            onClick={onChooseCode}
+-            disabled={codeLoading}
+-            className="w-full cursor-pointer rounded-xl border border-gray-200 bg-transparent px-4 py-2.5 font-medium text-gray-700 transition hover:bg-gray-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+-          >
+-            {codeLoading ? (
+-              <span className="flex items-center justify-center gap-2">
+-                <Loader2 size={15} className="animate-spin" />
+-                در حال ارسال کد...
+-              </span>
+-            ) : (
+-              'دریافت کد تأیید'
+-            )}
+-          </button>
+-
+-          <p className="text-center text-xs text-gray-400 dark:text-gray-500">
+-            کد تأیید با {channelLabel} ارسال می‌شود
+-          </p>
+-        </div>
+-      </div>
+-    </div>
+-  );
+-}
+-
+-export default MethodStep;
+\ No newline at end of file
+diff --git a/client/src/components/LoginForm/OtpVerifyForm.tsx b/client/src/components/LoginForm/OtpVerifyForm.tsx
+index c64aaec..e882a3b 100644
+--- a/client/src/components/LoginForm/OtpVerifyForm.tsx
++++ b/client/src/components/LoginForm/OtpVerifyForm.tsx
+@@ -1,256 +1,151 @@
+-import { useEffect, useRef, useState, type FormEvent } from 'react';
+-
+-import { AlertTriangle, ArrowLeft, Loader2 } from 'lucide-react';
+-
+-import { requestOtp, verifyOtp } from '../../api/authApi';
+-
+-import { OTP_CODE_LENGTH, RESEND_COOLDOWN_SECONDS } from '../../constants/otp';
+-import { useOtpCaptcha } from '../../hooks/useOtpCaptcha';
++import { useRef, useState, type FormEvent, type ReactNode } from 'react';
++import { verifyOtp } from '../../api/authApi';
++import { OTP_CODE_LENGTH } from '../../constants/otp';
+ import { formatCountdown } from '../../utils/formatCountdown';
+-
+ import Button from '../Button/Button';
+-import Captcha from '../Captcha/Captcha';
+ import OtpInput from '../OtpInput/OtpInput';
++import IdentifierSummary from './IdentifierSummary';
+ 
+ type Props = {
+   identifier: string;
+   rememberMe: boolean;
+-
+-  onSuccess: (onboardingCompleted: boolean) => void;
+-
+-  onBack: () => void;
++  onSuccess: (completed: boolean) => void;
++  onEdit: () => void;
++  onPassword: () => void;
++  sent: boolean;
++  sending: boolean;
++  cooldown: number;
++  sendError: string;
++  onResend: () => void;
++  captchaSlot?: ReactNode;
+ };
+-
+-function maskIdentifier(identifier: string) {
+-  if (identifier.includes('@')) {
+-    const [local, domain] = identifier.split('@');
+-
+-    if (local.length <= 2) {
+-      return `${local[0] ?? ''}***@${domain}`;
+-    }
+-
+-    return `${local.slice(0, 2)}***${local.slice(-1)}@${domain}`;
+-  }
+-
+-  if (identifier.length <= 6) {
+-    return identifier;
+-  }
+-
+-  return `${identifier.slice(0, 4)}****${identifier.slice(-3)}`;
+-}
+-
+-function OtpVerifyForm({ identifier, rememberMe, onSuccess, onBack }: Props) {
++export default function OtpVerifyForm({
++  identifier,
++  rememberMe,
++  onSuccess,
++  onEdit,
++  onPassword,
++  sent,
++  sending,
++  cooldown,
++  sendError,
++  onResend,
++  captchaSlot,
++}: Props) {
+   const [code, setCode] = useState('');
+-
+   const [error, setError] = useState('');
+-
+   const [loading, setLoading] = useState(false);
+-
+-  const [resending, setResending] = useState(false);
+-
+-  // با تغییر این کلید OtpInput دوباره mount می‌شه و فوکوس می‌ره روی خانه‌ی اول
+   const [inputKey, setInputKey] = useState(0);
+-
+-  // جلوگیری از ارسال هم‌زمان دوباره (مثلاً ارسال خودکار + کلیک روی دکمه)
+-  const verifyingRef = useRef(false);
+-
+-  const otpCaptcha = useOtpCaptcha();
+-
+-  const [cooldown, setCooldown] = useState(RESEND_COOLDOWN_SECONDS);
+-
+-  useEffect(() => {
+-    if (cooldown <= 0) {
++  const pending = useRef(false);
++  const busy = loading || sending;
++  async function verify(value: string) {
++    if (pending.current || sending || !sent || value.length !== OTP_CODE_LENGTH)
+       return;
+-    }
+-
+-    const timer = window.setInterval(() => {
+-      setCooldown((current) => Math.max(0, current - 1));
+-    }, 1000);
+-
+-    return () => {
+-      window.clearInterval(timer);
+-    };
+-  }, [cooldown]);
+-
+-  async function verify(codeToVerify: string) {
+-    if (
+-      verifyingRef.current ||
+-      codeToVerify.length !== OTP_CODE_LENGTH
+-    ) {
+-      return;
+-    }
+-
+-    verifyingRef.current = true;
+-    setError('');
++    pending.current = true;
+     setLoading(true);
+-
++    setError('');
+     try {
+-      const result = await verifyOtp(
+-        identifier,
+-        'LOGIN',
+-        codeToVerify,
+-        rememberMe
+-      );
+-
++      const result = await verifyOtp(identifier, 'LOGIN', value, rememberMe);
+       if (result.status === 'success') {
+         onSuccess(result.user.onboardingCompleted);
+-
+         return;
+       }
+-
+       setError(result.message);
+-
+-      // کد اشتباه: خانه‌ها پاک می‌شن و فوکوس برمی‌گرده به خانه‌ی اول
+       setCode('');
+       setInputKey((current) => current + 1);
+     } finally {
+-      verifyingRef.current = false;
++      pending.current = false;
+       setLoading(false);
+     }
+   }
+-
+-  function handleCodeChange(next: string) {
+-    setCode(next);
+-
+-    if (error) {
+-      setError('');
+-    }
+-
+-    // با کامل‌شدن شش رقم، خودکار تأیید می‌شه
+-    if (next.length === OTP_CODE_LENGTH) {
+-      void verify(next);
+-    }
+-  }
+-
+-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
++  function submit(event: FormEvent) {
+     event.preventDefault();
+-
+     void verify(code);
+   }
+-
+-  async function handleResend() {
+-    if (cooldown > 0 || verifyingRef.current) {
+-      return;
+-    }
+-
+-    if (!otpCaptcha.ready) {
+-      setError('ابتدا کد تصویر امنیتی را وارد کنید');
+-      return;
+-    }
+-
++  function resend() {
++    if (pending.current || busy || cooldown > 0) return;
++    setCode('');
+     setError('');
+-    verifyingRef.current = true;
+-    setResending(true);
+-
+-    try {
+-      const result = await requestOtp(
+-        identifier,
+-        'LOGIN',
+-        otpCaptcha.captcha ?? undefined
+-      );
+-
+-      otpCaptcha.afterRequest(result);
+-
+-      if (result.status === 'sent') {
+-        setCode('');
+-        setInputKey((current) => current + 1);
+-
+-        setCooldown(RESEND_COOLDOWN_SECONDS);
+-
+-        return;
+-      }
+-
+-      setError(result.message);
+-    } finally {
+-      verifyingRef.current = false;
+-      setResending(false);
+-    }
++    setInputKey((current) => current + 1);
++    onResend();
+   }
+-
+   return (
+-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+-      <div className="text-center">
+-        <h2 className="text-base font-bold text-gray-800 dark:text-white">
+-          کد تأیید را وارد کنید
+-        </h2>
+-
+-        <p className="mt-1.5 text-sm text-gray-400 dark:text-gray-400">
+-          اگر این حساب وجود داشته باشد، کد به{' '}
+-          <span
+-            dir="ltr"
+-            className="font-medium text-gray-600 dark:text-gray-200"
+-          >
+-            {maskIdentifier(identifier)}
+-          </span>{' '}
+-          ارسال می‌شود
+-        </p>
+-      </div>
+-
+-      {error && (
++    <form onSubmit={submit} className="flex flex-col gap-4">
++      <IdentifierSummary
++        identifier={identifier}
++        onEdit={onEdit}
++        disabled={busy}
++      />
++      <p
++        role="status"
++        className="text-center text-sm text-gray-600 dark:text-gray-300"
++      >
++        {sending
++          ? 'در حال ارسال کد تأیید…'
++          : sent
++            ? 'اگر این حساب وجود داشته باشد، کد تأیید برای آن ارسال می‌شود.'
++            : 'کد هنوز ارسال نشده است. دوباره تلاش کنید یا با رمز عبور وارد شوید.'}
++      </p>
++      {(sendError || error) && (
+         <p
+           role="alert"
+-          className="flex items-start gap-2 rounded-lg border border-danger-100 bg-danger-50 px-3 py-2 text-sm text-danger-600 dark:border-danger-900 dark:bg-danger-950/40 dark:text-danger-400"
++          className="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-600 dark:bg-danger-950/40 dark:text-danger-400"
+         >
+-          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+-
+-          <span>{error}</span>
++          {sendError || error}
+         </p>
+       )}
+-
+-      <OtpInput
+-        key={inputKey}
+-        length={OTP_CODE_LENGTH}
+-        value={code}
+-        onChange={handleCodeChange}
+-        error={Boolean(error)}
+-        disabled={loading || resending}
+-      />
+-
+-      {otpCaptcha.required && (
+-        <Captcha
+-          onChange={otpCaptcha.setCaptcha}
+-          resetSignal={otpCaptcha.resetSignal}
+-        />
++      {sent && (
++        <>
++          <h2 className="text-center text-base font-bold text-gray-800 dark:text-white">
++            کد تأیید را وارد کنید
++          </h2>
++          <OtpInput
++            key={inputKey}
++            value={code}
++            length={OTP_CODE_LENGTH}
++            disabled={busy}
++            error={Boolean(error)}
++            onChange={(value) => {
++              setCode(value);
++              setError('');
++              if (value.length === OTP_CODE_LENGTH) void verify(value);
++            }}
++          />
++        </>
++      )}
++      {captchaSlot}
++      {!sent ? (
++        <Button type="button" onClick={resend} disabled={busy}>
++          ارسال کد تأیید
++        </Button>
++      ) : (
++        <>
++          <button
++            type="button"
++            onClick={resend}
++            disabled={busy || cooldown > 0}
++            className="text-sm text-brand-600 disabled:opacity-50 dark:text-brand-400"
++          >
++            {cooldown > 0
++              ? `ارسال مجدد در ${formatCountdown(cooldown)}`
++              : 'ارسال مجدد کد'}
++          </button>
++          <Button
++            type="submit"
++            disabled={busy || code.length !== OTP_CODE_LENGTH}
++          >
++            {loading ? 'در حال تأیید…' : 'تأیید و ورود'}
++          </Button>
++        </>
+       )}
+-
+-      <button
+-        type="button"
+-        onClick={() => void handleResend()}
+-        disabled={cooldown > 0 || resending || loading}
+-        className="mx-auto cursor-pointer text-xs text-brand-600 hover:underline disabled:cursor-not-allowed disabled:text-gray-400 disabled:no-underline dark:text-brand-400"
+-      >
+-        {resending
+-          ? 'در حال ارسال...'
+-          : cooldown > 0
+-          ? `ارسال مجدد در ${formatCountdown(cooldown)}`
+-          : 'ارسال مجدد کد'}
+-      </button>
+-
+-      <Button
+-        type="submit"
+-        disabled={loading || resending || code.length !== OTP_CODE_LENGTH}
+-      >
+-        {loading ? (
+-          <span className="flex items-center justify-center gap-2">
+-            <Loader2 size={15} className="animate-spin" />
+-            در حال تأیید...
+-          </span>
+-        ) : (
+-          'تأیید و ورود'
+-        )}
+-      </Button>
+-
+       <button
+         type="button"
+-        onClick={onBack}
+-        disabled={loading || resending}
+-        className="mx-auto flex cursor-pointer items-center gap-1 text-xs text-gray-500 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-60 dark:text-gray-400 dark:hover:text-brand-400"
++        onClick={onPassword}
++        disabled={busy}
++        className="text-sm text-brand-600 disabled:opacity-50 dark:text-brand-400"
+       >
+-        <ArrowLeft size={13} />
+-        بازگشت
++        ورود با رمز عبور
+       </button>
+     </form>
+   );
+ }
+-
+-export default OtpVerifyForm;
+\ No newline at end of file
+diff --git a/client/src/components/LoginForm/PasswordLoginForm.tsx b/client/src/components/LoginForm/PasswordLoginForm.tsx
+index 0bc8dca..1520c4c 100644
+--- a/client/src/components/LoginForm/PasswordLoginForm.tsx
++++ b/client/src/components/LoginForm/PasswordLoginForm.tsx
+@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
+ 
+ import { loginWithPassword, type CaptchaAnswer } from '../../api/authApi';
+ 
++import IdentifierSummary from './IdentifierSummary';
+ import Button from '../Button/Button';
+ import Captcha from '../Captcha/Captcha';
+ import PasswordField from '../PasswordField/PasswordField';
+@@ -20,6 +21,7 @@ type Props = {
+ 
+   /** برگشت به انتخاب روش ورود */
+   onChangeMethod: () => void;
++  codeLabel: string;
+ 
+   onRememberMeChange: (value: boolean) => void;
+ 
+@@ -39,6 +41,7 @@ function PasswordLoginForm({
+   captcha,
+   onEdit,
+   onChangeMethod,
++  codeLabel,
+   onRememberMeChange,
+   onCaptchaChange,
+   onCaptchaRequired,
+@@ -146,23 +149,7 @@ function PasswordLoginForm({
+         </p>
+       )}
+ 
+-      <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-600 dark:bg-gray-800">
+-        <span
+-          dir="ltr"
+-          className="truncate text-sm text-gray-800 dark:text-gray-100"
+-        >
+-          {identifier}
+-        </span>
+-
+-        <button
+-          type="button"
+-          onClick={onEdit}
+-          disabled={loading}
+-          className="shrink-0 cursor-pointer text-xs font-medium text-brand-600 hover:underline disabled:cursor-not-allowed disabled:opacity-60 dark:text-brand-400"
+-        >
+-          ویرایش
+-        </button>
+-      </div>
++      <IdentifierSummary identifier={identifier} onEdit={onEdit} disabled={loading} />
+ 
+       {/* فیلد نام کاربری مخفی: مدیر رمز مرورگر برای ذخیره‌ی درست به آن نیاز دارد */}
+       <input
+@@ -232,7 +219,7 @@ function PasswordLoginForm({
+         disabled={loading}
+         className="mx-auto cursor-pointer text-xs text-gray-500 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-60 dark:text-gray-400 dark:hover:text-brand-400"
+       >
+-        تغییر روش ورود
++        {codeLabel}
+       </button>
+     </form>
+   );
+diff --git a/client/src/components/LoginForm/useLoginCode.ts b/client/src/components/LoginForm/useLoginCode.ts
+new file mode 100644
+index 0000000..add6392
+--- /dev/null
++++ b/client/src/components/LoginForm/useLoginCode.ts
+@@ -0,0 +1,63 @@
++import { useEffect, useRef, useState } from 'react';
++import { requestOtp } from '../../api/authApi';
++import { RESEND_COOLDOWN_SECONDS } from '../../constants/otp';
++import { useOtpCaptcha } from '../../hooks/useOtpCaptcha';
++
++// Lifetime is the whole login flow: method changes and edits cannot reset a cooldown.
++export default function useLoginCode() {
++  const [sent, setSent] = useState<Record<string, number>>({});
++  const [now, setNow] = useState(Date.now);
++  const [sending, setSending] = useState(false);
++  const [error, setError] = useState('');
++  const pending = useRef(false);
++  const captcha = useOtpCaptcha();
++  const ticking = Object.values(sent).some((deadline) => deadline > now);
++  useEffect(() => {
++    if (!ticking) return;
++    const timer = window.setInterval(() => setNow(Date.now()), 1000);
++    return () => window.clearInterval(timer);
++  }, [ticking]);
++  const hasSent = (identifier: string) => identifier in sent;
++  const remaining = (identifier: string) =>
++    Math.max(0, Math.ceil(((sent[identifier] ?? 0) - now) / 1000));
++  async function send(identifier: string, resend = false) {
++    if (pending.current) return;
++    if (hasSent(identifier) && (!resend || Date.now() < sent[identifier]))
++      return;
++    if (!captcha.ready) {
++      setError('ابتدا کد تصویر امنیتی را وارد کنید');
++      return;
++    }
++    pending.current = true;
++    setSending(true);
++    setError('');
++    try {
++      const result = await requestOtp(
++        identifier,
++        'LOGIN',
++        captcha.captcha ?? undefined,
++      );
++      captcha.afterRequest(result);
++      if (result.status === 'sent') {
++        const time = Date.now();
++        setNow(time);
++        setSent((current) => ({
++          ...current,
++          [identifier]: time + RESEND_COOLDOWN_SECONDS * 1000,
++        }));
++      } else setError(result.message);
++    } finally {
++      pending.current = false;
++      setSending(false);
++    }
++  }
++  return {
++    hasSent,
++    remaining,
++    send,
++    sending,
++    error,
++    clearError: () => setError(''),
++    captcha,
++  };
++}
+diff --git a/client/tests/loginFlow.test.ts b/client/tests/loginFlow.test.ts
+index e22b064..cbb101c 100644
+--- a/client/tests/loginFlow.test.ts
++++ b/client/tests/loginFlow.test.ts
+@@ -44,7 +44,13 @@ test('OTP fields are labelled, support full-code autofill and fit narrow screens
+         identifier: 'user@example.com',
+         rememberMe: false,
+         onSuccess() {},
+-        onBack() {},
++        onEdit() {},
++        onPassword() {},
++        sent: true,
++        sending: false,
++        cooldown: 90,
++        sendError: '',
++        onResend() {},
+       }),
+     ),
+   );
+@@ -102,3 +108,44 @@ test('Google account creation is explicit and pending approval does not create a
+     globalThis.fetch = original;
+   }
+ });
++
++test('unsent OTP shows retry and edit without claiming delivery or accepting a code', () => {
++  const html = renderToString(
++    createElement(OtpVerifyForm, {
++      identifier: '09123456789',
++      rememberMe: false,
++      onSuccess() {},
++      onEdit() {},
++      onPassword() {},
++      sent: false,
++      sending: false,
++      cooldown: 0,
++      sendError: 'سرویس در دسترس نیست',
++      onResend() {},
++    }),
++  );
++  assert.ok(html.includes('کد هنوز ارسال نشده'));
++  assert.ok(html.includes('ویرایش'));
++  assert.ok(html.includes('ورود با رمز عبور'));
++  assert.ok(!html.includes('one-time-code'));
++});
++
++test('OTP send in flight disables edit, resend, verification and method switching', () => {
++  const html = renderToString(
++    createElement(OtpVerifyForm, {
++      identifier: 'user@example.com',
++      rememberMe: false,
++      onSuccess() {},
++      onEdit() {},
++      onPassword() {},
++      sent: true,
++      sending: true,
++      cooldown: 0,
++      sendError: '',
++      onResend() {},
++    }),
++  );
++  const controls = html.match(/<(?:button|input)\b[^>]*>/g) ?? [];
++  assert.equal(controls.length, 10);
++  assert.ok(controls.every((tag) => tag.includes('disabled')));
++});
+diff --git a/docs/login-completion.fa.md b/docs/login-completion.fa.md
+index 88c3112..f816ab7 100644
+--- a/docs/login-completion.fa.md
++++ b/docs/login-completion.fa.md
+@@ -4,8 +4,9 @@
+ 
+ ## رفتار
+ 
+-- ابتدا شماره موبایل یا ایمیل وارد می‌شود؛ «ادامه» هیچ کدی ارسال نمی‌کند.
+-- کاربر رمز یا دریافت کد را انتخاب می‌کند. گوگل فقط در مرحله اول حضور دارد.
++- پس از واردکردن شماره و زدن «ادامه»، کد پیامکی درخواست می‌شود. برای ایمیل، فرم رمز بدون ارسال کد باز می‌شود.
++- زیر فرم، ورود با رمز یا دریافت کد با ایمیل در دسترس است. گوگل فقط در مرحله اول حضور دارد.
++- «ویرایش» کنار شناسه، مقدار قبلی را نگه می‌دارد و کد/رمز واردشده را پاک می‌کند. بازگشت به شناسه‌ای که در همین جریان کد گرفته، کد جدید نمی‌فرستد. شمارنده با زمان واقعی و به تفکیک شناسه نگه داشته می‌شود.
+ - حساب موجود گوگل وارد می‌شود. برای حساب جدید، پس از تأیید گوگل نام و نقش کارآموز/مدرس دریافت می‌شود. نقش مدیر قابل انتخاب نیست.
+ - مدرس جدید از سیاست تأیید مدیر پیروی می‌کند؛ نقش و رد/تأیید حساب موجود با ثبت‌نام گوگل تغییر نمی‌کند.
+ - اعتبار گوگل در درخواست ساخت حساب دوباره بررسی می‌شود. credential تنها در حافظه فرم است، نه URL یا localStorage.
+@@ -32,7 +33,7 @@ npm run lint -w client
+ 
+ تست دستی با سرور و سرویس‌های Codespace روشن:
+ 
+-1. شماره فارسی / ایمیل → ادامه؛ هنوز کد ارسال نشود. رمز اشتباه پیام فارسی بدهد.
++1. شماره فارسی → ادامه: یک درخواست پیامک. ایمیل → ادامه: رمز، بدون ارسال کد. تغییر روش/ویرایش و بازگشت به همان شماره، کد تازه نفرستد. رمز اشتباه پیام فارسی بدهد.
+ 2. فراموشی رمز از مرحله رمز → شناسه پر باشد؛ کد واقعی، رمز جدید و ورود با آن را بررسی کنید.
+ 3. روش کد → دریافت، چسباندن شش رقم، کد اشتباه و ارسال مجدد؛ هر بار فقط یک درخواست.
+ 4. گوگل حساب موجود → ورود. گوگل حساب جدید → انتخاب نقش و ساخت حساب.

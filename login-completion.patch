@@ -1,0 +1,1668 @@
+diff --git a/client/src/api/auth/auth.api.ts b/client/src/api/auth/auth.api.ts
+index ca86d6b..d8c5254 100644
+--- a/client/src/api/auth/auth.api.ts
++++ b/client/src/api/auth/auth.api.ts
+@@ -103,9 +103,10 @@ export async function register(input: RegisterInput): Promise<RegisterResult> {
+   }
+ }
+ 
+-export async function googleLogin(idToken: string): Promise<GoogleLoginResult> {
++export async function googleLogin(idToken: string, registration?: { role: 'Student' | 'Instructor'; name: string }): Promise<GoogleLoginResult> {
+   try {
+     const data = await apiRequest<{
++      registrationRequired?: boolean;
+       pendingApproval?: boolean;
+       message?: string;
+       accessToken?: string;
+@@ -114,9 +115,12 @@ export async function googleLogin(idToken: string): Promise<GoogleLoginResult> {
+       method: 'POST',
+       body: {
+         idToken,
++        registration,
+       },
+     });
+ 
++    if (data.registrationRequired) return { status: 'registration_required' };
++
+     if (data.pendingApproval) {
+       return {
+         status: 'pending_approval',
+diff --git a/client/src/api/auth/auth.types.ts b/client/src/api/auth/auth.types.ts
+index bf2bf95..8280543 100644
+--- a/client/src/api/auth/auth.types.ts
++++ b/client/src/api/auth/auth.types.ts
+@@ -125,6 +125,7 @@ export type UsernameAvailability =
+     };
+ 
+ export type GoogleLoginResult =
++  | { status: 'registration_required' }
+   | {
+       status: 'success';
+       user: User;
+diff --git a/client/src/components/AuthLayout/AuthLayout.tsx b/client/src/components/AuthLayout/AuthLayout.tsx
+index 5d698e6..8f5725d 100644
+--- a/client/src/components/AuthLayout/AuthLayout.tsx
++++ b/client/src/components/AuthLayout/AuthLayout.tsx
+@@ -86,7 +86,7 @@ function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProps) {
+       </div>
+ 
+       {/* پنل فرم */}
+-      <div className="relative flex flex-1 flex-col items-center justify-center px-4 py-12">
++      <div className="relative flex min-w-0 flex-1 flex-col items-center justify-center px-4 py-16">
+         {/* دکمه‌ی تم ثابت: با تغییر مرحله یا ارتفاع فرم جابه‌جا نمی‌شود */}
+         <button
+           type="button"
+@@ -109,7 +109,7 @@ function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProps) {
+             </button>
+           </div>
+ 
+-          <div className="animate-fade-slide-up rounded-2xl border border-gray-100 bg-white p-8 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:shadow-none">
++          <div className="animate-fade-slide-up rounded-2xl border border-gray-100 bg-white p-5 sm:p-8 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:shadow-none">
+             <h1 className="text-center text-2xl font-bold text-gray-800 dark:text-white">
+               {title}
+             </h1>
+diff --git a/client/src/components/ForgotPasswordForm/ForgotPasswordForm.tsx b/client/src/components/ForgotPasswordForm/ForgotPasswordForm.tsx
+index a4a0662..c08f8bb 100644
+--- a/client/src/components/ForgotPasswordForm/ForgotPasswordForm.tsx
++++ b/client/src/components/ForgotPasswordForm/ForgotPasswordForm.tsx
+@@ -1,5 +1,5 @@
+ import { useEffect, useRef, useState } from 'react';
+-import { useNavigate } from 'react-router-dom';
++import { useLocation, useNavigate } from 'react-router-dom';
+ import Button from '../Button/Button';
+ import StepIndicator from '../StepIndicator/StepIndicator';
+ import IdentifierStep from './components/IdentifierStep';
+@@ -13,15 +13,19 @@ import {
+ import { useOtpCaptcha } from '../../hooks/useOtpCaptcha';
+ import { OTP_CODE_LENGTH, RESEND_COOLDOWN_SECONDS } from '../../constants/otp';
+ 
++import { detectIdentifierType, normalizeIdentifier, validateIdentifier } from '../../utils/identifier';
++import { validateIdentityField } from '../SignupForm/signup.validation';
++
+ type Step = 'identifier' | 'code' | 'newPassword' | 'done';
+ 
+ const STEP_LABELS = ['شناسه', 'کد تایید', 'رمز جدید'];
+ const STEP_ORDER: Step[] = ['identifier', 'code', 'newPassword'];
+-const MIN_PASSWORD_LENGTH = 6;
++
+ 
+ function ForgotPasswordForm() {
+   const [step, setStep] = useState<Step>('identifier');
+-  const [identifier, setIdentifier] = useState('');
++  const location = useLocation();
++  const [identifier, setIdentifier] = useState(typeof location.state?.identifier === 'string' ? location.state.identifier : '');
+   const [code, setCode] = useState('');
+   const [resetTicket, setResetTicket] = useState('');
+   const [newPassword, setNewPassword] = useState('');
+@@ -47,8 +51,9 @@ function ForgotPasswordForm() {
+   async function handleIdentifierSubmit(event: React.FormEvent) {
+     event.preventDefault();
+     if (requesting.current) return;
+-    if (!identifier.trim()) {
+-      setError('ایمیل یا شماره موبایلت رو وارد کن');
++    const invalid = validateIdentifier(identifier);
++    if (invalid) {
++      setError(invalid);
+       return;
+     }
+     if (!otpCaptcha.ready) {
+@@ -56,18 +61,20 @@ function ForgotPasswordForm() {
+       return;
+     }
+ 
++    const normalized = normalizeIdentifier(identifier, detectIdentifierType(identifier)!);
++    setIdentifier(normalized);
+     setError('');
+     requesting.current = true;
+     setLoading(true);
+     try {
+       const result = await requestOtp(
+-        identifier.trim(),
++        normalizeIdentifier(identifier, detectIdentifierType(identifier)!),
+         'RESET_PASSWORD',
+         otpCaptcha.captcha ?? undefined
+       );
+       otpCaptcha.afterRequest(result);
+       if (result.status === 'sent') {
+-        setIdentifier(identifier.trim());
++        setIdentifier(normalizeIdentifier(identifier, detectIdentifierType(identifier)!));
+         setCode('');
+         setCooldown(RESEND_COOLDOWN_SECONDS);
+         setStep('code');
+@@ -90,13 +97,13 @@ function ForgotPasswordForm() {
+     setResending(true);
+     try {
+       const result = await requestOtp(
+-        identifier.trim(),
++        normalizeIdentifier(identifier, detectIdentifierType(identifier)!),
+         'RESET_PASSWORD',
+         otpCaptcha.captcha ?? undefined
+       );
+       otpCaptcha.afterRequest(result);
+       if (result.status === 'sent') {
+-        setIdentifier(identifier.trim());
++        setIdentifier(normalizeIdentifier(identifier, detectIdentifierType(identifier)!));
+         setCode('');
+         setCooldown(RESEND_COOLDOWN_SECONDS);
+       } else {
+@@ -136,8 +143,9 @@ function ForgotPasswordForm() {
+   async function handleNewPasswordSubmit(event: React.FormEvent) {
+     event.preventDefault();
+     if (requesting.current) return;
+-    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+-      setError(`رمز عبور باید حداقل ${MIN_PASSWORD_LENGTH} کاراکتر باشه`);
++    const invalid = validateIdentityField('password', { password: newPassword, confirmPassword, name: '', identifier });
++    if (invalid) {
++      setError(invalid);
+       return;
+     }
+     if (newPassword !== confirmPassword) {
+diff --git a/client/src/components/GoogleAccess/GoogleAccess.tsx b/client/src/components/GoogleAccess/GoogleAccess.tsx
+new file mode 100644
+index 0000000..c094abd
+--- /dev/null
++++ b/client/src/components/GoogleAccess/GoogleAccess.tsx
+@@ -0,0 +1,156 @@
++import { useRef, useState } from 'react';
++import { googleLogin } from '../../api/authApi';
++import Button from '../Button/Button';
++import GoogleSignInButton from '../GoogleSignInButton/GoogleSignInButton';
++import TextBox from '../TextBox/TextBox';
++
++type Props = {
++  onSuccess: (completed: boolean) => void;
++  onFlowChange: (active: boolean) => void;
++};
++
++// Keep the Google credential in memory only; the server verifies it again on account creation.
++export default function GoogleAccess({ onSuccess, onFlowChange }: Props) {
++  const [credential, setCredential] = useState('');
++  const [name, setName] = useState('');
++  const [role, setRole] = useState<'Student' | 'Instructor'>('Student');
++  const [error, setError] = useState('');
++  const [pending, setPending] = useState('');
++  const [busy, setBusy] = useState(false);
++  const request = useRef(false);
++
++  async function submit(token: string, register = false) {
++    if (request.current) return;
++    request.current = true;
++    setBusy(true);
++    setError('');
++    onFlowChange(true);
++    let keepOpen = Boolean(credential);
++    try {
++      const result = await googleLogin(
++        token,
++        register ? { role, name: name.trim() } : undefined,
++      );
++      if (result.status === 'success')
++        onSuccess(result.user.onboardingCompleted);
++      else if (result.status === 'registration_required') {
++        setCredential(token);
++        keepOpen = true;
++      } else if (result.status === 'pending_approval') {
++        setPending(result.message);
++        setCredential('');
++        keepOpen = true;
++      } else setError(result.message);
++    } finally {
++      request.current = false;
++      setBusy(false);
++      onFlowChange(keepOpen);
++    }
++  }
++  function reset() {
++    if (request.current) return;
++    setCredential('');
++    setError('');
++    setPending('');
++    setName('');
++    onFlowChange(false);
++  }
++  return (
++    <div className="flex flex-col gap-4" aria-busy={busy}>
++      {error && (
++        <p
++          role="alert"
++          className="text-sm text-danger-600 dark:text-danger-400"
++        >
++          {error}
++        </p>
++      )}
++      {pending ? (
++        <>
++          <p role="status" className="text-sm text-gray-700 dark:text-gray-200">
++            {pending}
++          </p>
++          <Button type="button" onClick={reset}>
++            بازگشت به ورود
++          </Button>
++        </>
++      ) : credential ? (
++        <form
++          className="flex flex-col gap-4"
++          onSubmit={(event) => {
++            event.preventDefault();
++            void submit(credential, true);
++          }}
++        >
++          <p className="text-sm text-gray-600 dark:text-gray-300">
++            ایمیل شما با گوگل تأیید شد. برای ساخت حساب، اطلاعات زیر را تکمیل
++            کنید.
++          </p>
++          <fieldset disabled={busy} className="flex min-w-0 flex-col gap-4">
++            <label
++              htmlFor="google-name"
++              className="text-sm text-gray-700 dark:text-gray-200"
++            >
++              نام و نام خانوادگی
++            </label>
++            <TextBox
++              type="text"
++              placeholder="مثلاً علی رضایی"
++              maxLength={100}
++              id="google-name"
++              value={name}
++              onChange={(event) => setName(event.target.value)}
++              autoComplete="name"
++              autoFocus
++            />
++            <fieldset className="flex gap-4 text-sm text-gray-700 dark:text-gray-200">
++              <legend className="mb-2">نوع حساب</legend>
++              <label>
++                <input
++                  type="radio"
++                  name="google-role"
++                  checked={role === 'Student'}
++                  onChange={() => setRole('Student')}
++                />{' '}
++                کارآموز
++              </label>
++              <label>
++                <input
++                  type="radio"
++                  name="google-role"
++                  checked={role === 'Instructor'}
++                  onChange={() => setRole('Instructor')}
++                />{' '}
++                مدرس
++              </label>
++            </fieldset>
++            <Button
++              type="submit"
++              disabled={
++                busy || name.trim().length < 2 || name.trim().length > 100
++              }
++            >
++              {busy ? 'در حال ساخت حساب…' : 'ساخت حساب'}
++            </Button>
++            <button
++              type="button"
++              onClick={reset}
++              className="text-sm text-brand-600 dark:text-brand-400"
++            >
++              بازگشت
++            </button>
++          </fieldset>
++        </form>
++      ) : busy ? (
++        <p role="status" className="text-sm text-gray-600 dark:text-gray-300">
++          در حال بررسی حساب گوگل…
++        </p>
++      ) : (
++        <GoogleSignInButton
++          onCredential={(token) => void submit(token)}
++          onError={() => setError('ورود با گوگل ناموفق بود؛ دوباره تلاش کنید')}
++        />
++      )}
++    </div>
++  );
++}
+diff --git a/client/src/components/GoogleSignInButton/GoogleSignInButton.tsx b/client/src/components/GoogleSignInButton/GoogleSignInButton.tsx
+index 4c3d232..fab2870 100644
+--- a/client/src/components/GoogleSignInButton/GoogleSignInButton.tsx
++++ b/client/src/components/GoogleSignInButton/GoogleSignInButton.tsx
+@@ -45,6 +45,8 @@ function GoogleSignInButton({
+     else onError?.();
+   }
+ 
++  if (!import.meta.env.VITE_GOOGLE_CLIENT_ID) return <p className="text-center text-xs text-gray-500 dark:text-gray-400">ورود با گوگل فعلاً در دسترس نیست</p>;
++
+   return (
+     <div ref={containerRef} className="w-full flex justify-center">
+       <GoogleLogin
+diff --git a/client/src/components/LoginForm/IdentifierStep.tsx b/client/src/components/LoginForm/IdentifierStep.tsx
+index 8e46291..a3cc10e 100644
+--- a/client/src/components/LoginForm/IdentifierStep.tsx
++++ b/client/src/components/LoginForm/IdentifierStep.tsx
+@@ -8,7 +8,7 @@ import {
+ } from '../../utils/identifier';
+ 
+ import Button from '../Button/Button';
+-import GoogleSignInButton from '../GoogleSignInButton/GoogleSignInButton';
++import GoogleAccess from '../GoogleAccess/GoogleAccess';
+ import TextBox from '../TextBox/TextBox';
+ 
+ type Props = {
+@@ -16,8 +16,7 @@ type Props = {
+   onIdentifierChange: (value: string) => void;
+   /** شناسه‌ی معتبر و نرمال‌شده رو تحویل می‌ده */
+   onContinue: (normalizedIdentifier: string) => void;
+-  onGoogleCredential: (idToken: string) => void;
+-  onGoogleError: () => void;
++  onSuccess: (completed: boolean) => void;
+ };
+ 
+ // آیکن کنار فیلد بر اساس چیزی که کاربر تایپ کرده عوض می‌شه
+@@ -37,9 +36,9 @@ function IdentifierStep({
+   identifier,
+   onIdentifierChange,
+   onContinue,
+-  onGoogleCredential,
+-  onGoogleError,
++  onSuccess,
+ }: Props) {
++  const [googleActive, setGoogleActive] = useState(false);
+   const inputRef = useRef<HTMLInputElement>(null);
+   const [error, setError] = useState('');
+   const [submitted, setSubmitted] = useState(false);
+@@ -85,7 +84,7 @@ function IdentifierStep({
+ 
+   return (
+     <div className="flex flex-col gap-4">
+-      <form
++      {!googleActive && <><form
+         onSubmit={handleSubmit}
+         noValidate
+         className="flex flex-col gap-4"
+@@ -95,7 +94,7 @@ function IdentifierStep({
+             htmlFor="login-identifier"
+             className="text-sm text-gray-600 dark:text-gray-300"
+           >
+-            ایمیل یا شماره تماس
++            شماره موبایل یا ایمیل
+           </label>
+ 
+           <TextBox
+@@ -105,7 +104,7 @@ function IdentifierStep({
+             name="username"
+             autoComplete="username"
+             autoFocus
+-            placeholder="ایمیل یا شماره تماس"
++            placeholder="مثلاً 09123456789 یا name@example.com"
+             value={identifier}
+             onChange={handleChange}
+             onBlur={handleBlur}
+@@ -125,11 +124,8 @@ function IdentifierStep({
+         <span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+       </div>
+ 
+-      <GoogleSignInButton
+-        text="continue_with"
+-        onCredential={onGoogleCredential}
+-        onError={onGoogleError}
+-      />
++      </>}
++      <GoogleAccess onSuccess={onSuccess} onFlowChange={setGoogleActive} />
+     </div>
+   );
+ }
+diff --git a/client/src/components/LoginForm/LoginForm.tsx b/client/src/components/LoginForm/LoginForm.tsx
+index bf7ddc7..084147d 100644
+--- a/client/src/components/LoginForm/LoginForm.tsx
++++ b/client/src/components/LoginForm/LoginForm.tsx
+@@ -1,9 +1,8 @@
+-import { useState } from 'react';
++import { useRef, useState } from 'react';
+ import { useNavigate, useSearchParams } from 'react-router-dom';
+ import { AlertTriangle, Info } from 'lucide-react';
+ 
+ import {
+-  googleLogin,
+   requestOtp,
+   type CaptchaAnswer,
+ } from '../../api/authApi';
+@@ -36,6 +35,7 @@ function LoginForm() {
+   // خطای سطح فرم (گوگل، ارسال کد)؛ خطای رمز تو خود PasswordLoginForm نمایش داده می‌شه
+   const [error, setError] = useState('');
+ 
++  const sending = useRef(false);
+   const [otpSending, setOtpSending] = useState(false);
+ 
+   const otpCaptcha = useOtpCaptcha();
+@@ -70,7 +70,7 @@ function LoginForm() {
+ 
+   async function handleChooseCode() {
+     // جلوگیری از کلیک تکراری
+-    if (otpSending) {
++    if (sending.current) {
+       return;
+     }
+ 
+@@ -80,6 +80,7 @@ function LoginForm() {
+     }
+ 
+     setError('');
++    sending.current = true;
+     setOtpSending(true);
+ 
+     try {
+@@ -98,24 +99,11 @@ function LoginForm() {
+ 
+       setError(result.message);
+     } finally {
++      sending.current = false;
+       setOtpSending(false);
+     }
+   }
+ 
+-  async function handleGoogleLogin(idToken: string) {
+-    setError('');
+-
+-    const result = await googleLogin(idToken);
+-
+-    if (result.status === 'success') {
+-      handleLoginSuccess(result.user.onboardingCompleted);
+-
+-      return;
+-    }
+-
+-    setError(result.message);
+-  }
+-
+   if (step === 'otp-verify') {
+     return (
+       <OtpVerifyForm
+@@ -151,8 +139,7 @@ function LoginForm() {
+           identifier={identifier}
+           onIdentifierChange={setIdentifier}
+           onContinue={handleIdentifierContinue}
+-          onGoogleCredential={handleGoogleLogin}
+-          onGoogleError={() => setError('ورود با گوگل ناموفق بود')}
++          onSuccess={handleLoginSuccess}
+         />
+       )}
+ 
+diff --git a/client/src/components/LoginForm/OtpVerifyForm.tsx b/client/src/components/LoginForm/OtpVerifyForm.tsx
+index 280daf5..c64aaec 100644
+--- a/client/src/components/LoginForm/OtpVerifyForm.tsx
++++ b/client/src/components/LoginForm/OtpVerifyForm.tsx
+@@ -129,7 +129,7 @@ function OtpVerifyForm({ identifier, rememberMe, onSuccess, onBack }: Props) {
+   }
+ 
+   async function handleResend() {
+-    if (cooldown > 0 || resending || loading) {
++    if (cooldown > 0 || verifyingRef.current) {
+       return;
+     }
+ 
+@@ -139,6 +139,7 @@ function OtpVerifyForm({ identifier, rememberMe, onSuccess, onBack }: Props) {
+     }
+ 
+     setError('');
++    verifyingRef.current = true;
+     setResending(true);
+ 
+     try {
+@@ -161,6 +162,7 @@ function OtpVerifyForm({ identifier, rememberMe, onSuccess, onBack }: Props) {
+ 
+       setError(result.message);
+     } finally {
++      verifyingRef.current = false;
+       setResending(false);
+     }
+   }
+@@ -226,7 +228,7 @@ function OtpVerifyForm({ identifier, rememberMe, onSuccess, onBack }: Props) {
+ 
+       <Button
+         type="submit"
+-        disabled={loading || code.length !== OTP_CODE_LENGTH}
++        disabled={loading || resending || code.length !== OTP_CODE_LENGTH}
+       >
+         {loading ? (
+           <span className="flex items-center justify-center gap-2">
+@@ -241,7 +243,7 @@ function OtpVerifyForm({ identifier, rememberMe, onSuccess, onBack }: Props) {
+       <button
+         type="button"
+         onClick={onBack}
+-        disabled={loading}
++        disabled={loading || resending}
+         className="mx-auto flex cursor-pointer items-center gap-1 text-xs text-gray-500 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-60 dark:text-gray-400 dark:hover:text-brand-400"
+       >
+         <ArrowLeft size={13} />
+diff --git a/client/src/components/LoginForm/PasswordLoginForm.tsx b/client/src/components/LoginForm/PasswordLoginForm.tsx
+index fe4123a..0bc8dca 100644
+--- a/client/src/components/LoginForm/PasswordLoginForm.tsx
++++ b/client/src/components/LoginForm/PasswordLoginForm.tsx
+@@ -194,6 +194,7 @@ function PasswordLoginForm({
+       <div className="flex items-center justify-between text-sm">
+         <Link
+           to="/forgot-password"
++          state={{ identifier }}
+           className="text-xs text-brand-600 hover:underline dark:text-brand-400"
+         >
+           رمز عبور را فراموش کرده‌اید؟
+diff --git a/client/src/components/OtpInput/OtpInput.tsx b/client/src/components/OtpInput/OtpInput.tsx
+index be2cd9a..3ebf7e5 100644
+--- a/client/src/components/OtpInput/OtpInput.tsx
++++ b/client/src/components/OtpInput/OtpInput.tsx
+@@ -32,6 +32,10 @@ function OtpInput({
+   const digits = Array.from({ length }, (_, i) => value[i] ?? '');
+ 
+   function setDigitAt(index: number, digit: string) {
++    if (!digit) {
++      onChange(value.slice(0, index));
++      return;
++    }
+     const next = digits.slice();
+     next[index] = digit;
+     onChange(next.join('').slice(0, length));
+@@ -71,9 +75,9 @@ function OtpInput({
+   ) {
+     if (event.key === 'Backspace' && !digits[index] && index > 0) {
+       focusIndex(index - 1);
+-    } else if (event.key === 'ArrowLeft' && index < length - 1) {
++    } else if (event.key === 'ArrowRight' && index < length - 1) {
+       focusIndex(index + 1);
+-    } else if (event.key === 'ArrowRight' && index > 0) {
++    } else if (event.key === 'ArrowLeft' && index > 0) {
+       focusIndex(index - 1);
+     }
+   }
+@@ -99,7 +103,8 @@ function OtpInput({
+           type="text"
+           inputMode="numeric"
+           autoComplete={index === 0 ? 'one-time-code' : 'off'}
+-          maxLength={1}
++          maxLength={length}
++          aria-label={`رقم ${index + 1} کد تأیید`}
+           autoFocus={autoFocus && index === 0}
+           disabled={disabled}
+           value={digit}
+@@ -107,7 +112,7 @@ function OtpInput({
+           onKeyDown={(e) => handleKeyDown(index, e)}
+           onPaste={(e) => handlePaste(index, e)}
+           onFocus={(e) => e.target.select()}
+-          className={`h-12 w-11 rounded-xl border text-center text-lg font-semibold outline-none transition duration-300 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white
++          className={`h-12 min-w-0 max-w-11 flex-1 rounded-xl border text-center text-lg font-semibold outline-none transition duration-300 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white
+             ${
+               error
+                 ? 'border-danger-400 focus:border-danger-500 focus:ring-4 focus:ring-danger-50 dark:focus:ring-danger-950'
+diff --git a/client/src/components/SignupForm/OtpStep.tsx b/client/src/components/SignupForm/OtpStep.tsx
+index 53a9349..dd29061 100644
+--- a/client/src/components/SignupForm/OtpStep.tsx
++++ b/client/src/components/SignupForm/OtpStep.tsx
+@@ -83,6 +83,7 @@ function OtpStep({
+           value={code}
+           onChange={onCodeChange}
+           error={Boolean(error)}
++          disabled={loading || resending}
+         />
+       </div>
+ 
+@@ -91,7 +92,7 @@ function OtpStep({
+       <button
+         type="button"
+         onClick={onResend}
+-        disabled={cooldown > 0 || resending}
++        disabled={cooldown > 0 || resending || loading}
+         className="mx-auto cursor-pointer text-xs text-brand-600 hover:underline disabled:cursor-not-allowed disabled:text-gray-400 disabled:no-underline dark:text-brand-400"
+       >
+         {resending
+@@ -103,7 +104,7 @@ function OtpStep({
+ 
+       <Button
+         type="submit"
+-        disabled={loading || code.length !== OTP_CODE_LENGTH}
++        disabled={loading || resending || code.length !== OTP_CODE_LENGTH}
+       >
+         {loading ? 'در حال بررسی...' : 'تایید و ساخت حساب'}
+       </Button>
+diff --git a/client/src/components/SignupForm/SignupForm.tsx b/client/src/components/SignupForm/SignupForm.tsx
+index 1a6dec1..87bc336 100644
+--- a/client/src/components/SignupForm/SignupForm.tsx
++++ b/client/src/components/SignupForm/SignupForm.tsx
+@@ -1,6 +1,7 @@
+-import { useState, type FormEvent } from 'react';
++import { useRef, useState, type FormEvent } from 'react';
+ import { useNavigate } from 'react-router-dom';
+ 
++import GoogleAccess from '../GoogleAccess/GoogleAccess';
+ import Button from '../Button/Button';
+ import StepIndicator from '../StepIndicator/StepIndicator';
+ 
+@@ -30,6 +31,8 @@ import Captcha from '../Captcha/Captcha';
+ 
+ function SignupForm() {
+   const navigate = useNavigate();
++  const requesting = useRef(false);
++  const [googleActive, setGoogleActive] = useState(false);
+ 
+   const [step, setStep] = useState<SignupStep>('role');
+   const [role, setRole] = useState<AccountRole | null>(null);
+@@ -88,6 +91,7 @@ function SignupForm() {
+ 
+   async function handleFinalSubmit(event: FormEvent<HTMLFormElement>) {
+     event.preventDefault();
++    if (requesting.current) return;
+ 
+     if (!role) {
+       setError('نوع حساب مشخص نشده است');
+@@ -100,6 +104,7 @@ function SignupForm() {
+     }
+ 
+     setError('');
++    requesting.current = true;
+     setLoading(true);
+ 
+     try {
+@@ -124,12 +129,14 @@ function SignupForm() {
+ 
+       setError(result.message);
+     } finally {
++      requesting.current = false;
+       setLoading(false);
+     }
+   }
+ 
+   async function handleOtpSubmit(event: FormEvent) {
+     event.preventDefault();
++    if (requesting.current) return;
+ 
+     if (code.length !== OTP_CODE_LENGTH) {
+       setError('کد ۶ رقمی را کامل وارد کنید');
+@@ -137,6 +144,7 @@ function SignupForm() {
+     }
+ 
+     setError('');
++    requesting.current = true;
+     setLoading(true);
+ 
+     try {
+@@ -156,12 +164,13 @@ function SignupForm() {
+ 
+       setError(result.message);
+     } finally {
++      requesting.current = false;
+       setLoading(false);
+     }
+   }
+ 
+   async function handleResendCode() {
+-    if (resending) {
++    if (requesting.current) {
+       return;
+     }
+ 
+@@ -171,6 +180,7 @@ function SignupForm() {
+     }
+ 
+     setError('');
++    requesting.current = true;
+     setResending(true);
+ 
+     try {
+@@ -190,6 +200,7 @@ function SignupForm() {
+ 
+       setError(result.message);
+     } finally {
++      requesting.current = false;
+       setResending(false);
+     }
+   }
+@@ -252,7 +263,8 @@ function SignupForm() {
+         </div>
+       )}
+ 
+-      {step === 'role' && (
++      {step === 'role' && <GoogleAccess onFlowChange={setGoogleActive} onSuccess={(completed) => navigate(completed ? '/dashboard' : '/onboarding')} />}
++      {step === 'role' && !googleActive && (
+         <RoleStep
+           role={role}
+           onRoleChange={handleRoleChange}
+diff --git a/client/src/components/SignupForm/signup.validation.ts b/client/src/components/SignupForm/signup.validation.ts
+index 8a6230f..b564bc1 100644
+--- a/client/src/components/SignupForm/signup.validation.ts
++++ b/client/src/components/SignupForm/signup.validation.ts
+@@ -33,6 +33,7 @@ export function validateIdentityField(
+         return 'نام را وارد کنید';
+       }
+ 
++      if (name.length > 100) return 'نام نباید بیشتر از ۱۰۰ کاراکتر باشد';
+       if (name.length < MIN_NAME_LENGTH) {
+         return `نام باید حداقل ${MIN_NAME_LENGTH} کاراکتر باشد`;
+       }
+@@ -48,6 +49,7 @@ export function validateIdentityField(
+         return 'رمز عبور را وارد کنید';
+       }
+ 
++      if (values.password.length > 72) return 'رمز نباید بیشتر از ۷۲ کاراکتر باشد';
+       // جزئیات شرط‌ها در چک‌لیست زیر فیلد دیده می‌شود
+       return PASSWORD_REGEX.test(values.password)
+         ? null
+diff --git a/client/src/hooks/useTheme.ts b/client/src/hooks/useTheme.ts
+index f47ced4..e6b7676 100644
+--- a/client/src/hooks/useTheme.ts
++++ b/client/src/hooks/useTheme.ts
+@@ -1,21 +1,30 @@
+-import { useEffect, useState } from 'react';
++import { useEffect, useSyncExternalStore } from 'react';
+ 
+-function useTheme() {
+-  const [isDark, setIsDark] = useState<boolean>(
+-    localStorage.getItem('theme') === 'dark'
+-  );
++const CHANGE_EVENT = 'app-theme-change';
++function snapshot() {
++  return typeof window !== 'undefined' && window.localStorage.getItem('theme') === 'dark';
++}
++function subscribe(listener: () => void) {
++  window.addEventListener('storage', listener);
++  window.addEventListener(CHANGE_EVENT, listener);
++  return () => {
++    window.removeEventListener('storage', listener);
++    window.removeEventListener(CHANGE_EVENT, listener);
++  };
++}
+ 
++// Every mounted consumer (layout, Google widget, dialogs) shares the same value.
++function useTheme() {
++  const isDark = useSyncExternalStore(subscribe, snapshot, () => false);
+   useEffect(() => {
+-    if (isDark) {
+-      document.documentElement.classList.add('dark');
+-      localStorage.setItem('theme', 'dark');
+-    } else {
+-      document.documentElement.classList.remove('dark');
+-      localStorage.setItem('theme', 'light');
+-    }
++    document.documentElement.classList.toggle('dark', isDark);
+   }, [isDark]);
+-
+-  return { isDark, toggleTheme: () => setIsDark((prev) => !prev) };
++  function toggleTheme() {
++    const next = !snapshot();
++    window.localStorage.setItem('theme', next ? 'dark' : 'light');
++    document.documentElement.classList.toggle('dark', next);
++    window.dispatchEvent(new Event(CHANGE_EVENT));
++  }
++  return { isDark, toggleTheme };
+ }
+-
+ export default useTheme;
+diff --git a/client/tests/loginFlow.test.ts b/client/tests/loginFlow.test.ts
+new file mode 100644
+index 0000000..e22b064
+--- /dev/null
++++ b/client/tests/loginFlow.test.ts
+@@ -0,0 +1,104 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createElement } from 'react';
++import { renderToString } from 'react-dom/server';
++import { MemoryRouter } from 'react-router-dom';
++import OtpStep from '../src/components/SignupForm/OtpStep';
++import OtpVerifyForm from '../src/components/LoginForm/OtpVerifyForm';
++import { validateIdentityField } from '../src/components/SignupForm/signup.validation';
++import {
++  normalizeIdentifier,
++  detectIdentifierType,
++} from '../src/utils/identifier';
++import { googleLogin } from '../src/api/authApi';
++
++test('signup OTP disables all input/actions while verification or resend is in flight', () => {
++  for (const busy of [
++    { loading: true, resending: false },
++    { loading: false, resending: true },
++  ]) {
++    const html = renderToString(
++      createElement(OtpStep, {
++        identifier: 'user@example.com',
++        code: '123456',
++        error: '',
++        resendSignal: 0,
++        onCodeChange() {},
++        onBack() {},
++        onResend() {},
++        onSubmit() {},
++        ...busy,
++      }),
++    );
++    const controls = html.match(/<(?:button|input)\b[^>]*>/g) ?? [];
++    assert.equal(controls.length, 9);
++    assert.ok(controls.every((tag) => tag.includes('disabled')));
++  }
++});
++test('OTP fields are labelled, support full-code autofill and fit narrow screens', () => {
++  const html = renderToString(
++    createElement(
++      MemoryRouter,
++      {},
++      createElement(OtpVerifyForm, {
++        identifier: 'user@example.com',
++        rememberMe: false,
++        onSuccess() {},
++        onBack() {},
++      }),
++    ),
++  );
++  assert.equal((html.match(/aria-label="رقم/g) ?? []).length, 6);
++  assert.ok(html.includes('maxLength="6"'));
++  assert.ok(html.includes('min-w-0'));
++});
++test('identifier normalization and signup/reset password limits match supported inputs', () => {
++  const phone = '+۹۸۹۱۲۳۴۵۶۷۸۹';
++  assert.equal(detectIdentifierType(phone), 'PHONE');
++  assert.equal(normalizeIdentifier(phone, 'PHONE'), '09123456789');
++  assert.equal(
++    normalizeIdentifier(' User@Example.com ', 'EMAIL'),
++    'user@example.com',
++  );
++  const values = {
++    name: 'Ali',
++    identifier: 'u@example.com',
++    password: 'abc123',
++    confirmPassword: 'abc123',
++  };
++  assert.equal(validateIdentityField('password', values), null);
++  for (const password of ['123456', 'abcdef', 'a1'.repeat(37)])
++    assert.ok(validateIdentityField('password', { ...values, password }));
++});
++test('Google account creation is explicit and pending approval does not create a client session', async () => {
++  const original = globalThis.fetch;
++  const requests: unknown[] = [];
++  globalThis.fetch = (async (_url, init) => {
++    requests.push(JSON.parse(String(init?.body)));
++    return new Response(
++      JSON.stringify(
++        requests.length === 1
++          ? { registrationRequired: true }
++          : { pendingApproval: true, message: 'منتظر تأیید' },
++      ),
++      { status: 200 },
++    );
++  }) as typeof fetch;
++  try {
++    assert.equal((await googleLogin('token')).status, 'registration_required');
++    assert.equal(
++      (await googleLogin('token', { role: 'Instructor', name: 'Teacher' }))
++        .status,
++      'pending_approval',
++    );
++    assert.deepEqual(requests, [
++      { idToken: 'token' },
++      {
++        idToken: 'token',
++        registration: { role: 'Instructor', name: 'Teacher' },
++      },
++    ]);
++  } finally {
++    globalThis.fetch = original;
++  }
++});
+diff --git a/docs/login-completion.fa.md b/docs/login-completion.fa.md
+new file mode 100644
+index 0000000..88c3112
+--- /dev/null
++++ b/docs/login-completion.fa.md
+@@ -0,0 +1,46 @@
++# تکمیل ورود و ثبت‌نام
++
++مبنای بررسی: commit `4df0548` روی main. این تغییرات نیاز به migration جدید ندارند.
++
++## رفتار
++
++- ابتدا شماره موبایل یا ایمیل وارد می‌شود؛ «ادامه» هیچ کدی ارسال نمی‌کند.
++- کاربر رمز یا دریافت کد را انتخاب می‌کند. گوگل فقط در مرحله اول حضور دارد.
++- حساب موجود گوگل وارد می‌شود. برای حساب جدید، پس از تأیید گوگل نام و نقش کارآموز/مدرس دریافت می‌شود. نقش مدیر قابل انتخاب نیست.
++- مدرس جدید از سیاست تأیید مدیر پیروی می‌کند؛ نقش و رد/تأیید حساب موجود با ثبت‌نام گوگل تغییر نمی‌کند.
++- اعتبار گوگل در درخواست ساخت حساب دوباره بررسی می‌شود. credential تنها در حافظه فرم است، نه URL یا localStorage.
++- بازیابی رمز، شناسه مرحله رمز را نگه می‌دارد؛ شماره فارسی نرمال می‌شود و شرایط رمز قبل از درخواست بررسی می‌شوند.
++- ارسال مجدد و تأیید کد هم‌زمان اجرا نمی‌شوند. شش رقم کامل ورود یک‌بار خودکار تأیید می‌شوند.
++- تم بین اجزای صفحه مشترک است. جای دکمه ثابت و ورودی کد در موبایل ۳۲۰ پیکسل بدون خروج از عرض صفحه است.
++- اصلاح قبلی پیام فارسی خطا و جداسازی محدودیت ارسال کد نیز در این بسته اعمال شده است.
++
++## تنظیم گوگل
++
++`GOOGLE_CLIENT_ID` در سرور و `VITE_GOOGLE_CLIENT_ID` در کلاینت باید مربوط به یک OAuth client باشند. origin کلاینت Codespace باید در تنظیمات Google مجاز باشد. نبود تنظیم کلاینت به‌جای دکمه خراب، پیام عدم دسترسی نشان می‌دهد.
++
++## تست
++
++از ریشه پروژه:
++
++```sh
++npm test -w client
++node --test server/tests/googleAuth.test.cjs server/tests/authErrors.test.cjs server/tests/sessionAccess.test.cjs
++npm run build -w server
++npm run build -w client
++npm run lint -w client
++```
++
++تست دستی با سرور و سرویس‌های Codespace روشن:
++
++1. شماره فارسی / ایمیل → ادامه؛ هنوز کد ارسال نشود. رمز اشتباه پیام فارسی بدهد.
++2. فراموشی رمز از مرحله رمز → شناسه پر باشد؛ کد واقعی، رمز جدید و ورود با آن را بررسی کنید.
++3. روش کد → دریافت، چسباندن شش رقم، کد اشتباه و ارسال مجدد؛ هر بار فقط یک درخواست.
++4. گوگل حساب موجود → ورود. گوگل حساب جدید → انتخاب نقش و ساخت حساب.
++5. تأیید مدرس روشن → حساب مدرس جدید منتظر مدیر؛ خاموش → ورود. حساب ردشده همچنان مسدود.
++6. تغییر تم → رفتن بین ورود/ثبت‌نام/فراموشی رمز؛ ورودی و ویجت گوگل با تم هماهنگ بمانند.
++
++در محیط بررسی، ۸۰ تست کلاینت و ۲۲ تست هدفمند سرور، build هر دو و lint موفق بودند. تست مرورگر با پاسخ‌های API و SDK گوگل شبیه‌سازی‌شده انجام شد. ارسال واقعی پیامک/ایمیل، OAuth واقعی و تراکنش‌های پایگاه داده Codespace باید در محیط شما بررسی شوند.
++
++## مشکل commit
++
++در نسخه بررسی‌شده hook اجباری commit یا تنظیم Husky پیدا نشد. علت خطای commit Codespace بدون خروجی همان دستور قابل تشخیص نیست. از حذف تغییرات، reset سخت و دور زدن hook بدون شناخت خطا استفاده نکنید. اعمال‌کننده در صورت تداخل پیش از تغییر فایل‌ها متوقف می‌شود؛ خروجی تداخل و خطای commit را ارسال کنید.
+diff --git a/server/src/lib/otpRateLimitKey.ts b/server/src/lib/otpRateLimitKey.ts
+new file mode 100644
+index 0000000..c22a79b
+--- /dev/null
++++ b/server/src/lib/otpRateLimitKey.ts
+@@ -0,0 +1,16 @@
++import type { Request } from 'express';
++import { detectIdentifierType, normalizeIdentifier } from './identifier';
++
++// Separate user journeys; different spellings of the same phone/email share a bucket.
++export function otpSendKey(req: Request): string {
++  const raw =
++    typeof req.body?.identifier === 'string' ? req.body.identifier.trim() : '';
++  const type = detectIdentifierType(raw);
++  const identifier = type ? normalizeIdentifier(raw, type) : 'invalid';
++  const purpose = /^\/register\/?$/i.test(req.path)
++    ? 'REGISTER'
++    : ['REGISTER', 'LOGIN', 'RESET_PASSWORD'].includes(req.body?.purpose)
++      ? req.body.purpose
++      : 'invalid';
++  return JSON.stringify([req.ip ?? 'unknown', identifier, purpose]);
++}
+diff --git a/server/src/middleware/errorHandler.ts b/server/src/middleware/errorHandler.ts
+index c9392f1..bb33ae6 100644
+--- a/server/src/middleware/errorHandler.ts
++++ b/server/src/middleware/errorHandler.ts
+@@ -2,7 +2,6 @@ import type { Request, Response, NextFunction } from 'express';
+ import { Prisma } from '@prisma/client';
+ import { ZodError } from 'zod';
+ import { AppError } from '../lib/errors';
+-import { env } from '../config/env';
+ 
+ // پیام فارسی برای رایج‌ترین کدهای خطای Prisma. کدهایی که پیش‌بینی نکردیم
+ // به‌صورت 500 عمومی می‌رن - نه اینکه پیام داخلی Prisma مستقیم لو بره
+@@ -15,6 +14,15 @@ function mapPrismaError(err: Prisma.PrismaClientKnownRequestError): {
+       return { status: 409, message: 'این مقدار قبلاً ثبت شده' };
+     case 'P2025': // update/delete روی رکوردی که وجود نداره
+       return { status: 404, message: 'رکورد مورد نظر یافت نشد' };
++    case 'P1001':
++    case 'P1002':
++    case 'P1008':
++    case 'P1017':
++    case 'P2024':
++      return {
++        status: 503,
++        message: 'سرویس موقتاً در دسترس نیست؛ کمی بعد دوباره تلاش کنید.',
++      };
+     case 'P2028': // تراکنش تایم‌اوت شد (مثلاً منتظر قفلِ یه ساخت/ایمپورتِ طولانی)
+       return {
+         status: 503,
+@@ -36,39 +44,58 @@ export function errorHandler(
+   err: unknown,
+   _req: Request,
+   res: Response,
+-  _next: NextFunction
++  _next: NextFunction,
+ ) {
+   // اگه پاسخ قبلاً شروع به ارسال شده (مثلاً streaming)، دیگه نمی‌شه
+   // res.json دوباره صدا زد
+   if (res.headersSent) {
+-    return;
++    return _next(err);
+   }
+ 
+   if (err instanceof AppError) {
+     return res
+       .status(err.statusCode)
+-      .json({ error: err.message, ...err.details });
++      .json({
++        ...err.details,
++        error: /[\u0600-\u06ff]/.test(err.message)
++          ? err.message
++          : err.statusCode >= 500
++            ? 'سرویس موقتاً در دسترس نیست؛ دوباره تلاش کنید.'
++            : 'انجام درخواست ممکن نشد؛ اطلاعات واردشده را بررسی کنید.',
++      });
+   }
+ 
+   if (err instanceof ZodError) {
+     return res
+       .status(400)
+-      .json({ error: err.issues[0]?.message ?? 'ورودی نامعتبر' });
++      .json({
++        error:
++          err.issues[0]?.message &&
++          /[\u0600-\u06ff]/.test(err.issues[0].message)
++            ? err.issues[0].message
++            : 'اطلاعات واردشده نامعتبر است.',
++      });
+   }
+ 
+   if (err instanceof Prisma.PrismaClientKnownRequestError) {
++    console.error('[database error]', err);
+     const { status, message } = mapPrismaError(err);
+     return res.status(status).json({ error: message });
+   }
+ 
+-  // خطای ناشناخته/غیرمنتظره - همیشه لاگ کن، ولی جزئیاتش رو فقط تو dev
+-  // به کلاینت برگردون (تو production نباید پیام داخلی/stack لو بره)
++  // Initialization/connectivity errors are not KnownRequestError instances.
++  if (err instanceof Prisma.PrismaClientInitializationError) {
++    console.error('[database unavailable]', err);
++    return res
++      .status(503)
++      .json({ error: 'سرویس موقتاً در دسترس نیست؛ کمی بعد دوباره تلاش کنید.' });
++  }
++
++  // Never return runtime messages, source paths or SQL to the browser, even in development.
+   console.error('[unhandled error]', err);
+-  const message =
+-    env.NODE_ENV !== 'production' && err instanceof Error
+-      ? err.message
+-      : 'خطای غیرمنتظره‌ی سرور رخ داد';
+-  res.status(500).json({ error: message });
++  res
++    .status(500)
++    .json({ error: 'خطای غیرمنتظره‌ای رخ داد؛ دوباره تلاش کنید.' });
+ }
+ 
+ // برای مسیری که هیچ router‌ای match نمی‌کنه
+diff --git a/server/src/middleware/rateLimiters.ts b/server/src/middleware/rateLimiters.ts
+index 4d827b7..3ca7fcb 100644
+--- a/server/src/middleware/rateLimiters.ts
++++ b/server/src/middleware/rateLimiters.ts
+@@ -1,3 +1,4 @@
++import { otpSendKey } from '../lib/otpRateLimitKey';
+ import rateLimit from 'express-rate-limit';
+ import { RedisRateLimitStore } from '../lib/redisRateLimitStore';
+ import { rateLimitRedis } from '../lib/rateLimitRedis';
+@@ -27,8 +28,17 @@ export const otpSendLimiter = rateLimit({
+   max: 1,
+   standardHeaders: true,
+   legacyHeaders: false,
+-  keyGenerator: (req) => `${req.ip}:${req.body?.identifier ?? 'unknown'}`,
+-  message: { error: 'کد قبلی هنوز معتبره. کمی صبر کن و دوباره تلاش کن.' },
++  keyGenerator: otpSendKey,
++  // Failed validation/captcha/database requests did not send a usable code.
++  // Hourly IP/identifier abuse limits remain enforced by otpAbuseGuard.
++  skipFailedRequests: true,
++  handler: (_req, res) => {
++    const retryAfterSeconds = Math.max(1, Math.ceil(Number(res.getHeader('Retry-After')) || 90));
++    res.status(429).json({
++      error: `برای درخواست دوبارهٔ کد، ${retryAfterSeconds.toLocaleString('fa-IR')} ثانیه صبر کنید.`,
++      retryAfterSeconds,
++    });
++  },
+ });
+ 
+ export const otpVerifyLimiter = rateLimit({
+diff --git a/server/src/routes/auth/google/google.routes.ts b/server/src/routes/auth/google/google.routes.ts
+index 49572ea..3d2d244 100644
+--- a/server/src/routes/auth/google/google.routes.ts
++++ b/server/src/routes/auth/google/google.routes.ts
+@@ -89,7 +89,9 @@ router.post(
+     }
+ 
+     try {
+-      const result = await loginWithGoogle(parsed.data.idToken);
++      const result = await loginWithGoogle(parsed.data.idToken, parsed.data.registration);
++
++      if (result.type === 'registration_required') return res.json({ registrationRequired: true });
+ 
+       if (result.type === 'pending') {
+         return res.json({
+@@ -109,9 +111,7 @@ router.post(
+         throw error;
+       }
+ 
+-      return res.status(401).json({
+-        error: 'ورود با گوگل ناموفق بود',
+-      });
++      throw error;
+     }
+   })
+ );
+diff --git a/server/src/routes/auth/google/google.service.ts b/server/src/routes/auth/google/google.service.ts
+index 3d5f8a1..b41629f 100644
+--- a/server/src/routes/auth/google/google.service.ts
++++ b/server/src/routes/auth/google/google.service.ts
+@@ -1,3 +1,4 @@
++import { readCreationPolicy } from '../../../lib/approvalPolicy';
+ import { OAuth2Client } from 'google-auth-library';
+ 
+ import { prisma } from '../../../lib/prisma';
+@@ -13,14 +14,20 @@ import { instructorApprovalBlockMessage, serializeMe } from '../auth.helpers';
+ const googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
+ 
+ async function verifyGoogleToken(idToken: string) {
+-  const ticket = await googleClient.verifyIdToken({
+-    idToken,
+-    audience: env.GOOGLE_CLIENT_ID,
+-  });
++  if (!env.GOOGLE_CLIENT_ID)
++    throw new AppError(503, 'ورود با گوگل فعلاً در دسترس نیست');
++  const ticket = await googleClient
++    .verifyIdToken({
++      idToken,
++      audience: env.GOOGLE_CLIENT_ID,
++    })
++    .catch(() => {
++      throw new AppError(401, 'اعتبار ورود با گوگل تمام شده؛ دوباره تلاش کنید');
++    });
+ 
+   const payload = ticket.getPayload();
+ 
+-  if (!payload?.email || !payload.email_verified) {
++  if (!payload?.sub || !payload.email || !payload.email_verified) {
+     throw badRequest('توکن گوگل نامعتبره');
+   }
+ 
+@@ -50,7 +57,7 @@ export async function linkGoogleAccount(userId: string, idToken: string) {
+   if (owner && owner.id !== currentUser.id) {
+     throw new AppError(
+       409,
+-      'این حساب گوگل قبلاً به یه حساب دیگه تو همین سایت وصل شده'
++      'این حساب گوگل قبلاً به یه حساب دیگه تو همین سایت وصل شده',
+     );
+   }
+ 
+@@ -72,72 +79,95 @@ export async function linkGoogleAccount(userId: string, idToken: string) {
+   return serializeMe(user);
+ }
+ 
+-export async function loginWithGoogle(idToken: string) {
++export async function loginWithGoogle(
++  idToken: string,
++  registration?: { role: 'Student' | 'Instructor'; name: string },
++) {
+   const payload = await verifyGoogleToken(idToken);
+ 
+   // اول با googleId (شناسه‌ی پایدار گوگل)، بعد با ایمیل. قبلاً یه OR واحد بود
+   // و اگه googleId مال یه حساب و ایمیل مال حساب دیگه بود، حساب اشتباه
+   // انتخاب می‌شد
+-  let user =
+-    (await prisma.user.findUnique({
+-      where: {
+-        googleId: payload.sub,
+-      },
+-    })) ??
+-    (await prisma.user.findFirst({
+-      where: {
+-        email: payload.email,
+-      },
+-    }));
+-
+-  if (!user) {
+-    throw new AppError(
+-      403,
+-      'حسابی با این ایمیل ثبت نشده. اول باید از صفحه‌ی ثبت‌نام حساب بسازی'
+-    );
+-  }
+-
+-  // ایمیل ممکنه بعداً به آدم دیگه‌ای (مثلاً ایمیل سازمانی بازیافت‌شده) با
+-  // حساب گوگل دیگه‌ای داده بشه؛ اگه این حساب قبلاً به یه حساب گوگلِ دیگه
+-  // وصل شده، فقط با ایمیل واردش نمی‌کنیم
+-  if (user.googleId && user.googleId !== payload.sub) {
+-    throw new AppError(
+-      403,
+-      'این ایمیل به یه حساب گوگل دیگه وصل شده. با روش قبلی وارد شو'
+-    );
+-  }
+-
+-  // حساب تایید‌نشده ممکنه رمزش رو یه نفر دیگه موقع ثبت‌نام ناتمام گذاشته باشه؛
+-  // صاحب واقعی ایمیل (با گوگل) تاییدش می‌کنه، پس اون رمز باید پاک بشه
+-  const wasNeverVerified = !user.emailVerifiedAt && !user.phoneVerifiedAt;
+-
+-  if (!user.googleId || !user.emailVerifiedAt) {
+-    user = await prisma.user.update({
+-      where: {
+-        id: user.id,
+-      },
+-      data: {
+-        ...(wasNeverVerified
+-          ? {
+-              passwordHash: null,
+-            }
+-          : {}),
+-
+-        ...(user.googleId
+-          ? {}
+-          : {
+-              googleId: payload.sub,
+-            }),
+-
+-        ...(user.emailVerifiedAt
+-          ? {}
+-          : {
+-              emailVerifiedAt: new Date(),
+-            }),
+-      },
+-    });
+-  }
+-
++  const user = await prisma.$transaction(async (db) => {
++    // Serialize Google sign-ins; lock existing users against simultaneous registration edits.
++    await db.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${payload.sub}))`;
++    let user =
++      (await db.user.findUnique({
++        where: {
++          googleId: payload.sub,
++        },
++      })) ??
++      (await db.user.findFirst({
++        where: {
++          email: payload.email,
++        },
++      }));
++
++    if (!user) {
++      if (!registration) return null;
++      const policy = await readCreationPolicy(db);
++      return db.user.create({
++        data: {
++          email: payload.email,
++          googleId: payload.sub,
++          emailVerifiedAt: new Date(),
++          name: registration.name,
++          role: registration.role,
++          approvalStatus:
++            registration.role === 'Instructor' &&
++            policy.requireInstructorApproval
++              ? 'Pending'
++              : 'Approved',
++        },
++      });
++    }
++    await db.$queryRaw`SELECT id FROM users WHERE id = ${user.id} FOR UPDATE`;
++    user = await db.user.findUniqueOrThrow({ where: { id: user.id } });
++
++    // ایمیل ممکنه بعداً به آدم دیگه‌ای (مثلاً ایمیل سازمانی بازیافت‌شده) با
++    // حساب گوگل دیگه‌ای داده بشه؛ اگه این حساب قبلاً به یه حساب گوگلِ دیگه
++    // وصل شده، فقط با ایمیل واردش نمی‌کنیم
++    if (user.googleId && user.googleId !== payload.sub) {
++      throw new AppError(
++        403,
++        'این ایمیل به یه حساب گوگل دیگه وصل شده. با روش قبلی وارد شو',
++      );
++    }
++
++    // حساب تایید‌نشده ممکنه رمزش رو یه نفر دیگه موقع ثبت‌نام ناتمام گذاشته باشه؛
++    // صاحب واقعی ایمیل (با گوگل) تاییدش می‌کنه، پس اون رمز باید پاک بشه
++    const wasNeverVerified = !user.emailVerifiedAt && !user.phoneVerifiedAt;
++
++    if (!user.googleId || !user.emailVerifiedAt) {
++      user = await db.user.update({
++        where: {
++          id: user.id,
++        },
++        data: {
++          ...(wasNeverVerified
++            ? {
++                passwordHash: null,
++              }
++            : {}),
++
++          ...(user.googleId
++            ? {}
++            : {
++                googleId: payload.sub,
++              }),
++
++          ...(user.emailVerifiedAt || user.email !== payload.email
++            ? {}
++            : {
++                emailVerifiedAt: new Date(),
++              }),
++        },
++      });
++    }
++
++    return user;
++  });
++  if (!user) return { type: 'registration_required' as const };
+   const approvalMessage = instructorApprovalBlockMessage(user);
+ 
+   if (approvalMessage) {
+@@ -149,7 +179,7 @@ export async function loginWithGoogle(idToken: string) {
+ 
+   const { accessToken, refreshToken, sid } = await issueTokenPair(
+     user.id,
+-    user.role
++    user.role,
+   );
+ 
+   forceLogoutOtherSessions(user.id, sid);
+diff --git a/server/src/routes/auth/otp/otp.service.ts b/server/src/routes/auth/otp/otp.service.ts
+index b718862..44429fc 100644
+--- a/server/src/routes/auth/otp/otp.service.ts
++++ b/server/src/routes/auth/otp/otp.service.ts
+@@ -1,3 +1,4 @@
++import { env } from '../../../config/env';
+ import { prisma } from '../../../lib/prisma';
+ 
+ import {
+@@ -90,10 +91,12 @@ export async function requestOtp(data: RequestOtpData, ip: string) {
+         userId: user.id,
+       });
+ 
++      if (env.NODE_ENV === 'development') console.info(`[OTP] ${data.purpose}: code_created`);
+       sendOtp({ identifier: value, channel, code }).catch((error) => {
+         console.error('sendOtp failed:', error);
+       });
+     } else {
++      if (env.NODE_ENV === 'development') console.info(`[OTP] ${data.purpose}: account_not_found; no code created`);
+       await simulateOtpCreationCost();
+     }
+ 
+diff --git a/server/src/validation/authSchemas.ts b/server/src/validation/authSchemas.ts
+index 8b1f681..4c4f3ca 100644
+--- a/server/src/validation/authSchemas.ts
++++ b/server/src/validation/authSchemas.ts
+@@ -66,6 +66,10 @@ export const resetPasswordSchema = z.object({
+ 
+ export const googleAuthSchema = z.object({
+   idToken: z.string().min(10).max(4096),
++  registration: z.object({
++    role: z.enum(['Student', 'Instructor']),
++    name: z.string().trim().min(2, 'نام باید حداقل ۲ کاراکتر باشد').max(100),
++  }).optional(),
+ });
+ 
+ export const updateMeSchema = z.object({
+diff --git a/server/tests/authErrors.test.cjs b/server/tests/authErrors.test.cjs
+new file mode 100644
+index 0000000..78e33b9
+--- /dev/null
++++ b/server/tests/authErrors.test.cjs
+@@ -0,0 +1,68 @@
++const test=require('node:test');const assert=require('node:assert/strict');
++const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript');
++const express=require('express');const {Prisma}=require('@prisma/client');const {z}=require('zod');
++function setup(doubles={}){
++ const root=path.resolve(__dirname,'../src'),cache=new Map(),logs=[],counters=new Map();
++ const redis={isReady:true,async sendCommand(args){const key=args[3];if(args[1].includes("'DECR'")){const row=counters.get(key);if(row)row.count=Math.max(0,row.count-1);return row?.count||0;}
++  let row=counters.get(key);if(!row||row.until<=Date.now()){row={count:0,until:Date.now()+Number(args[4])};counters.set(key,row);}return [++row.count,row.until-Date.now()];}};
++ function load(file){const full=path.resolve(root,file);const key=path.relative(root,full);if(key in doubles)return doubles[key];if(cache.has(full))return cache.get(full).exports;const module={exports:{}};cache.set(full,module);
++ const code=ts.transpileModule(fs.readFileSync(full,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText;
++ vm.runInNewContext(code,{module,exports:module.exports,console:{...console,error:(...args)=>logs.push(args),info:(...args)=>logs.push(args)},Date,Error,setTimeout,clearTimeout,
++ require:name=>name==='../lib/rateLimitRedis'?{rateLimitRedis:redis}:name.startsWith('.')?load(path.relative(root,path.resolve(path.dirname(full),name+'.ts'))):require(name)},{filename:full});return module.exports;}
++ return {load,logs,redis};
++}
++async function listen(t,app){const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>new Promise(r=>{server.close(r);server.closeAllConnections();}));return async(url,body)=>fetch(`http://127.0.0.1:${server.address().port}${url}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body||{})});}
++test('HTTP errors: database outage, Prisma validation and unknown failures never expose internals',async t=>{
++ const {load,logs}=setup();const {errorHandler}=load('middleware/errorHandler.ts');const app=express();
++ const errors=[new Prisma.PrismaClientInitializationError('localhost:5432 /secret/server.ts SELECT passwordHash','5.22','P1001'),
++ new Prisma.PrismaClientKnownRequestError('SQL /private/file',{code:'P1001',clientVersion:'5.22'}),new Prisma.PrismaClientValidationError('Invalid prisma.user.findFirst() /secret',{clientVersion:'5.22'}),new Error('secret stack /workspaces/private')];
++ app.post('/:index',(req,_res,next)=>next(errors[Number(req.params.index)]));app.use(errorHandler);const request=await listen(t,app);
++ for(let i=0;i<errors.length;i++){const response=await request('/'+i);assert.equal(response.status,i<2?503:500);const body=await response.json();assert.match(body.error,/[\u0600-\u06ff]/);assert.doesNotMatch(JSON.stringify(body),/localhost|secret|prisma|workspaces|SELECT|stack/);}
++ assert.equal(logs.length,4);
++});
++test('HTTP errors: conflict and operational flags preserved; English validation becomes Persian',async t=>{
++ const {load}=setup();const {errorHandler}=load('middleware/errorHandler.ts');const {AppError}=load('lib/errors.ts');const app=express();
++ const invalid=z.object({email:z.string().email()}).safeParse({email:'invalid'}).error;
++ const errors=[new AppError(400,'کد امنیتی لازم است',{captchaRequired:true}),new AppError(403,'محدودیت پلن',{reason:'limit_reached'}),new Prisma.PrismaClientKnownRequestError('private details',{code:'P2002',clientVersion:'5.22'}),invalid];
++ app.post('/:index',(req,_res,next)=>next(errors[Number(req.params.index)]));app.use(errorHandler);const request=await listen(t,app);
++ assert.equal((await (await request('/0')).json()).captchaRequired,true);assert.equal((await (await request('/1')).json()).reason,'limit_reached');assert.equal((await request('/2')).status,409);
++ const body=await (await request('/3')).json();assert.match(body.error,/[\u0600-\u06ff]/);assert.doesNotMatch(body.error,/Invalid|email/);
++});
++test('OTP cooldown: reset does not block signup/login; normalized identifiers and fixed register purpose prevent bypass',async t=>{
++ const {load}=setup();const {otpSendLimiter}=load('middleware/rateLimiters.ts');const app=express();app.use(express.json());app.post(['/otp/request','/register'],otpSendLimiter,(_req,res)=>res.json({ok:true}));const request=await listen(t,app);
++ const identifier='09123456789';
++ assert.equal((await request('/otp/request',{identifier,purpose:'RESET_PASSWORD'})).status,200);
++ assert.equal((await request('/register',{identifier,purpose:'LOGIN'})).status,200);
++ assert.equal((await request('/otp/request',{identifier,purpose:'LOGIN'})).status,200);
++ for(const spelling of [identifier,'+989123456789','۰۹۱۲۳۴۵۶۷۸۹']){
++  const response=await request('/otp/request',{identifier:spelling,purpose:'RESET_PASSWORD'});assert.equal(response.status,429);const body=await response.json();assert.ok(body.retryAfterSeconds>0);assert.ok(response.headers.get('Retry-After'));assert.ok(!body.error.includes('کد قبلی'));
++ }
++ assert.equal((await request('/register/',{identifier,purpose:'RESET_PASSWORD'})).status,429);
++});
++test('OTP cooldown: captcha/database failures can retry, successful requests remain limited',async t=>{
++ const {load}=setup();const {otpSendLimiter}=load('middleware/rateLimiters.ts');const {errorHandler}=load('middleware/errorHandler.ts');const {AppError}=load('lib/errors.ts');const app=express();app.use(express.json());
++ app.post('/otp/request',otpSendLimiter,(req,res,next)=>{
++  if(req.body.failure==='captcha')return next(new AppError(400,'کد امنیتی لازم است',{captchaRequired:true}));
++  if(req.body.failure==='database')return next(new Prisma.PrismaClientInitializationError('private','5.22','P1001'));
++  res.json({ok:true});
++ });app.use(errorHandler);const request=await listen(t,app);const body={identifier:'test@example.com',purpose:'RESET_PASSWORD'};
++ assert.equal((await request('/otp/request',{...body,failure:'captcha'})).status,400);
++ assert.equal((await request('/otp/request',{...body,failure:'database'})).status,503);
++ assert.equal((await request('/otp/request',body)).status,200);assert.equal((await request('/otp/request',body)).status,429);
++});
++test('OTP diagnosis: unknown account has no code, login/reset for an existing account both deliver; public response stays generic',async()=>{
++ let exists=false,created=0,sent=0;const env={NODE_ENV:'development'};
++ const {load,logs}=setup({
++  'config/env.ts':{env},
++  'lib/prisma.ts':{prisma:{user:{findFirst:async()=>exists?{id:'test-user'}:null}}},
++  'lib/otp.ts':{createOtp:async()=>{created++;return {code:'test-code'};},simulateOtpCreationCost:async()=>{}},
++  'lib/otpAbuseGuard.ts':{assertOtpSendAllowed:async()=>{}},
++  'services/otpSender.ts':{sendOtp:async()=>{sent++;}},
++  'lib/authTokens.ts':{},'realtime/socket.ts':{},
++ });
++ const {requestOtp}=load('routes/auth/otp/otp.service.ts');
++ const missing=await requestOtp({identifier:'09123456789',purpose:'RESET_PASSWORD'},'test-ip');assert.equal(created,0);assert.equal(sent,0);assert.match(logs[0][0],/account_not_found/);
++ exists=true;const found=await requestOtp({identifier:'09123456789',purpose:'RESET_PASSWORD'},'test-ip');await requestOtp({identifier:'09123456789',purpose:'LOGIN'},'test-ip');assert.equal(created,2);assert.equal(sent,2);assert.equal(missing.message,found.message);
++ assert.match(logs[1][0],/RESET_PASSWORD: code_created/);assert.match(logs[2][0],/LOGIN: code_created/);
++ const count=logs.length;env.NODE_ENV='production';exists=false;await requestOtp({identifier:'09123456789',purpose:'RESET_PASSWORD'},'test-ip');assert.equal(logs.length,count);
++});
+diff --git a/server/tests/googleAuth.test.cjs b/server/tests/googleAuth.test.cjs
+new file mode 100644
+index 0000000..31b2a2a
+--- /dev/null
++++ b/server/tests/googleAuth.test.cjs
+@@ -0,0 +1,211 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const fs = require('node:fs');
++const path = require('node:path');
++const vm = require('node:vm');
++const ts = require('typescript');
++function load(file, mocks = {}) {
++  const filename = path.join(__dirname, '../src', file);
++  const module = { exports: {} };
++  vm.runInNewContext(
++    ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
++      compilerOptions: {
++        module: ts.ModuleKind.CommonJS,
++        target: ts.ScriptTarget.ES2022,
++      },
++    }).outputText,
++    {
++      module,
++      exports: module.exports,
++      Date,
++      require: (name) => {
++        if (!(name in mocks)) throw Error(name);
++        return mocks[name];
++      },
++    },
++    { filename },
++  );
++  return module.exports;
++}
++const errors = load('lib/errors.ts');
++function setup({
++  user = null,
++  approval = true,
++  verified = true,
++  invalidToken = false,
++  dbFailure = false,
++} = {}) {
++  let stored = user && {
++    email: 'user@example.com',
++    googleId: null,
++    emailVerifiedAt: null,
++    phoneVerifiedAt: null,
++    role: 'Student',
++    approvalStatus: 'Approved',
++    passwordHash: 'old',
++    ...user,
++  };
++  const calls = { created: 0, issued: 0, verified: 0, updated: 0 };
++  const db = {
++    $queryRaw: async () => [],
++    user: {
++      findUnique: async ({ where }) =>
++        stored?.googleId === where.googleId ? stored : null,
++      findFirst: async () => stored,
++      findUniqueOrThrow: async () => stored,
++      create: async ({ data }) => {
++        calls.created++;
++        stored = { id: 'new', ...data };
++        return stored;
++      },
++      update: async ({ data }) => {
++        calls.updated++;
++        stored = { ...stored, ...data };
++        return stored;
++      },
++    },
++  };
++  const service = load('routes/auth/google/google.service.ts', {
++    'google-auth-library': {
++      OAuth2Client: class {
++        async verifyIdToken({ audience }) {
++          calls.verified++;
++          assert.equal(audience, 'client-id');
++          if (invalidToken) throw Error('invalid');
++          return {
++            getPayload: () => ({
++              sub: 'google-1',
++              email: 'USER@example.com',
++              email_verified: verified,
++            }),
++          };
++        }
++      },
++    },
++    '../../../config/env': { env: { GOOGLE_CLIENT_ID: 'client-id' } },
++    '../../../lib/prisma': {
++      prisma: {
++        $transaction: async (fn) => {
++          if (dbFailure) throw Error('database unavailable');
++          return fn(db);
++        },
++      },
++    },
++    '../../../lib/approvalPolicy': {
++      readCreationPolicy: async () => ({ requireInstructorApproval: approval }),
++    },
++    '../../../lib/authTokens': {
++      issueTokenPair: async () => {
++        calls.issued++;
++        return {
++          accessToken: 'access',
++          refreshToken: 'refresh',
++          sid: 'session',
++        };
++      },
++    },
++    '../../../realtime/socket': { forceLogoutOtherSessions() {} },
++    '../../../lib/errors': errors,
++    '../auth.helpers': {
++      serializeMe: (user) => user,
++      instructorApprovalBlockMessage: (user) =>
++        user.role === 'Instructor' && user.approvalStatus !== 'Approved'
++          ? 'منتظر تأیید'
++          : null,
++    },
++  });
++  return { service, calls, user: () => stored };
++}
++test('new Google identity requires explicit registration; token is verified again and email comes from Google', async () => {
++  const s = setup();
++  assert.equal(
++    (await s.service.loginWithGoogle('token')).type,
++    'registration_required',
++  );
++  assert.equal(s.calls.created, 0);
++  assert.equal(s.calls.issued, 0);
++  assert.equal(
++    (
++      await s.service.loginWithGoogle('token', {
++        role: 'Student',
++        name: 'Student',
++      })
++    ).type,
++    'authenticated',
++  );
++  assert.equal(s.calls.verified, 2);
++  assert.equal(s.user().email, 'user@example.com');
++  assert.equal(s.user().role, 'Student');
++  assert.ok(s.user().emailVerifiedAt);
++});
++for (const approval of [true, false])
++  test(`Google instructor registration respects approval policy: ${approval}`, async () => {
++    const s = setup({ approval });
++    const result = await s.service.loginWithGoogle('token', {
++      role: 'Instructor',
++      name: 'Teacher',
++    });
++    assert.equal(result.type, approval ? 'pending' : 'authenticated');
++    assert.equal(s.calls.issued, approval ? 0 : 1);
++  });
++test('existing account role/rejection cannot be changed through Google registration', async () => {
++  const s = setup({
++    user: {
++      id: 'existing',
++      role: 'Instructor',
++      approvalStatus: 'Rejected',
++      emailVerifiedAt: new Date(),
++    },
++  });
++  assert.equal(
++    (
++      await s.service.loginWithGoogle('token', {
++        role: 'Student',
++        name: 'Other',
++      })
++    ).type,
++    'pending',
++  );
++  assert.equal(s.user().role, 'Instructor');
++  assert.equal(s.user().approvalStatus, 'Rejected');
++  assert.equal(s.calls.issued, 0);
++});
++test('Google claims from an unverified or invalid token never create accounts', async () => {
++  for (const options of [{ verified: false }, { invalidToken: true }]) {
++    const s = setup(options);
++    await assert.rejects(
++      s.service.loginWithGoogle('bad', { role: 'Student', name: 'User' }),
++    );
++    assert.equal(s.calls.created, 0);
++  }
++});
++test('Google verification clears a pre-registration password, preserves a verified password, rejects foreign Google IDs', async () => {
++  const unverified = setup({ user: { id: 'u' } });
++  await unverified.service.loginWithGoogle('token');
++  assert.equal(unverified.user().passwordHash, null);
++  const verified = setup({ user: { id: 'u', emailVerifiedAt: new Date() } });
++  await verified.service.loginWithGoogle('token');
++  assert.equal(verified.user().passwordHash, 'old');
++  const foreign = setup({ user: { id: 'u', googleId: 'other' } });
++  await assert.rejects(
++    foreign.service.loginWithGoogle('token'),
++    (e) => e.statusCode === 403,
++  );
++  assert.equal(foreign.calls.issued, 0);
++});
++test('Google registration schema rejects admin role and invalid profile input', () => {
++  const { googleAuthSchema } = load('validation/authSchemas.ts', {
++    zod: require('zod'),
++    '../lib/password': { PASSWORD_REGEX: /^(?=.*[A-Za-z])(?=.*\d).{6,}$/ },
++  });
++  for (const registration of [
++    { role: 'SuperAdmin', name: 'Admin' },
++    { role: 'Student', name: '' },
++    { role: 'Student', name: 'a'.repeat(101) },
++  ])
++    assert.equal(
++      googleAuthSchema.safeParse({ idToken: 'valid-token', registration })
++        .success,
++      false,
++    );
++});
