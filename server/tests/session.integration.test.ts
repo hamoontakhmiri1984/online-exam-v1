@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import crypto from 'crypto';
 
 import { redis } from '../src/lib/redis';
+import { waitForRedis } from '../src/lib/redisConnection';
 import { AppError } from '../src/lib/errors';
 import {
   createSession,
@@ -19,25 +20,18 @@ import { unavailable } from './helpers/serviceGuard';
 let redisAvailable = false;
 
 before(async () => {
-  let timer: NodeJS.Timeout | undefined;
   try {
-    await Promise.race([
-      redis.ping(),
-      new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error('redis timeout')), 3000);
-      }),
-    ]);
+    // The production client deliberately rejects commands before readiness.
+    // Wait for the connection and PONG instead of treating startup as an outage.
+    await waitForRedis(redis);
     redisAvailable = true;
   } catch {
     redisAvailable = false;
-  } finally {
-    clearTimeout(timer);
   }
 });
 
-after(async () => {
-  // disconnect به‌جای quit: اگه Redis بالا نیومده باشه quit هم معلق می‌مونه
-  await redis.disconnect().catch(() => undefined);
+after(() => {
+  if (redis.isOpen) redis.destroy();
 });
 
 const newUserId = () => `test-user-${crypto.randomUUID()}`;
