@@ -2,6 +2,7 @@ import type { Category } from '../constants/categories';
 import { apiRequest, ApiError } from '../lib/apiClient';
 
 export type Exam = {
+  instructor?: { id: string; name: string | null; username: string | null };
   id: string;
   title: string;
   category: Category;

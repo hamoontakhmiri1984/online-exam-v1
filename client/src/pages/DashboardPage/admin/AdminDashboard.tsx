@@ -336,7 +336,7 @@ export default function AdminDashboard() {
   const displayName = user?.name || user?.username;
 
   return (
-    <AppLayout title="داشبورد">
+    <AppLayout title="پیشخوان مدیریتی">
       {error && (
         <Toast
           message={error}
@@ -349,7 +349,7 @@ export default function AdminDashboard() {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-            {displayName ? `سلام، ${displayName}` : 'سلام'}
+            پیشخوان مدیریتی{displayName ? ` · ${displayName}` : ''}
           </h1>
           {data && (
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">

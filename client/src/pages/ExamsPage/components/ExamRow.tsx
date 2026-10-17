@@ -12,6 +12,8 @@ import { formatExamDateTime } from '../../../utils/formatDate';
 type ExamRowProps = {
   exam: Exam;
   canManage: boolean;
+  isObserver?: boolean;
+  canTake?: boolean;
   participantCount: number;
   onTake: (exam: Exam) => void;
   onOpenQuestions: (exam: Exam) => void;
@@ -44,6 +46,8 @@ const STATUS_BADGE: Record<
 function ExamRow({
   exam,
   canManage,
+  isObserver = false,
+  canTake = false,
   participantCount,
   onTake,
   onOpenQuestions,
@@ -57,9 +61,10 @@ function ExamRow({
   return (
     <tr className="border-b border-gray-100 dark:border-gray-800 text-gray-700 dark:text-gray-200 transition duration-200 hover:bg-gray-50 dark:hover:bg-gray-800/50">
       <td className="py-3">{exam.title}</td>
+      {isObserver && <td className="py-3">{exam.instructor?.name?.trim() || exam.instructor?.username || 'مدرس بدون نام'}</td>}
       <td className="py-3">{exam.category}</td>
       <td className="py-3">{formatExamDateTime(exam.date)}</td>
-      {canManage && (
+      {(canManage || isObserver) && (
         <td className="py-3">{participantCount.toLocaleString('fa-IR')}</td>
       )}
       <td className="py-3">
@@ -73,7 +78,7 @@ function ExamRow({
         <div className="flex items-center gap-2">
           {/* فقط دانشجو می‌تونه آزمون بده (روت /exams/:examId/take و سرور هر دو
               Student-only ـن)؛ برای مدرس/ادمین این دکمه فقط به داشبورد برمی‌گردوند */}
-          {!canManage && exam.status !== 'draft' && (
+          {canTake && exam.status !== 'draft' && (
             <button
               onClick={() => onTake(exam)}
               className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-success-500/10 hover:text-success-600 dark:text-gray-400 dark:hover:bg-success-500/15 dark:hover:text-success-500 transition"
@@ -81,6 +86,9 @@ function ExamRow({
             >
               <PlayCircle size={16} />
             </button>
+          )}
+          {isObserver && (
+            <button onClick={() => onOpenQuestions(exam)} className="rounded-lg px-3 py-2 text-brand-600 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-950/40">مشاهده سؤال‌ها</button>
           )}
           {canManage && (
             <>

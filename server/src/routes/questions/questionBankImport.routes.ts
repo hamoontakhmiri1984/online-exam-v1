@@ -41,7 +41,7 @@ function serializeQuestion(question: ImportedExamQuestion) {
 
 router.post(
   '/from-bank',
-  requireRole('Instructor', 'SuperAdmin'),
+  requireRole('Instructor'),
   asyncHandler(async (req, res) => {
     const { sub, role } = req.user!;
 

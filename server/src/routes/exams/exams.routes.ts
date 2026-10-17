@@ -42,10 +42,13 @@ router.get(
 
     const exams = await prisma.exam.findMany({
       where,
-      include: examInclude,
+      include: { ...examInclude, ...(role === 'SuperAdmin' ? { instructor: { select: { id: true, name: true, username: true } } } : {}) },
       orderBy: { scheduledAt: 'desc' },
     });
-    res.json(exams.map(serializeExam));
+    res.json(exams.map(exam => ({
+      ...serializeExam(exam),
+      ...(role === 'SuperAdmin' ? { instructor: exam.instructor } : {}),
+    })));
   })
 );
 
@@ -67,7 +70,7 @@ router.get(
 
 router.post(
   '/',
-  requireRole('Instructor', 'SuperAdmin'),
+  requireRole('Instructor'),
   asyncHandler(async (req, res) => {
     const { role, sub } = req.user!;
 
@@ -101,7 +104,7 @@ router.post(
 
 router.put(
   '/:id',
-  requireRole('Instructor', 'SuperAdmin'),
+  requireRole('Instructor'),
   asyncHandler(async (req, res) => {
     const { role, sub } = req.user!;
 
@@ -136,7 +139,7 @@ router.put(
 // نداره و دانشجو رو وسط اجرا با صفحه‌ی خالی روبه‌رو می‌کنه
 router.post(
   '/:id/publish',
-  requireRole('Instructor', 'SuperAdmin'),
+  requireRole('Instructor'),
   asyncHandler(async (req, res) => {
     const { role, sub } = req.user!;
     const { exam, allowed } = await loadAccessibleExam(
@@ -174,7 +177,7 @@ router.post(
 // forbidden رد می‌شه و جوابش برای همیشه گم می‌شه
 router.post(
   '/:id/unpublish',
-  requireRole('Instructor', 'SuperAdmin'),
+  requireRole('Instructor'),
   asyncHandler(async (req, res) => {
     const { role, sub } = req.user!;
     const { exam, allowed } = await loadAccessibleExam(
@@ -219,7 +222,7 @@ router.post(
 
 router.delete(
   '/:id',
-  requireRole('Instructor', 'SuperAdmin'),
+  requireRole('Instructor'),
   asyncHandler(async (req, res) => {
     const { role, sub } = req.user!;
     const { exam, allowed } = await loadAccessibleExam(

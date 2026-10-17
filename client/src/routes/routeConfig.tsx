@@ -156,6 +156,7 @@ export const routes: RouteConfig[] = [
     path: '/exams/:examId/take',
     Component: ExamRunnerPage,
     protected: true,
+    allowedRoles: ['Student'],
   },
   {
     path: '/exams/:examId/review',

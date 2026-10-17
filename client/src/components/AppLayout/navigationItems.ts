@@ -20,7 +20,7 @@ import {
 
 import type { Role } from '../../api/authApi';
 
-import { ALL_ROLES, MANAGEMENT_ROLES } from '../../constants/roles';
+import { ALL_ROLES } from '../../constants/roles';
 
 export type NavigationItem = {
   label: string;
@@ -33,28 +33,30 @@ export type NavigationItem = {
 export const navigationItems: NavigationItem[] = [
   {
     label: 'داشبورد',
+    adminLabel: 'پیشخوان مدیریتی',
     to: '/dashboard',
     icon: LayoutDashboard,
     roles: ALL_ROLES,
   },
   {
     label: 'آزمون‌ها',
+    adminLabel: 'نظارت بر آزمون‌ها',
     to: '/exams',
     icon: FileText,
     roles: ALL_ROLES,
   },
   {
     label: 'تمرین‌ها',
-    adminLabel: 'مجموعه‌های تمرین',
+
     to: '/practice',
     icon: BookOpenCheck,
-    roles: ALL_ROLES,
+    roles: ['Instructor', 'Student'],
   },
   {
     label: 'بانک سوال',
     to: '/question-banks',
     icon: LibraryBig,
-    roles: MANAGEMENT_ROLES,
+    roles: ['Instructor'],
   },
   {
     label: 'دانشجویان',
@@ -72,13 +74,13 @@ export const navigationItems: NavigationItem[] = [
     label: 'گروه‌ها',
     to: '/groups',
     icon: Layers,
-    roles: MANAGEMENT_ROLES,
+    roles: ['Instructor'],
   },
   {
     label: 'درس‌ها',
     to: '/lessons',
     icon: PlayCircle,
-    roles: ALL_ROLES,
+    roles: ['Instructor', 'Student'],
   },
   {
     label: 'نتایج من',
@@ -137,7 +139,7 @@ export const navigationItems: NavigationItem[] = [
 ];
 
 export const roleLabel: Record<Role, string> = {
-  SuperAdmin: 'مدیر ارشد',
+  SuperAdmin: 'کاربر ارشد',
   Instructor: 'مدرس',
   Student: 'دانشجو',
 };

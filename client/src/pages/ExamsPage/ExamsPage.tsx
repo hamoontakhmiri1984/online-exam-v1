@@ -16,6 +16,7 @@ import Spinner from '../../components/Spinner/Spinner';
 import Toast from '../../components/Toast/Toast';
 import EmptyState from '../../components/EmptyState/EmptyState';
 import ExamRow from './components/ExamRow';
+import ExamOversightFilters, { filterOversightExams } from './components/ExamOversightFilters';
 import ExamFormModal from './components/ExamFormModal';
 import DeleteExamModal from './components/DeleteExamModal';
 import PlanLimitModal from './components/PlanLimitModal';
@@ -27,7 +28,6 @@ import useInstructorPlanLimit from '../../hooks/useInstructorPlanLimit';
 import { getCurrentUser } from '../../api/authApi';
 import { getRemainingActiveExamQuota } from '../../api/subscriptionApi';
 import {
-  getGroups,
   getGroupsByInstructor,
   type Group,
 } from '../../api/groupApi';
@@ -63,15 +63,18 @@ function ExamsPage() {
   // SuperAdmin پنل محتوا نیست - آزمون‌ساز کارِ مدرسه. اینجا فقط UI مدیریت
   // رو مخفی می‌کنیم؛ SuperAdmin هنوز کل لیست رو برای نظارت می‌بینه
   const canManage = currentUser?.role === 'Instructor';
+  const isObserver = currentUser?.role === 'SuperAdmin';
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const reportExams = isObserver ? filterOversightExams(visibleExams, search, statusFilter) : visibleExams;
+  const isFiltered = isObserver && !!(search.trim() || statusFilter);
+  const pageTitle = isObserver ? 'نظارت بر آزمون‌ها' : 'آزمون‌ها';
 
   const [availableGroups, setAvailableGroups] = useState<Group[]>([]);
 
   useEffect(() => {
-    if (!currentUser) return;
-    const request =
-      currentUser.role === 'Instructor'
-        ? getGroupsByInstructor(currentUser.id)
-        : getGroups();
+    if (currentUser?.role !== 'Instructor') return;
+    const request = getGroupsByInstructor(currentUser.id);
     let cancelled = false;
 
     // بدون catch با خطای شبکه unhandled rejection می‌شد؛ فرم آزمون با لیست
@@ -138,7 +141,7 @@ function ExamsPage() {
   }
 
   return (
-    <AppLayout title="آزمون‌ها">
+    <AppLayout title={pageTitle}>
       {error && (
         <Toast
           message={error}
@@ -168,7 +171,8 @@ function ExamsPage() {
       ) : (
         <>
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold dark:text-white">آزمون‌ها</h1>
+            <div><h1 className="text-2xl font-bold dark:text-white">{pageTitle}</h1>
+            {isObserver && <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">آزمون‌های ثبت‌شده توسط مدرس‌ها و میزان مشارکت دانشجویان؛ دسترسی فقط برای مشاهده است.</p>}</div>
             {canManage && (
               <button
                 onClick={openAddModal}
@@ -180,15 +184,16 @@ function ExamsPage() {
             )}
           </div>
 
+          {isObserver && <ExamOversightFilters query={search} status={statusFilter} count={reportExams.length} onQuery={setSearch} onStatus={setStatusFilter} />}
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-6">
-            {visibleExams.length === 0 ? (
+            {reportExams.length === 0 ? (
               <EmptyState
                 icon={ClipboardList}
                 title={
-                  canManage ? 'هنوز آزمونی نساختی' : 'هنوز آزمونی برات ثبت نشده'
+                  isFiltered ? 'آزمونی با این مشخصات پیدا نشد' : isObserver ? 'هنوز آزمونی ثبت نشده است' : canManage ? 'هنوز آزمونی نساختی' : 'هنوز آزمونی برات ثبت نشده'
                 }
                 description={
-                  canManage
+                  isFiltered ? 'عبارت جست‌وجو یا فیلتر وضعیت را تغییر دهید.' : isObserver ? 'پس از ثبت آزمون توسط مدرس‌ها، اطلاعات آن اینجا نمایش داده می‌شود.' : canManage
                     ? 'با دکمه‌ی «آزمون جدید» اولین آزمونت رو بساز و به یک یا چند گروه وصلش کن.'
                     : 'وقتی مدرس آزمونی برای گروهت تعریف کنه، اینجا نشون داده می‌شه.'
                 }
@@ -204,19 +209,22 @@ function ExamsPage() {
                   <thead>
                     <tr className="text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
                       <th className="py-2">عنوان</th>
+                      {isObserver && <th className="py-2">مدرس</th>}
                       <th className="py-2">دسته‌بندی</th>
                       <th className="py-2">تاریخ</th>
-                      {canManage && <th className="py-2">شرکت‌کنندگان</th>}
+                      {(canManage || isObserver) && <th className="py-2" title="تعداد دانشجویانی که آزمون را شروع کرده‌اند">شرکت‌کنندگان</th>}
                       <th className="py-2">وضعیت</th>
                       <th className="py-2"></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {visibleExams.map((exam) => (
+                    {reportExams.map((exam) => (
                       <ExamRow
                         key={exam.id}
                         exam={exam}
                         canManage={canManage}
+                        isObserver={isObserver}
+                        canTake={currentUser?.role === 'Student'}
                         participantCount={exam.participants}
                         onTake={(e) => navigate(`/exams/${e.id}/take`)}
                         onOpenQuestions={(e) =>

@@ -27,7 +27,7 @@ const router = Router({
 });
 
 router.use(requireAuth);
-router.use(requireRole('Instructor', 'SuperAdmin'));
+router.use(requireRole('Instructor'));
 
 router.post(
   '/',
