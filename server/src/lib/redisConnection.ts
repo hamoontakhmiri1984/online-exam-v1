@@ -1,3 +1,4 @@
+import { logEvent } from './logger';
 import { createClient } from 'redis';
 
 // Do not log URLs with credentials or error messages supplied by a remote server.
@@ -22,12 +23,12 @@ export function createManagedRedis(url: string, label: string) {
   });
   let unavailable = false;
   const report = () => {
-    if (!unavailable) console.error(`[redis:${label}] unavailable at ${target}; reconnecting. Check Docker and REDIS_URL.`);
+    if (!unavailable) logEvent('error', `redis:${label}:unavailable:${target}`);
     unavailable = true;
   };
   client.on('error', report);
   client.on('ready', () => {
-    console.info(`[redis:${label}] ${unavailable ? 'reconnected' : 'ready'} at ${target}`);
+    logEvent('info', `redis:${label}:${unavailable ? 'reconnected' : 'ready'}:${target}`);
     unavailable = false;
   });
   // Handle rejection even if the caller shuts the connection down during startup.

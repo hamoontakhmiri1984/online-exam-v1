@@ -1,3 +1,4 @@
+import { periodicTask } from '../lib/periodicTask';
 import type { Server as HttpServer } from 'http';
 import { Server, type Socket } from 'socket.io';
 import { verifyAccessToken } from '../lib/jwt';
@@ -7,6 +8,9 @@ import { prisma } from '../lib/prisma';
 import { instructorApprovalBlockMessage } from '../lib/accountAccess';
 
 let io: Server | null = null;
+let stopSweep: (() => Promise<void>) | undefined;
+
+export async function stopSocketSweep() { await stopSweep?.(); }
 
 async function isAccountAllowed(userId: string, role: string): Promise<boolean> {
   if (role !== 'Instructor') return true;
@@ -64,7 +68,7 @@ export function initSocket(httpServer: HttpServer): Server {
     socket.join(roleRoom(socket.data.role));
   });
 
-  startSocketSessionSweep(io);
+  stopSweep = startSocketSessionSweep(io);
 
   return io;
 }
@@ -76,7 +80,7 @@ export function initSocket(httpServer: HttpServer): Server {
 const SESSION_SWEEP_INTERVAL_MS = 60_000;
 
 function startSocketSessionSweep(server: Server) {
-  const timer = setInterval(async () => {
+  return periodicTask(async () => {
     try {
       const users = new Map<string, string>();
       for (const socket of server.sockets.sockets.values()) {
@@ -93,8 +97,7 @@ function startSocketSessionSweep(server: Server) {
     } catch (err) {
       console.error('socket session sweep failed:', err);
     }
-  }, SESSION_SWEEP_INTERVAL_MS);
-  timer.unref();
+  }, SESSION_SWEEP_INTERVAL_MS, err => console.error('socket session sweep failed:', err));
 }
 
 export function getIo(): Server {

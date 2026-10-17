@@ -1,0 +1,10 @@
+.git
+**/node_modules
+**/.env
+**/.env.*
+**/dist
+**/.test-dist
+**/*.patch
+**/*.dump
+**/*.zip
+**/*.log

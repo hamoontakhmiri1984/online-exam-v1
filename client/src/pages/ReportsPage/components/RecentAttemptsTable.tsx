@@ -1,3 +1,4 @@
+import { userDisplayName } from '../../../lib/userDisplayName';
 import { TimerOff } from 'lucide-react';
 import type { Exam } from '../../../api/examApi';
 import type { Student } from '../../../api/studentApi';
@@ -28,7 +29,7 @@ function RecentAttemptsTable({
   }
 
   function studentName(studentId: string) {
-    return students.find((s) => s.id === studentId)?.name ?? 'دانشجوی حذف‌شده';
+    return userDisplayName(students.find((s) => s.id === studentId));
   }
 
   return (

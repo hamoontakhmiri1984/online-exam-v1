@@ -149,6 +149,7 @@ function setupSocket() {
   }
   const api = load('realtime/socket.ts', {
     'socket.io': { Server },
+    '../lib/periodicTask': { periodicTask(run) { sweep = run; return async () => {}; } },
     '../lib/jwt': { verifyAccessToken: () => payload },
     '../config/env': { env: { CLIENT_URL: 'http://localhost' } },
     '../lib/session': { isSessionValid: async () => true, getActiveSessionId: async () => 'sid' },

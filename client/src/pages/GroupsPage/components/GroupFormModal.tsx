@@ -1,3 +1,4 @@
+import { userDisplayName } from '../../../lib/userDisplayName';
 import Modal from '../../../components/Modal/Modal';
 import type { Category } from '../../../constants/categories';
 import type { Student } from '../../../api/studentApi';
@@ -77,7 +78,7 @@ function GroupFormModal({
                     className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-400 dark:border-gray-600"
                   />
                   <span className="text-gray-700 dark:text-gray-200">
-                    {student.name}
+                    {userDisplayName(student)}
                   </span>
                   <span className="mr-auto text-xs text-gray-400">
                     {student.username}

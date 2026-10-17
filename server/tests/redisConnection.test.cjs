@@ -1,21 +1,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
-const fs = require('node:fs');
 const path = require('node:path');
-const vm = require('node:vm');
-const ts = require('typescript');
+require('ts-node').register({ transpileOnly: true, project: path.resolve(__dirname, '../tsconfig.json') });
 const { createClient } = require('redis');
 const { spawn } = require('node:child_process');
 const net = require('node:net');
-const messages = [];
-const mod = { exports: {} };
-const source = path.resolve(__dirname, '../src/lib/redisConnection.ts');
-vm.runInNewContext(ts.transpileModule(fs.readFileSync(source, 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, {
-  module: mod, exports: mod.exports, require, URL, setTimeout, clearTimeout,
-  console: { info: message => messages.push(message), error: message => messages.push(message) },
-});
-const { waitForRedis, redisHealth, redisTarget, createManagedRedis } = mod.exports;
+const { waitForRedis, redisHealth, redisTarget, createManagedRedis } = require('../src/lib/redisConnection');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 function fake(ready, ping = async () => 'PONG') {
   const c = new EventEmitter(); c.isReady = ready; c.ping = ping; return c;
@@ -40,7 +31,10 @@ test('diagnostic endpoint excludes Redis username/password/query and rejects HTT
   assert.equal(redisTarget('rediss://private:secret@example.com:6380/2?secret=xyz'), 'rediss://example.com:6380');
   assert.throws(() => redisTarget('https://example.com'));
 });
-test('real client on a closed port: bounded readiness, no offline writes, no credential log', async () => {
+test('real client on a closed port: bounded readiness, no offline writes, no credential log', async t => {
+  const messages = [];
+  t.mock.method(console, 'error', message => messages.push(message));
+  t.mock.method(console, 'info', message => messages.push(message));
   const s = net.createServer(); await new Promise(r => s.listen(0, '127.0.0.1', r));
   const port = s.address().port; await new Promise(r => s.close(r));
   const before = messages.length;

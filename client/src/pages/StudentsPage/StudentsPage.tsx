@@ -1,3 +1,4 @@
+import { userDisplayName } from '../../lib/userDisplayName';
 import { useState } from 'react';
 import { getStudents, deleteStudent, type Student } from '../../api/studentApi';
 import { Trash2, XCircle, Users } from 'lucide-react';
@@ -103,7 +104,7 @@ function StudentsPage() {
                           key={student.id}
                           className="border-b border-gray-100 dark:border-gray-800 text-gray-700 dark:text-gray-200 transition duration-200 hover:bg-gray-50 dark:hover:bg-gray-800/50"
                         >
-                          <td className="py-3">{student.name}</td>
+                          <td className="py-3">{userDisplayName(student)}</td>
                           <td className="py-3 text-gray-400 dark:text-gray-500">
                             {student.username}
                           </td>
@@ -149,8 +150,8 @@ function StudentsPage() {
         <h2 className="text-lg font-bold mb-2 dark:text-white">حذف دانشجو</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
           {currentUser?.role === 'SuperAdmin'
-            ? `آیا از حذف «${deleteTarget?.name}» مطمئنی؟ حساب کاربری‌اش کامل و برای همیشه پاک می‌شه. این عملیات قابل بازگشت نیست.`
-            : `آیا از حذف «${deleteTarget?.name}» مطمئنی؟ فقط از تمام گروه‌های تو بیرون می‌شه (حسابش پاک نمی‌شه). این عملیات قابل بازگشت نیست.`}
+            ? `آیا از حذف «${userDisplayName(deleteTarget)}» مطمئنی؟ حساب کاربری‌اش کامل و برای همیشه پاک می‌شه. این عملیات قابل بازگشت نیست.`
+            : `آیا از حذف «${userDisplayName(deleteTarget)}» مطمئنی؟ فقط از تمام گروه‌های تو بیرون می‌شه (حسابش پاک نمی‌شه). این عملیات قابل بازگشت نیست.`}
         </p>
         <div className="flex gap-3">
           <button

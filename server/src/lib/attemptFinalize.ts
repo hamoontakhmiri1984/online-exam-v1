@@ -1,3 +1,5 @@
+import { periodicTask } from './periodicTask';
+import { logEvent } from './logger';
 import type { ExamAttempt } from '@prisma/client';
 import { prisma } from './prisma';
 import { notifyUser } from './notifications';
@@ -123,11 +125,5 @@ export async function finalizeExpiredAttempts(
 // sweep دوره‌ای برای attempt‌های رهاشده - چند instance هم‌زمان اجرا بشن مشکلی
 // نیست چون finalizeAttempt اتمیکه
 export function startAttemptSweeper(intervalMs = 60_000) {
-  const timer = setInterval(() => {
-    finalizeExpiredAttempts().catch((err) =>
-      console.error('finalizeExpiredAttempts failed:', err)
-    );
-  }, intervalMs);
-  timer.unref();
-  return timer;
+  return periodicTask(finalizeExpiredAttempts, intervalMs, error => logEvent('error', 'attempt_sweep_failed', error));
 }

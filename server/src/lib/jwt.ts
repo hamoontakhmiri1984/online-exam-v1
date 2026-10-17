@@ -21,12 +21,14 @@ export interface RefreshTokenPayload {
 
 export function signAccessToken(payload: AccessTokenPayload): string {
   return jwt.sign(payload, env.JWT_ACCESS_SECRET, {
+    algorithm: 'HS256',
     expiresIn: durationToSeconds(env.JWT_ACCESS_EXPIRES_IN),
   });
 }
 
 export function signRefreshToken(payload: RefreshTokenPayload): string {
   return jwt.sign(payload, env.JWT_REFRESH_SECRET, {
+    algorithm: 'HS256',
     expiresIn: durationToSeconds(env.JWT_REFRESH_EXPIRES_IN),
   });
 }
@@ -38,7 +40,8 @@ const ROLES: Role[] = ['SuperAdmin', 'Instructor', 'Student'];
 export function verifyAccessToken(token: string): AccessTokenPayload {
   const payload = jwt.verify(
     token,
-    env.JWT_ACCESS_SECRET
+    env.JWT_ACCESS_SECRET,
+    { algorithms: ['HS256'] }
   ) as Partial<AccessTokenPayload> & { purpose?: unknown };
 
   if (
@@ -53,5 +56,5 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
 }
 
 export function verifyRefreshToken(token: string): RefreshTokenPayload {
-  return jwt.verify(token, env.JWT_REFRESH_SECRET) as RefreshTokenPayload;
+  return jwt.verify(token, env.JWT_REFRESH_SECRET, { algorithms: ['HS256'] }) as RefreshTokenPayload;
 }

@@ -1,3 +1,5 @@
+import { listen, createShutdown, httpDrainer } from './lib/serverLifecycle';
+import { logEvent } from './lib/logger';
 // server/src/server.ts
 import express from 'express';
 import cors from 'cors';
@@ -9,7 +11,7 @@ import { prisma } from './lib/prisma';
 import { redis } from './lib/redis';
 import { rateLimitRedis } from './lib/rateLimitRedis';
 import { waitForRedis, redisHealth } from './lib/redisConnection';
-import { initSocket } from './realtime/socket';
+import { initSocket, stopSocketSweep } from './realtime/socket';
 import { startAttemptSweeper } from './lib/attemptFinalize';
 import { startPaymentReconciler } from './lib/payments';
 import authRouter from './routes/auth';
@@ -37,6 +39,14 @@ const HEALTH_TIMEOUT_MS = 3000;
 
 const app = express();
 const httpServer = createServer(app);
+const drainHttp = httpDrainer(httpServer);
+let stopping = false;
+let socket: ReturnType<typeof initSocket> | undefined;
+const stopWorkers: Array<() => Promise<void>> = [];
+app.use((_req, res, next) => {
+  if (stopping) { res.status(503).json({ error: 'سرویس در حال راه‌اندازی مجدد است.' }); return; }
+  next();
+});
 
 // نکته: این چهارتا باید قبل از هر روتی بیان، وگرنه اون روت نه بدنه‌ی JSON
 // می‌بینه، نه هدرهای CORS/امنیتی روش اعمال می‌شه (باگی که تو نسخه‌ی قبلی
@@ -131,21 +141,34 @@ app.use('/practice', practiceRouter);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-// Do not advertise a usable API or start workers before both Redis clients work.
-async function start() {
-  await Promise.all([waitForRedis(redis), waitForRedis(rateLimitRedis)]);
-  initSocket(httpServer);
-  httpServer.listen(env.PORT, () => {
-    console.log(`server running on port ${env.PORT}`);
-    startAttemptSweeper();
-    startPaymentReconciler();
+const shutdown = createShutdown(async () => {
+  stopping = true;
+  // Close listeners before dependencies, allowing accepted requests to finish.
+  const drained = drainHttp();
+  // Socket.IO also closes its Engine.IO transports and its HTTP server.
+  const socketsClosed = new Promise<void>(resolve => {
+    if (socket) socket.close(() => resolve()); else resolve();
   });
-}
-
-void start().catch(() => {
-  console.error('Server startup stopped: Redis was not ready within 15 seconds. Run node server/scripts/check-redis.cjs from the project root.');
+  const results = await Promise.allSettled([drained, socketsClosed, stopSocketSweep(), ...stopWorkers.map(stop => stop())]);
   if (redis.isOpen) redis.destroy();
   if (rateLimitRedis.isOpen) rateLimitRedis.destroy();
-  // ts-node-dev remains available to restart after the configuration is fixed.
-  process.exit(1);
+  await prisma.$disconnect();
+  const failed = results.find(result => result.status === 'rejected');
+  if (failed?.status === 'rejected') throw failed.reason;
+});
+process.once('SIGTERM', () => { void shutdown('SIGTERM'); });
+process.once('SIGINT', () => { void shutdown('SIGINT'); });
+
+async function start() {
+  await Promise.all([waitForRedis(redis), waitForRedis(rateLimitRedis)]);
+  if (stopping) return;
+  socket = initSocket(httpServer);
+  await listen(httpServer, Number(env.PORT));
+  if (stopping) return;
+  stopWorkers.push(startAttemptSweeper(), startPaymentReconciler());
+  logEvent('info', `server_listening:${env.PORT}`);
+}
+void start().catch(error => {
+  logEvent('error', 'server_start_failed', error);
+  void shutdown('startup_failure', 1);
 });

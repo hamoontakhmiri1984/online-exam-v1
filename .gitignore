@@ -20,3 +20,7 @@ backup_*
 pg_dump*
 
 /client/vite-error.txt
+
+# Local delivery packages and logs
+/*.patch
+*.log

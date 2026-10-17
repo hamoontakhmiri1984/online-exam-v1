@@ -1,3 +1,4 @@
+import { userDisplayName } from '../../lib/userDisplayName';
 import { Fragment, useState } from 'react';
 import {
   ChevronDown,
@@ -157,7 +158,7 @@ function InstructorStudentsPage() {
                                               key={studentId}
                                               className="flex items-center gap-1.5 rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300"
                                             >
-                                              {student?.name ?? 'دانشجوی حذف‌شده'}
+                                              {userDisplayName(student)}
                                               {student && (
                                                 <span className="text-gray-400 dark:text-gray-500">
                                                   {' '}
@@ -200,7 +201,7 @@ function InstructorStudentsPage() {
       <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)}>
         <h2 className="text-lg font-bold mb-2 dark:text-white">حذف دانشجو</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-          آیا از حذف «{deleteTarget?.name}» مطمئنی؟ حساب کاربری‌اش کامل و
+          آیا از حذف «{userDisplayName(deleteTarget)}» مطمئنی؟ حساب کاربری‌اش کامل و
           برای همیشه پاک می‌شه. این عملیات قابل بازگشت نیست.
         </p>
         <div className="flex gap-3">

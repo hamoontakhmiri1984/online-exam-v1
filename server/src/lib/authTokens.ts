@@ -122,6 +122,7 @@ export async function signResetTicket(userId: string): Promise<string> {
   });
 
   return jwt.sign(payload, env.JWT_ACCESS_SECRET, {
+    algorithm: 'HS256',
     expiresIn: RESET_TICKET_TTL_SECONDS,
   });
 }
@@ -131,7 +132,8 @@ export async function verifyResetTicket(
 ): Promise<ResetTicketPayload> {
   const payload = jwt.verify(
     token,
-    env.JWT_ACCESS_SECRET
+    env.JWT_ACCESS_SECRET,
+    { algorithms: ['HS256'] }
   ) as ResetTicketPayload;
 
   if (payload.purpose !== 'RESET_PASSWORD' || !payload.jti) {

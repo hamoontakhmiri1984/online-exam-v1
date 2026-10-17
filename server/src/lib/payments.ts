@@ -1,3 +1,5 @@
+import { periodicTask } from './periodicTask';
+import { logEvent } from './logger';
 import { prisma } from './prisma';
 import { getPlan, type PlanId } from './plans';
 import { requestPayment, verifyPayment } from './zarinpal';
@@ -244,13 +246,7 @@ export async function reconcilePendingPayments(limit = 50): Promise<number> {
 
 // چند instance هم‌زمان اجرا بشن مشکلی نیست - اعمال پلن اتمیکه
 export function startPaymentReconciler(intervalMs = 5 * 60 * 1000) {
-  const timer = setInterval(() => {
-    reconcilePendingPayments().catch((err) =>
-      console.error('reconcilePendingPayments failed:', err)
-    );
-  }, intervalMs);
-  timer.unref();
-  return timer;
+  return periodicTask(reconcilePendingPayments, intervalMs, error => logEvent('error', 'payment_reconcile_failed', error));
 }
 
 // ---------------------------------------------------------------------------
