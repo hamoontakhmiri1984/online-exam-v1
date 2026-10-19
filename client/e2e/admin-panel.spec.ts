@@ -24,7 +24,7 @@ for (const mobile of [false, true]) test(`admin dashboard: ${mobile ? 'mobile da
   if (mobile) await page.addInitScript(() => localStorage.setItem('theme', 'dark'));
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await page.goto('/dashboard');
-  await expect(page.getByText('ارزیابی پایان دوره', { exact: true })).toBeVisible();
+  await expect(page.locator(mobile ? 'p' : 'td').filter({ hasText: 'ارزیابی پایان دوره' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'روند فعالیت' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'شروع آزمون' })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
