@@ -26,9 +26,9 @@ function Header({
           <Menu size={18} aria-hidden="true" />
         </button>
 
-        <h1 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
           {title}
-        </h1>
+        </span>
       </div>
 
       <div className="flex items-center gap-1">

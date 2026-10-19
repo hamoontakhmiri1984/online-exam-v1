@@ -25,7 +25,7 @@ function project(row, select) {
       : item ? project(item, value.select) : null];
   }));
 }
-async function withAdminApi(t, run) {
+async function withAdminApi(t, run, basePath = '/admin/users/instructors') {
   const teachers = ['A', 'B'].map(id => ({ id, role: 'Instructor', approvalStatus: 'Approved', name: `Teacher ${id}`, username: id }));
   const groups = teachers.map(teacher => ({ id: `g${teacher.id}`, instructorId: teacher.id, name: `Group ${teacher.id}` }));
   const banks = teachers.map(teacher => ({ id: `b${teacher.id}`, instructorId: teacher.id, name: `Bank ${teacher.id}` }));
@@ -91,7 +91,7 @@ async function withAdminApi(t, run) {
   await new Promise(resolve => server.once('listening', resolve));
   t.after(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }));
   const request = async (endpoint, role = 'SuperAdmin:admin', method = 'GET') => fetch(
-    `http://127.0.0.1:${server.address().port}/admin/users/instructors${endpoint}`,
+    `http://127.0.0.1:${server.address().port}${basePath}${endpoint}`,
     { method, headers: role ? { Authorization: `Bearer ${role}` } : {} },
   );
   await run(request);

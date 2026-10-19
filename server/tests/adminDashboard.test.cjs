@@ -98,7 +98,7 @@ test('dashboard: queries are limited, ordered oldest-first, and read-only', asyn
   assert.equal(q('group.findMany')[0].args.take, 5);
   assert.equal(q('group.findMany')[0].args.where.approvalStatus, 'Pending');
   assert.equal(q('exam.findMany')[0].args.take, 8);
-  assert.equal(q('attempt.groupBy')[0].args.where.finishedAt.not, null);
+  assert.equal(q('attempt.groupBy')[0].args.where.finishedAt, undefined, 'participants include started attempts');
   assert.ok(calls.every((c) => !/create|update|delete|upsert/i.test(c.key)));
 });
 

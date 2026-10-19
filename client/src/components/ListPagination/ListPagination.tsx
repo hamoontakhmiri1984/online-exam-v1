@@ -1,3 +1,4 @@
+import { controlClass } from '../AdminUI/FilterBar';
 type Props = {
   maxSearchLength?: number;
   page: number; pageSize: number; total: number; loading: boolean;
@@ -9,12 +10,12 @@ export default function ListPagination({ page, pageSize, total, loading, q, setP
     <div className="mb-4 flex flex-wrap items-center gap-3 text-sm dark:text-gray-200">
       <input type="search" aria-label="جستجو" placeholder="جستجو..." maxLength={maxSearchLength}
         value={q} onChange={event => setSearch(event.target.value)}
-        className="rounded-lg border border-gray-300 bg-transparent px-3 py-2 dark:border-gray-600" />
+        className={`${controlClass} min-w-48 flex-1 sm:max-w-xs`} />
       <span aria-live="polite">{total} مورد — صفحه {page} از {pages}</span>
       <button type="button" disabled={loading || page <= 1} onClick={() => setPage(page - 1)}
-        className="rounded border px-3 py-2 disabled:opacity-40">قبلی</button>
+        className={`${controlClass} disabled:cursor-not-allowed disabled:opacity-40`}>قبلی</button>
       <button type="button" disabled={loading || page >= pages} onClick={() => setPage(page + 1)}
-        className="rounded border px-3 py-2 disabled:opacity-40">بعدی</button>
+        className={`${controlClass} disabled:cursor-not-allowed disabled:opacity-40`}>بعدی</button>
     </div>
   );
 }

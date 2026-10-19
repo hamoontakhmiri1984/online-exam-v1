@@ -17,6 +17,13 @@ import instructorDetailRoutes from './instructorDetail.routes';
 // در admin.ts روی کل /admin اعمال شده است
 const router = Router();
 
+function userOrder(value: unknown): Prisma.UserOrderByWithRelationInput[] {
+  const order = value === undefined ? 'newest' : optionalString(value);
+  if (order === 'name') return [{ name: { sort: 'asc', nulls: 'last' } }, { username: 'asc' }, { id: 'asc' }];
+  if (order !== 'newest' && order !== 'oldest') throw badRequest('ترتیب نامعتبر است');
+  return [{ createdAt: order === 'newest' ? 'desc' : 'asc' }, { id: 'desc' }];
+}
+
 const APPROVAL_STATUSES = ['Pending', 'Approved', 'Rejected'] as const;
 type ApprovalStatus = (typeof APPROVAL_STATUSES)[number];
 
@@ -36,6 +43,7 @@ router.get(
   '/instructors',
   asyncHandler(async (req, res) => {
     const paging = parsePaging(req.query);
+    const orderBy = userOrder(req.query.order);
     const status = optionalString(req.query.status);
     if (status && !APPROVAL_STATUSES.includes(status as ApprovalStatus)) {
       throw badRequest('status نامعتبره');
@@ -51,7 +59,7 @@ router.get(
       prisma.user.findMany({
         where,
         select: instructorSelect,
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        orderBy,
         skip: paging.skip,
         take: paging.take,
       }),
@@ -149,6 +157,7 @@ router.get(
   '/students',
   asyncHandler(async (req, res) => {
     const paging = parsePaging(req.query);
+    const orderBy = userOrder(req.query.order);
     const instructorId = optionalString(req.query.instructorId);
     const ungrouped = req.query.ungrouped === 'true';
     if (instructorId && ungrouped) {
@@ -166,7 +175,7 @@ router.get(
       prisma.user.findMany({
         where,
         select: { ...studentBaseSelect, ...studentGroupsSelect },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        orderBy,
         skip: paging.skip,
         take: paging.take,
       }),

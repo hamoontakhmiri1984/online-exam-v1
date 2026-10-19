@@ -45,7 +45,7 @@ html.dark {
 }
 
 body {
-  font-family: 'Vazirmatn', sans-serif;
+  font-family: 'Vazirmatn Variable', sans-serif;
   user-select: none;
 }
 
@@ -170,3 +170,5 @@ input:autofill:active {
   -webkit-text-fill-color: #ffffff;
   caret-color: #ffffff;
 }
+:root { --report-tooltip: #ffffff; --report-text: #111827; }
+.dark { --report-tooltip: #111827; --report-text: #f3f4f6; }

@@ -21,14 +21,15 @@ export type AdminStudentFilter = { instructorId?: string; ungrouped?: boolean };
 
 export function getAdminStudents(
   query: ListQuery,
-  filter: AdminStudentFilter = {}
+  filter: AdminStudentFilter = {},
+  order = ''
 ): Promise<ListPage<AdminStudent>> {
   const suffix = filter.ungrouped
     ? '&ungrouped=true'
     : filter.instructorId
       ? `&instructorId=${encodeURIComponent(filter.instructorId)}`
       : '';
-  return apiRequest(`/admin/users/students${listQueryString(query)}${suffix}`);
+  return apiRequest(`/admin/users/students${listQueryString(query)}${suffix}${order ? `&order=${encodeURIComponent(order)}` : ''}`);
 }
 
 export const UNGROUPED_SELECTION = '__ungrouped';

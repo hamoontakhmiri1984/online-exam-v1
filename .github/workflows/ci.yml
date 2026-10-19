@@ -81,6 +81,20 @@ jobs:
       - name: Run client tests
         run: npm test -w client
 
+      - name: Install browser for UI checks
+        run: npx playwright install --with-deps chromium
+        working-directory: client
+
+      - name: Run admin browser checks
+        run: npm run test:e2e -w client
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: admin-browser-results
+          path: client/test-results/
+          if-no-files-found: ignore
+
       - name: Run server tests
         run: npm test -w server
 

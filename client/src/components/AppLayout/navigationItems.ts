@@ -127,6 +127,7 @@ export const navigationItems: NavigationItem[] = [
     roles: ['SuperAdmin'],
     group: 'users',
   },
+  { label: 'تأیید گروه‌ها', to: '/group-approvals', icon: ShieldCheck, roles: ['SuperAdmin'], group: 'users' },
   {
     label: 'دسته‌بندی‌ها',
     to: '/categories',
@@ -148,6 +149,9 @@ export const navigationItems: NavigationItem[] = [
     roles: ['SuperAdmin'],
     group: 'content',
   },
+  { label: 'اشتراک‌ها', to: '/subscriptions', icon: CreditCard, roles: ['SuperAdmin'], group: 'finance' },
+  { label: 'پرداخت‌ها', to: '/payments', icon: CreditCard, roles: ['SuperAdmin'], group: 'finance' },
+  { label: 'رویدادها', to: '/admin-events', icon: ShieldCheck, roles: ['SuperAdmin'], group: 'system' },
   {
     label: 'گزارش‌ها',
     to: '/reports',

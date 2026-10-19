@@ -25,7 +25,7 @@ function AppLayout({ children, title }: AppLayoutProps) {
         />
 
         <main
-          className={`flex-1 transition-all duration-300 ${
+          className={`min-w-0 flex-1 transition-all duration-300 motion-reduce:transition-none ${
             isCollapsed ? 'md:w-[calc(100%-5rem)]' : 'md:w-[calc(100%-16rem)]'
           }`}
         >

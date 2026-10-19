@@ -97,14 +97,14 @@ router.get(
       }),
     ]);
 
-    // شرکت‌کننده = تلاشِ تمام‌شده (هر دانشجو برای هر آزمون یک ردیف دارد)
+    // شرکت‌کننده = تلاشِ شروع‌شده (هر دانشجو برای هر آزمون یک ردیف دارد)
     const examIds = recentExams.map((e) => e.id);
     const attemptRows =
       examIds.length === 0
         ? []
         : await prisma.examAttempt.groupBy({
             by: ['examId'],
-            where: { examId: { in: examIds }, finishedAt: { not: null } },
+            where: { examId: { in: examIds } },
             _count: { _all: true },
           });
     const participants = new Map(

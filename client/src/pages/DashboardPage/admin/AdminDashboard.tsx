@@ -1,3 +1,5 @@
+import ReportOverview from '../../../components/AdminUI/ReportOverview';
+import { EventsList } from '../../AdminManagementPage/EventsPage';
 import { useCallback, useState, type ReactNode } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Link } from 'react-router-dom';
@@ -303,7 +305,7 @@ function Content({ data }: { data: AdminDashboardData }) {
           <Queue
             title="تأیید گروه"
             total={attention.groups.total}
-            to="/settings"
+            to="/group-approvals"
           >
             {attention.groups.items.map((g) => (
               <QueueRow
@@ -361,7 +363,7 @@ export default function AdminDashboard() {
           {data && (
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {pending > 0
-                ? `${fa(pending)} درخواست منتظر بررسی توست`
+                ? `${fa(pending)} درخواست در انتظار بررسی است`
                 : 'درخواستی در انتظار بررسی نیست'}
             </p>
           )}
@@ -372,16 +374,6 @@ export default function AdminDashboard() {
         </p>
       </div>
 
-      <nav aria-label="دسترسی سریع مدیریتی" className="mb-6 grid gap-3 sm:grid-cols-3">
-        {[
-          { to: '/instructor-approvals', title: 'بررسی درخواست‌ها', detail: 'تأیید و بررسی وضعیت مدرس‌ها' },
-          { to: '/exams', title: 'آزمون‌ها', detail: 'بررسی مدرس، وضعیت و شرکت‌کنندگان' },
-          { to: '/reports', title: 'گزارش‌ها', detail: 'مرور عملکرد و نتایج' },
-        ].map(item => <Link key={item.to} to={item.to} className={`${panel} group p-4 transition-colors duration-150 hover:border-brand-300 hover:bg-brand-50/50 focus-visible:outline-2 focus-visible:outline-brand-500 dark:hover:border-brand-700 dark:hover:bg-brand-950/30`}>
-          <span className="flex items-center justify-between font-semibold text-gray-900 dark:text-white">{item.title}<ChevronLeft size={16} className="text-gray-400 transition-transform group-hover:-translate-x-1 motion-reduce:transform-none" /></span>
-          <span className="mt-2 block text-xs text-gray-500 dark:text-gray-400">{item.detail}</span>
-        </Link>)}
-      </nav>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-gray-500 dark:text-gray-400" role="status">
           {loading ? 'در حال به‌روزرسانی اطلاعات…' : updatedAt ? `آخرین به‌روزرسانی: ${updatedAt.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}` : 'نمای کلی سامانه'}
@@ -399,6 +391,7 @@ export default function AdminDashboard() {
       ) : data ? (
         <motion.div initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0 : 0.2 }} aria-busy={loading}>
           <Content data={data} />
+          <div className="mt-8"><ReportOverview /><h2 className="mb-4 text-lg font-semibold dark:text-white">رویدادهای مدیریتی</h2><EventsList compact /><Link to="/admin-events" className="mt-3 inline-block text-sm text-brand-600 dark:text-brand-400">مشاهدهٔ سوابق رویدادها</Link></div>
         </motion.div>
       ) : (
         <div className={`${panel} flex flex-col items-center gap-3 px-5 py-12`}>

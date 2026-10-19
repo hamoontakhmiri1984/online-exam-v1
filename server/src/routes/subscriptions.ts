@@ -222,7 +222,7 @@ router.post(
       throw notFound('مدرس یافت نشد');
     }
 
-    const sub = await selectPlan(parsed.data.instructorId, parsed.data.planId);
+    const sub = await selectPlan(parsed.data.instructorId, parsed.data.planId, req.user!.sub);
     res.status(201).json(serializeSubscription(sub));
   })
 );

@@ -105,7 +105,17 @@ const BlogPage = lazy(() => import('../pages/BlogPage/BlogPage'));
 
 const BlogPostPage = lazy(() => import('../pages/BlogPage/BlogPostPage'));
 
+const SubscriptionsPage = lazy(() => import('../pages/AdminManagementPage/SubscriptionsPage'));
+const PaymentsPage = lazy(() => import('../pages/AdminManagementPage/PaymentsPage'));
+const EventsPage = lazy(() => import('../pages/AdminManagementPage/EventsPage'));
+const GroupApprovalsPage = lazy(() => import('../pages/AdminManagementPage/GroupApprovalsPage'));
+
 export const routes: RouteConfig[] = [
+  { path: '/subscriptions', Component: SubscriptionsPage, protected: true, allowedRoles: ['SuperAdmin'] },
+  { path: '/payments', Component: PaymentsPage, protected: true, allowedRoles: ['SuperAdmin'] },
+  { path: '/admin-events', Component: EventsPage, protected: true, allowedRoles: ['SuperAdmin'] },
+  { path: '/group-approvals', Component: GroupApprovalsPage, protected: true, allowedRoles: ['SuperAdmin'] },
+
   { path: '/instructors', Component: AdminInstructorsPage, protected: true, allowedRoles: ['SuperAdmin'] },
   { path: '/instructors/:instructorId', Component: AdminInstructorDetailPage, protected: true, allowedRoles: ['SuperAdmin'] },
   {

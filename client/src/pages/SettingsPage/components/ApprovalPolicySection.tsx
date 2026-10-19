@@ -6,7 +6,7 @@ import {
   type PendingDecision,
 } from '../../../api/approvalPolicyApi';
 import ApprovalPolicyChoice from './ApprovalPolicyChoice';
-import GroupApprovalQueue from './GroupApprovalQueue';
+import { Link } from 'react-router-dom';
 export default function ApprovalPolicySection() {
   const [policy, setPolicy] = useState<ApprovalPolicy | null>(null);
   const [instructors, setInstructors] = useState(true);
@@ -147,28 +147,7 @@ export default function ApprovalPolicySection() {
       >
         دریافت دوبارهٔ تنظیمات
       </button>
-      <GroupApprovalQueue
-        key={`${reload}-${policy?.revision}`}
-        onChanged={() => {
-          getApprovalPolicy()
-            .then((value) =>
-              setPolicy((current) =>
-                current
-                  ? {
-                      ...current,
-                      pendingInstructors: value.pendingInstructors,
-                      pendingGroups: value.pendingGroups,
-                    }
-                  : current,
-              ),
-            )
-            .catch(() =>
-              setError(
-                'تعداد درخواست‌های معلق به‌روز نشد؛ تنظیمات را دوباره دریافت کنید.',
-              ),
-            );
-        }}
-      />
+      <Link to="/group-approvals" className="mt-4 block text-sm text-brand-600 underline dark:text-brand-400">مشاهده و بررسی درخواست‌های گروه</Link>
     </section>
   );
 }

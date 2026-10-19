@@ -1,3 +1,4 @@
+import { recordAdminAction } from './adminAudit';
 import { prisma } from './prisma';
 import { PLAN_ORDER, getPlan, type PlanId } from './plans';
 import { badRequest } from './errors';
@@ -169,9 +170,19 @@ export async function listCurrentSubscriptions(): Promise<
 // توسط SuperAdmin)؛ پلن پولی‌ای که پرداخت شده از lib/payments.ts اعمال می‌شه
 export async function selectPlan(
   instructorId: string,
-  planId: PlanId
+  planId: PlanId,
+  adminId?: string
 ): Promise<SubscriptionRow> {
   const now = new Date();
+  if (adminId) {
+    return prisma.$transaction(async tx => {
+      await lockInstructorForUpdate(tx, instructorId);
+      const previous = await tx.subscription.findFirst({ where: { instructorId }, orderBy: [{ startDate: 'desc' }, { id: 'desc' }] });
+      const subscription = await tx.subscription.create({ data: { instructorId, planId, startDate: now, endDate: computeEndDate(planId, now) } });
+      await recordAdminAction(tx, { adminId, action: 'instructor.plan_change', targetType: 'User', targetId: instructorId, before: { planId: previous?.planId ?? 'free' }, after: { planId, subscriptionId: subscription.id } });
+      return subscription;
+    });
+  }
   return prisma.subscription.create({
     data: {
       instructorId,

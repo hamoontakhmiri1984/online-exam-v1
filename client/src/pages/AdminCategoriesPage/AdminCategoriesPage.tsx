@@ -1,3 +1,6 @@
+import PageHeader from '../../components/PageHeader/PageHeader';
+import FilterBar, { controlClass } from '../../components/AdminUI/FilterBar';
+import StatusBadge from '../../components/StatusBadge/StatusBadge';
 import { useState } from 'react';
 import {
   CheckCircle2,
@@ -60,6 +63,7 @@ function CategoryRow({
           <form onSubmit={submitRename} className="flex gap-2">
             <input
               autoFocus
+              aria-label="نام دسته‌بندی"
               value={draftName}
               onChange={(e) => setDraftName(e.target.value)}
               className="border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg px-3 py-1.5 text-sm outline-none focus:border-brand-400"
@@ -87,7 +91,7 @@ function CategoryRow({
         )}
       </td>
       <td className="py-3 text-gray-400 dark:text-gray-500">
-        {category.status === 'Pending' ? 'در انتظار تایید' : 'تاییدشده'}
+        <StatusBadge tone={category.status === 'Pending' ? 'warning' : 'success'}>{category.status === 'Pending' ? 'در انتظار تأیید' : 'تأییدشده'}</StatusBadge>
       </td>
       {showActions && (
         <td className="py-3">
@@ -151,6 +155,9 @@ function AdminCategoriesPage() {
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newName, setNewName] = useState('');
+  const [search, setSearch] = useState('');
+  const [order, setOrder] = useState('asc');
+  const visible = categories.filter(c => c.name.includes(search.trim())).sort((a,b) => (order === 'asc' ? 1 : -1) * a.name.localeCompare(b.name, 'fa'));
 
   async function submitAdd(event: React.FormEvent) {
     event.preventDefault();
@@ -173,7 +180,7 @@ function AdminCategoriesPage() {
       )}
 
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold dark:text-white">دسته‌بندی‌ها</h1>
+        <PageHeader title="دسته‌بندی‌ها" description="سامان‌دهی دسته‌بندی‌های محتوای آموزشی" />
         <button
           onClick={() => setIsAddOpen((prev) => !prev)}
           className="inline-flex items-center gap-1 rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 transition"
@@ -205,6 +212,7 @@ function AdminCategoriesPage() {
         </form>
       )}
 
+      <FilterBar><input aria-label="جستجوی دسته‌بندی" type="search" placeholder="جستجو" value={search} onChange={e => setSearch(e.target.value)} className={controlClass} /><select aria-label="ترتیب دسته‌بندی‌ها" value={order} onChange={e => setOrder(e.target.value)} className={controlClass}><option value="asc">نام: صعودی</option><option value="desc">نام: نزولی</option></select></FilterBar>
       <div className="flex gap-2 mb-4">
         {TABS.map((t) => (
           <button
@@ -221,14 +229,14 @@ function AdminCategoriesPage() {
         ))}
       </div>
 
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-6">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
         {loading ? (
           <Spinner />
-        ) : categories.length === 0 ? (
+        ) : visible.length === 0 ? (
           <EmptyState
             icon={Tags}
             title="دسته‌بندی‌ای پیدا نشد"
-            description={EMPTY_STATE_TEXT[tab]}
+            description={search ? 'دسته‌بندی متناسب با جستجو وجود ندارد.' : EMPTY_STATE_TEXT[tab]}
           />
         ) : (
           <div className="overflow-x-auto">
@@ -241,7 +249,7 @@ function AdminCategoriesPage() {
                 </tr>
               </thead>
               <tbody>
-                {categories.map((category) => (
+                {visible.map((category) => (
                   <CategoryRow
                     key={category.id}
                     category={category}

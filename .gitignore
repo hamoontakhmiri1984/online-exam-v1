@@ -26,3 +26,6 @@ pg_dump*
 *.log
 docker-compose.override.yml
 !.env.test.example
+
+client/test-results/
+client/playwright-report/

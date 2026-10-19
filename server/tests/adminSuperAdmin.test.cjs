@@ -91,6 +91,7 @@ test('/admin router is guarded by requireAuth + SuperAdmin role', async () => {
     './admin/groupApprovals.routes': stub,
     './admin/approvalPolicy.routes': stub,
     './admin/dashboard.routes': stub,
+    './admin/reporting.routes': stub,
   });
   const admin = routers[routers.length - 1];
   const guards = admin.uses[0];

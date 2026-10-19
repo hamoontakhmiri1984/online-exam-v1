@@ -26,10 +26,10 @@ test('SuperAdmin menu is split into ordered groups under small headings', () => 
     sections.map((s) => s.items.map((i) => i.to)),
     [
       ['/dashboard', '/exams'],
-      ['/instructors', '/instructor-students', '/instructor-approvals'],
+      ['/instructors', '/instructor-students', '/instructor-approvals', '/group-approvals'],
       ['/categories', '/site-content', '/blog-posts'],
-      ['/reports'],
-      ['/settings'],
+      ['/subscriptions', '/payments', '/reports'],
+      ['/admin-events', '/settings'],
     ]
   );
   assert.deepEqual(navigationGroupLabel, {
@@ -70,7 +70,7 @@ test('shared panel components render the expected markup', () => {
       { title: 'مدرس‌ها', description: 'فهرست مدرس‌ها', actions: createElement('button', null, 'افزودن') }
     )
   );
-  assert.match(header, /<h2[^>]*>مدرس‌ها<\/h2>/);
+  assert.match(header, /<h1[^>]*>مدرس‌ها<\/h1>/);
   assert.match(header, /فهرست مدرس‌ها/);
   assert.match(header, /افزودن/);
 

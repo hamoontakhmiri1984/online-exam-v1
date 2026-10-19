@@ -1,3 +1,4 @@
+import { selectPlan } from '../src/lib/subscriptions';
 // تست یکپارچه‌ی تسویه‌ی هم‌زمان پرداخت روی *Postgres واقعی*.
 // اجرا: `docker compose up -d postgres redis` + `npx prisma migrate deploy` و بعد
 // `npm test`. اگه دیتابیس در دسترس نباشه تست‌ها skip می‌شن (مثل تست نشست).
@@ -151,5 +152,25 @@ test('استرداد هم‌زمان با تسویه‌ی پرداخت بعدی 
     assert.equal(settled, 'success');
   } finally {
     await cleanup(instructor.id);
+  }
+});
+
+test('manual subscription assignment and its audit record commit together', async t => {
+  if (!dbAvailable) return unavailable(t, 'Postgres unavailable');
+  const suffix = crypto.randomUUID();
+  const admin = await prisma.user.create({ data: { email: `audit-admin-${suffix}@example.test`, role: 'SuperAdmin' } });
+  const owner = await prisma.user.create({ data: { email: `audit-owner-${suffix}@example.test`, role: 'Instructor' } });
+  try {
+    const assigned = await selectPlan(owner.id, 'gold', admin.id);
+    const events = await prisma.adminAuditLog.findMany({ where: { adminId: admin.id, targetId: owner.id } });
+    assert.equal(events.length, 1);
+    assert.equal(events[0].action, 'instructor.plan_change');
+    assert.equal((events[0].after as { subscriptionId: string }).subscriptionId, assigned.id);
+    await assert.rejects(selectPlan(owner.id, 'vip', `missing-${suffix}`));
+    assert.equal(await prisma.subscription.count({ where: { instructorId: owner.id } }), 1, 'failed audit rolls back assignment');
+  } finally {
+    await prisma.adminAuditLog.deleteMany({ where: { adminId: admin.id } });
+    await cleanup(owner.id);
+    await prisma.user.delete({ where: { id: admin.id } });
   }
 });

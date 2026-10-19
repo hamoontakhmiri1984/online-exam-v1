@@ -7,6 +7,7 @@ import usersRoutes from './admin/users.routes';
 
 import approvalPolicyRoutes from './admin/approvalPolicy.routes';
 import groupApprovalsRoutes from './admin/groupApprovals.routes';
+import reportingRoutes from './admin/reporting.routes';
 import dashboardRoutes from './admin/dashboard.routes';
 
 const router = Router();
@@ -19,5 +20,6 @@ router.use('/users', usersRoutes);
 router.use('/approval-policy', approvalPolicyRoutes);
 router.use('/group-approvals', groupApprovalsRoutes);
 router.use('/dashboard', dashboardRoutes);
+router.use('/reporting', reportingRoutes);
 
 export default router;

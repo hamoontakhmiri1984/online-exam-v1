@@ -105,7 +105,7 @@ export async function loadCurrentPlans(ids: string[]) {
   if (ids.length === 0) return map;
   const latest = await prisma.subscription.findMany({
     where: { instructorId: { in: ids } },
-    orderBy: [{ instructorId: 'asc' }, { startDate: 'desc' }],
+    orderBy: [{ instructorId: 'asc' }, { startDate: 'desc' }, { id: 'desc' }],
     distinct: ['instructorId'],
   });
   for (const s of latest) {

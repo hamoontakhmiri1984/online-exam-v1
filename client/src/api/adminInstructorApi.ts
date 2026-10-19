@@ -40,9 +40,9 @@ export type ContentItem = {
   _count?: { students?: number; exams?: number; questions?: number; attachments?: number; attempts?: number };
 };
 const base = '/admin/users/instructors';
-export function getAdminInstructors(query: ListQuery, status = ''): Promise<ListPage<InstructorSummary>> {
+export function getAdminInstructors(query: ListQuery, status = '', order = ''): Promise<ListPage<InstructorSummary>> {
   const suffix = status ? `&status=${encodeURIComponent(status)}` : '';
-  return apiRequest(`${base}${listQueryString(query)}${suffix}`);
+  return apiRequest(`${base}${listQueryString(query)}${suffix}${order ? `&order=${encodeURIComponent(order)}` : ''}`);
 }
 export function getAdminInstructor(id: string): Promise<InstructorSummary> {
   return apiRequest(`${base}/${encodeURIComponent(id)}`);
