@@ -2,9 +2,8 @@ import { logEvent } from '../lib/logger';
 import { env } from '../config/env';
 import type { OtpChannel } from '@prisma/client';
 
-// این فایل تنها جاییه که به کاوه‌نگار/Resend وصل می‌شه. تا وقتی کلیدها خالی‌ان
-// (تو .env)، به‌جای ارسال واقعی فقط تو کنسول لاگ می‌کنه - یعنی گام ۲ رو
-// می‌تونی همین الان تست کنی، بدون اینکه منتظر ساختن اکانت باشی.
+// Without delivery credentials, non-production environments print a development OTP.
+// Production always requires the configured provider.
 
 interface SendOtpParams {
   identifier: string;
@@ -64,8 +63,7 @@ async function sendSms(phone: string, code: string) {
     );
   }
 
-  const entry = body.entries?.[0];
-  logEvent('info', `[SMS] کد OTP به ${phone} ارسال شد — messageid=${entry?.messageid}, status=${entry?.statustext}`);
+  logEvent('info', 'otp_sms_delivered');
 }
 
 async function sendEmail(email: string, code: string) {

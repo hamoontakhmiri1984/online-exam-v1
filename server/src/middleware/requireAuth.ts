@@ -41,20 +41,18 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   }
 
   // ردشدن حساب باید حتی پس از شکست ابطال نشست Redis اعمال شود.
-  {
-    try {
-      const user = await prisma.user.findUnique({
-        where: { id: payload.sub },
-        select: { role: true, approvalStatus: true },
-      });
-      if (!user || user.role !== payload.role) {
-        return res.status(401).json({ error: 'حساب یا نقش کاربر دیگر معتبر نیست' });
-      }
-      const message = instructorApprovalBlockMessage(user);
-      if (message) return res.status(401).json({ error: message });
-    } catch (err) {
-      return next(err);
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { role: true, approvalStatus: true },
+    });
+    if (!user || user.role !== payload.role) {
+      return res.status(401).json({ error: 'حساب یا نقش کاربر دیگر معتبر نیست' });
     }
+    const message = instructorApprovalBlockMessage(user);
+    if (message) return res.status(401).json({ error: message });
+  } catch (err) {
+    return next(err);
   }
 
   req.user = payload;

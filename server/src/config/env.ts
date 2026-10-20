@@ -89,9 +89,10 @@ if (parsedEnv.NODE_ENV === 'production') {
     }
   }
   const origin = new URL(parsedEnv.CLIENT_URL);
-  const host = origin.hostname.toLowerCase();
+  const host = origin.hostname.toLowerCase().replace(/\.$/, '');
   if (origin.protocol !== 'https:' || origin.username || origin.password ||
       host === 'localhost' || host.endsWith('.localhost') || host === '[::1]' ||
+      host === '[::]' || /^\[::ffff:7f[0-9a-f]{2}:/.test(host) ||
       host === '0.0.0.0' || /^127\./.test(host) || origin.pathname !== '/' || origin.search || origin.hash) {
     throw new Error('CLIENT_URL must be a public HTTPS origin in production');
   }
@@ -110,7 +111,7 @@ if (parsedEnv.NODE_ENV === 'production') {
   // می‌شه و rate-limit و کپچای مبتنی بر IP برای همه با هم اعمال می‌شه. خطا
   // نمی‌دیم چون اجرای مستقیم (بدون proxy) هم مجازه؛ فقط هشدار می‌دیم
   if (parsedEnv.TRUST_PROXY === 0) {
-    logEvent('info', 'هشدار: TRUST_PROXY=0 در production. اگه پشت proxy/load balancer هستی باید ۱ (یا تعداد proxy ها) باشه.');
+    logEvent('warn', 'هشدار: TRUST_PROXY=0 در production. اگه پشت proxy/load balancer هستی باید ۱ (یا تعداد proxy ها) باشه.');
   }
 }
 

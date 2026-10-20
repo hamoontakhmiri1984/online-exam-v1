@@ -540,6 +540,6 @@ model ApprovalPolicy {
   requireInstructorApproval Boolean @default(true)
   requireGroupApproval Boolean @default(false)
   revision Int @default(0)
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
   @@map("approval_policy")
 }
