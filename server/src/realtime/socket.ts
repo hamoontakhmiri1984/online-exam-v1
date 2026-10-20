@@ -1,3 +1,4 @@
+import { logEvent } from '../lib/logger';
 import { periodicTask } from '../lib/periodicTask';
 import type { Server as HttpServer } from 'http';
 import { Server, type Socket } from 'socket.io';
@@ -95,9 +96,9 @@ function startSocketSessionSweep(server: Server) {
         forceLogoutOtherSessions(userId, undefined, 'session-ended');
       }
     } catch (err) {
-      console.error('socket session sweep failed:', err);
+      logEvent('error', 'socket session sweep failed:', err);
     }
-  }, SESSION_SWEEP_INTERVAL_MS, err => console.error('socket session sweep failed:', err));
+  }, SESSION_SWEEP_INTERVAL_MS, err => logEvent('error', 'socket session sweep failed:', err));
 }
 
 export function getIo(): Server {

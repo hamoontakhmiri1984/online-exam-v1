@@ -20,7 +20,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U examuser -d examdb"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -67,6 +67,10 @@ jobs:
 
       - name: Run migrations
         run: npx prisma migrate deploy
+        working-directory: server
+
+      - name: Verify migrated schema matches Prisma model
+        run: npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
         working-directory: server
 
       - name: Build server

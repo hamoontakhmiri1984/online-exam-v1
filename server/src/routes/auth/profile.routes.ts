@@ -1,3 +1,4 @@
+import { logEvent } from '../../lib/logger';
 import { Router, type NextFunction, type Request, type Response } from 'express';
 import multer from 'multer';
 import { randomUUID } from 'node:crypto';
@@ -157,7 +158,7 @@ router.post(
     // آپلود یا آپدیت fail می‌شد، کاربر بدون عکس نمی‌موند
     if (existing.avatarKey) {
       await deletePublicObject(existing.avatarKey).catch((error) =>
-        console.error('deletePublicObject failed:', error)
+        logEvent('error', 'deletePublicObject failed:', error)
       );
     }
 
@@ -195,7 +196,7 @@ router.delete(
     });
 
     await deletePublicObject(existing.avatarKey).catch((error) =>
-      console.error('deletePublicObject failed:', error)
+      logEvent('error', 'deletePublicObject failed:', error)
     );
 
     res.json(meResponse(user));
@@ -269,7 +270,7 @@ router.post(
         : 'رمز عبور برای حساب شما تعیین شد',
       'info'
     ).catch((error) => {
-      console.error('notifyUser failed:', error);
+      logEvent('error', 'notifyUser failed:', error);
     });
 
     res.json(meResponse(user));

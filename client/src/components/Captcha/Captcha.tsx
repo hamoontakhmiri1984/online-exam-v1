@@ -65,10 +65,10 @@ function Captcha({ onChange, resetSignal = 0 }: CaptchaProps) {
               {error}
             </span>
           ) : (
-            // eslint-disable-next-line react/no-danger
-            <div
-              className="[&>svg]:h-full [&>svg]:w-full"
-              dangerouslySetInnerHTML={{ __html: svg }}
+            <img
+              className="h-full w-full"
+              alt="تصویر کد امنیتی"
+              src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`}
             />
           )}
         </div>

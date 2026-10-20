@@ -15,6 +15,7 @@ function fixture() {
   let failCreate = false;
   const visible = (n, where) => where.OR.some(rule => rule.userId === n.userId && (!rule.targetRoles || n.targetRoles.includes(rule.targetRoles.has)));
   const prisma = {
+    user: { findUnique: async () => ({ role: 'Student', approvalStatus: 'Approved' }) },
     notification: {
       findMany: async ({ where }) => notifications.filter(n => visible(n, where) && !reads.get(`${where.reads.none.userId}:${n.id}`)?.dismissedAt),
       findFirst: async ({ where }) => notifications.find(n => n.id === where.id && visible(n, where)) || null,

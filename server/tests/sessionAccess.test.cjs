@@ -16,6 +16,7 @@ function load(relative, mocks = {}, globals = {}) {
     module, exports: module.exports,
     require(name) {
       if (name in mocks) return mocks[name];
+      if (name.endsWith('/logger')) return { logEvent() {} };
       throw new Error(`Unmocked import: ${name}`);
     },
     console: { error() {} }, ...globals,
@@ -180,3 +181,26 @@ test('Socket sweep disconnects rejected instructor even if Redis session remains
   await sweep();
   assert.equal(disconnected, true);
 });
+
+for (const role of ['Student', 'Instructor', 'SuperAdmin']) {
+  for (const state of ['deleted', 'changed', 'active', 'outage']) {
+    test(`${role}: requireAuth checks current account (${state}) despite valid Redis session`, async () => {
+      const failure = Error('database unavailable');
+      const middleware = load('middleware/requireAuth.ts', {
+        '../lib/jwt': { verifyAccessToken: () => ({ sub: 'user', role, sid: 'session' }) },
+        '../lib/session': { isSessionValid: async () => true },
+        '../lib/accountAccess': policy,
+        '../lib/prisma': { prisma: { user: { findUnique: async () => {
+          if (state === 'outage') throw failure;
+          return state === 'deleted' ? null : { role: state === 'changed' ? 'Other' : role, approvalStatus: 'Approved' };
+        } } } },
+      });
+      let status, calls = 0, error;
+      const req = { headers: { authorization: 'Bearer valid' } };
+      await middleware.requireAuth(req, { status(s) { status = s; return this; }, json() {} }, err => { calls++; error = err; });
+      if (state === 'active') { assert.equal(calls, 1); assert.equal(req.user.role, role); }
+      else if (state === 'outage') { assert.equal(error, failure); assert.equal(status, undefined); }
+      else { assert.equal(status, 401); assert.equal(calls, 0); assert.equal(req.user, undefined); }
+    });
+  }
+}

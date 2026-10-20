@@ -9,7 +9,7 @@ const express = require('express');
 async function api(t) {
   const posts = [];
   const prisma = {
-    user: { findUnique: async () => ({ role: 'Instructor', approvalStatus: 'Approved' }) },
+    user: { findUnique: async ({ where }) => ({ role: where.id, approvalStatus: 'Approved' }) },
     blogPost: {
       findMany: async ({ where }) => posts.filter(p => !where || p.published === where.published),
       findUnique: async ({ where }) => posts.find(p => Object.entries(where).every(([k, v]) => p[k] === v)) ?? null,
@@ -24,7 +24,7 @@ async function api(t) {
   const src = path.resolve(__dirname, '../src');
   const doubles = {
     'lib/prisma.ts': { prisma },
-    'lib/jwt.ts': { verifyAccessToken: token => ({ role: token, sub: 'admin', sid: 'session' }) },
+    'lib/jwt.ts': { verifyAccessToken: token => ({ role: token, sub: token, sid: 'session' }) },
     'lib/session.ts': { isSessionValid: async () => true },
     'lib/storage.ts': { getPublicObjectUrl: key => `https://storage.example/${key}`, deletePublicObject: async () => {}, uploadPublicObject: async () => {} },
   };

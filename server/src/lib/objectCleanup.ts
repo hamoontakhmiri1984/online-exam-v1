@@ -1,3 +1,4 @@
+import { logEvent } from './logger';
 import { prisma } from './prisma';
 import { deleteObject } from './storage';
 
@@ -19,7 +20,7 @@ export async function deleteUnreferencedObjects(
       if (sessions + attachments + handouts > 0) continue;
       await deleteObject(key);
     } catch (err) {
-      console.error('deleteUnreferencedObjects failed:', key, err);
+      logEvent('error', 'deleteUnreferencedObjects failed:', err);
     }
   }
 }

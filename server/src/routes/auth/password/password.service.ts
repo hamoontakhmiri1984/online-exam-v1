@@ -1,3 +1,4 @@
+import { logEvent } from '../../../lib/logger';
 import { prisma } from '../../../lib/prisma';
 import { normalizeUsername } from '../../../lib/username';
 import {
@@ -120,7 +121,7 @@ export async function loginWithPassword(data: PasswordLoginData, ip: string) {
       'یک نفر برای حساب شما رمز عبور اشتباه وارد کرد',
       'info'
     ).catch((error) => {
-      console.error('notifyUser failed:', error);
+      logEvent('error', 'notifyUser failed:', error);
     });
 
     throw await invalidCredentials(ip);

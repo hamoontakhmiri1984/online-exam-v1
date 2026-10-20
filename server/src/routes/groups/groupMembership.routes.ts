@@ -1,3 +1,4 @@
+import { logEvent } from '../../lib/logger';
 import { Router } from 'express';
 import { prisma } from '../../lib/prisma';
 import { requireRole } from '../../middleware/requireAuth';
@@ -59,7 +60,7 @@ router.post(
       const results = await Promise.allSettled(notifyAll);
       for (const r of results) {
         if (r.status === 'rejected') {
-          console.error('join group notification failed:', r.reason);
+          logEvent('error', 'join group notification failed:', r.reason);
         }
       }
     }

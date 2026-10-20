@@ -1,3 +1,4 @@
+import { logEvent } from './logger';
 import { createHash } from 'node:crypto';
 import type { Options, Store } from 'express-rate-limit';
 import { AppError } from './errors';
@@ -81,7 +82,7 @@ export class RedisRateLimitStore implements Store {
     try {
       await this.command(['EVAL', DECREMENT, '1', this.key(identifier)]);
     } catch {
-      console.error('Rate limit refund unavailable');
+      logEvent('error', 'Rate limit refund unavailable');
     }
   }
 

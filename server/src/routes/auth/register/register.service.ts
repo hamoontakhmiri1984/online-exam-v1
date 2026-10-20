@@ -1,3 +1,4 @@
+import { logEvent } from '../../../lib/logger';
 import { readCreationPolicy } from '../../../lib/approvalPolicy';
 import { prisma } from '../../../lib/prisma';
 
@@ -204,7 +205,7 @@ export async function registerUser(data: RegisterData, ip: string) {
   if (isNewUser) {
     await notifyUser(user.id, 'ثبت‌نام با موفقیت انجام شد', 'info').catch(
       (error) => {
-        console.error('notifyUser failed:', error);
+        logEvent('error', 'notifyUser failed:', error);
       }
     );
 
@@ -214,7 +215,7 @@ export async function registerUser(data: RegisterData, ip: string) {
         `مدرس جدید ${user.name || user.username} منتظر تایید حساب است`,
         'people'
       ).catch((error) => {
-        console.error('notifyRoles failed:', error);
+        logEvent('error', 'notifyRoles failed:', error);
       });
     }
   }
@@ -233,7 +234,7 @@ export async function registerUser(data: RegisterData, ip: string) {
       code,
     });
   } catch (error) {
-    console.error('sendOtp failed:', error);
+    logEvent('error', 'sendOtp failed:', error);
 
     throw new AppError(502, 'ارسال کد تایید ناموفق بود، دوباره تلاش کن');
   }

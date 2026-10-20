@@ -1,3 +1,4 @@
+import { logEvent } from '../lib/logger';
 import type { Request, Response, NextFunction } from 'express';
 import { Prisma } from '@prisma/client';
 import { ZodError } from 'zod';
@@ -78,21 +79,21 @@ export function errorHandler(
   }
 
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
-    console.error('[database error]', err);
+    logEvent('error', '[database error]', err);
     const { status, message } = mapPrismaError(err);
     return res.status(status).json({ error: message });
   }
 
   // Initialization/connectivity errors are not KnownRequestError instances.
   if (err instanceof Prisma.PrismaClientInitializationError) {
-    console.error('[database unavailable]', err);
+    logEvent('error', '[database unavailable]', err);
     return res
       .status(503)
       .json({ error: 'سرویس موقتاً در دسترس نیست؛ کمی بعد دوباره تلاش کنید.' });
   }
 
   // Never return runtime messages, source paths or SQL to the browser, even in development.
-  console.error('[unhandled error]', err);
+  logEvent('error', '[unhandled error]', err);
   res
     .status(500)
     .json({ error: 'خطای غیرمنتظره‌ای رخ داد؛ دوباره تلاش کنید.' });

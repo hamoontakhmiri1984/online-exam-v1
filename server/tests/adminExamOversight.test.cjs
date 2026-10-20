@@ -14,7 +14,7 @@ async function withApi(t, run) {
   const doubles = {
     'lib/prisma.ts': { prisma: {
       exam: { findMany: async args => { calls.push(args); return [exam]; }, create: blocked, update: blocked, delete: blocked },
-      user: { findUnique: async () => ({ role: 'Instructor', approvalStatus: 'Approved' }) },
+      user: { findUnique: async ({ where }) => ({ role: where.id === 'A' ? 'Instructor' : where.id, approvalStatus: 'Approved' }) },
     } },
     'lib/jwt.ts': { verifyAccessToken: token => { const [role, sub] = token.split(':'); return { role, sub, sid: 'sid' }; } },
     'lib/session.ts': { isSessionValid: async () => true },
@@ -38,7 +38,7 @@ async function withApi(t, run) {
   const server = app.listen(0, '127.0.0.1');
   await new Promise(resolve => server.once('listening', resolve));
   t.after(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }));
-  const request = (role, url = '/exams', method = 'GET') => fetch(`http://127.0.0.1:${server.address().port}${url}`, { method, headers: role ? { Authorization: `Bearer ${role}:A` } : {} });
+  const request = (role, url = '/exams', method = 'GET') => fetch(`http://127.0.0.1:${server.address().port}${url}`, { method, headers: role ? { Authorization: `Bearer ${role}:${role === 'Instructor' ? 'A' : role}` } : {} });
   await run(request, calls);
 }
 test('HTTP exam oversight: teacher identity is selected and exposed only to SuperAdmin', t => withApi(t, async (request, calls) => {
@@ -50,7 +50,7 @@ test('HTTP exam oversight: teacher identity is selected and exposed only to Supe
     assert.equal(Object.hasOwn(calls.at(-1).include, 'instructor'), role === 'SuperAdmin');
     if (role === 'SuperAdmin') assert.deepEqual(exam.instructor, { id: 'A', name: null, username: 'teacherA' });
     if (role === 'Instructor') assert.equal(calls.at(-1).where.instructorId, 'A');
-    if (role === 'Student') assert.equal(calls.at(-1).where.groups.some.students.some.id, 'A');
+    if (role === 'Student') assert.equal(calls.at(-1).where.groups.some.students.some.id, 'Student');
   }
   assert.equal((await request(null)).status, 401);
 }));

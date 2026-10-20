@@ -1,3 +1,4 @@
+import { logEvent } from '../../lib/logger';
 import { Router } from 'express';
 
 import { prisma } from '../../lib/prisma';
@@ -69,7 +70,7 @@ router.post(
       updated.id,
       'حساب مدرسی‌ت تایید شد - می‌تونی وارد بشی',
       'award'
-    ).catch((err) => console.error('notifyUser failed:', err));
+    ).catch((err) => logEvent('error', 'notifyUser failed:', err));
 
     res.json(serializeInstructor(updated));
   })
@@ -119,7 +120,7 @@ router.post(
 
     if (!alreadyRejected) {
       notifyUser(updated.id, 'درخواست ثبت‌نام مدرسی‌ت رد شد', 'info').catch(
-        (err) => console.error('notifyUser failed:', err)
+        (err) => logEvent('error', 'notifyUser failed:', err)
       );
     }
 

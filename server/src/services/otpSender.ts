@@ -1,3 +1,4 @@
+import { logEvent } from '../lib/logger';
 import { env } from '../config/env';
 import type { OtpChannel } from '@prisma/client';
 
@@ -27,9 +28,7 @@ async function sendSms(phone: string, code: string) {
     if (env.NODE_ENV === 'production') {
       throw new Error('KAVENEGAR_API_KEY در production تنظیم نشده');
     }
-    console.warn(
-      `[DEV] KAVENEGAR_API_KEY خالیه - کد OTP برای ${phone}: ${code}`
-    );
+    logEvent('info', `[DEV] KAVENEGAR_API_KEY خالیه - کد OTP برای ${phone}: ${code}`);
     return;
   }
 
@@ -66,9 +65,7 @@ async function sendSms(phone: string, code: string) {
   }
 
   const entry = body.entries?.[0];
-  console.log(
-    `[SMS] کد OTP به ${phone} ارسال شد — messageid=${entry?.messageid}, status=${entry?.statustext}`
-  );
+  logEvent('info', `[SMS] کد OTP به ${phone} ارسال شد — messageid=${entry?.messageid}, status=${entry?.statustext}`);
 }
 
 async function sendEmail(email: string, code: string) {
@@ -76,7 +73,7 @@ async function sendEmail(email: string, code: string) {
     if (env.NODE_ENV === 'production') {
       throw new Error('RESEND_API_KEY در production تنظیم نشده');
     }
-    console.warn(`[DEV] RESEND_API_KEY خالیه - کد OTP برای ${email}: ${code}`);
+    logEvent('info', `[DEV] RESEND_API_KEY خالیه - کد OTP برای ${email}: ${code}`);
     return;
   }
 

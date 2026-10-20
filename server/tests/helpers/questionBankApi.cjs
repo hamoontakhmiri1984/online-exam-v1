@@ -14,7 +14,7 @@ function fixture(overrides = {}) {
   const question = { id: 'q1', bankId: 'b1', text: 'Question?', options: ['A', 'B'], correctOptionIndex: 0, difficulty: 'Easy' };
   const prisma = {
     $transaction: async operations => Promise.all(operations),
-    user: { findUnique: async () => ({ role: 'Instructor', approvalStatus: 'Approved' }) },
+    user: { findUnique: async ({ where }) => ({ role: where.id === 'admin' ? 'SuperAdmin' : ['student', 's1'].includes(where.id) ? 'Student' : 'Instructor', approvalStatus: 'Approved' }) },
     questionBank: {
       count: async ({ where }) => !where.instructorId || where.instructorId === bank.instructorId ? 1 : 0,
       findUnique: async ({ where }) => where.id === bank.id ? bank : null,

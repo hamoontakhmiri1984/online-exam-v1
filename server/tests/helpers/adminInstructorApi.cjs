@@ -30,7 +30,7 @@ async function withAdminApi(t, run, basePath = '/admin/users/instructors') {
   const groups = teachers.map(teacher => ({ id: `g${teacher.id}`, instructorId: teacher.id, name: `Group ${teacher.id}` }));
   const banks = teachers.map(teacher => ({ id: `b${teacher.id}`, instructorId: teacher.id, name: `Bank ${teacher.id}` }));
   const rows = {};
-  rows.user = [...teachers, { id: 'student', role: 'Student', name: 'Shared student', groupsMember: groups }];
+  rows.user = [{ id: 'admin', role: 'SuperAdmin', approvalStatus: 'Approved' }, ...teachers, { id: 'student', role: 'Student', name: 'Shared student', groupsMember: groups }];
   rows.group = groups;
   rows.questionBank = banks;
   rows.lessonSession = teachers.map((teacher, index) => ({ id: `l${teacher.id}`, title: `Lesson ${teacher.id}`, groups: [groups[index]], _count: { attachments: 1 } }));

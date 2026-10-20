@@ -83,6 +83,7 @@ function QuestionScreen({
                 <button
                   key={index}
                   onClick={() => onSelectAnswer(index)}
+                  aria-pressed={isSelected}
                   className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-right text-sm transition ${
                     isSelected
                       ? 'border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300'

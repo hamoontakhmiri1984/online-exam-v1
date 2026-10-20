@@ -165,9 +165,7 @@ async function settlePendingPayment(
 
   if (!verified.ok) {
     if (verified.retryable) {
-      console.error(
-        `payment verify outcome unknown (authority=${payment.authority})`
-      );
+      logEvent('error', `payment verify outcome unknown (authority=${payment.authority})`);
       return 'pending';
     }
     await markFailed(payment.authority);
@@ -182,7 +180,7 @@ async function settlePendingPayment(
     });
     return latest ? resultFromStatus(latest.status) : 'failed';
   } catch (err) {
-    console.error('payment apply failed, left pending:', err);
+    logEvent('error', 'payment apply failed, left pending:', err);
     return 'pending';
   }
 }

@@ -1,3 +1,4 @@
+import { logEvent } from './logger';
 import { prisma } from './prisma';
 import { notifyUser, notifyRoles } from './notifications';
 import { conflict, notFound } from './errors';
@@ -97,7 +98,7 @@ export async function proposeCategory(instructorId: string, rawName: string) {
     ['SuperAdmin'],
     `${proposer?.name || 'یه مدرس'} دسته‌بندیِ جدیدِ «${name}» رو پیشنهاد داد`,
     'info'
-  ).catch((err) => console.error('notifyRoles failed:', err));
+  ).catch((err) => logEvent('error', 'notifyRoles failed:', err));
 
   return { category: serializeCategory(created), created: true };
 }
@@ -143,7 +144,7 @@ export async function approveCategory(id: string) {
       updated.proposedById,
       `دسته‌بندیِ پیشنهادیت «${updated.name}» تایید شد`,
       'award'
-    ).catch((err) => console.error('notifyUser failed:', err));
+    ).catch((err) => logEvent('error', 'notifyUser failed:', err));
   }
 
   return serializeCategory(updated);
@@ -191,7 +192,7 @@ export async function deleteOrRejectCategory(id: string) {
       category.proposedById,
       `دسته‌بندیِ پیشنهادیت «${category.name}» رد شد`,
       'info'
-    ).catch((err) => console.error('notifyUser failed:', err));
+    ).catch((err) => logEvent('error', 'notifyUser failed:', err));
   }
 }
 

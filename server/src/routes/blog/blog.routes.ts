@@ -1,3 +1,4 @@
+import { logEvent } from '../../lib/logger';
 import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
 
@@ -150,7 +151,7 @@ router.delete(
 
     if (existing.coverImageKey) {
       await deletePublicObject(existing.coverImageKey).catch((err) =>
-        console.error('deletePublicObject failed:', err)
+        logEvent('error', 'deletePublicObject failed:', err)
       );
     }
 
@@ -178,7 +179,7 @@ router.post(
     // قبلش - وگرنه اگه آپلودِ جدید fail می‌شد، پست بدون هیچ تصویری می‌موند
     if (existing.coverImageKey) {
       await deletePublicObject(existing.coverImageKey).catch((err) =>
-        console.error('deletePublicObject failed:', err)
+        logEvent('error', 'deletePublicObject failed:', err)
       );
     }
 

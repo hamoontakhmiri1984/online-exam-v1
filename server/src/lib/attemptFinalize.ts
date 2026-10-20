@@ -116,7 +116,7 @@ export async function finalizeExpiredAttempts(
     if (!won) continue;
     finalized++;
     await notifyInstructorsAboutFinish(attempt).catch((err) =>
-      console.error('notifyInstructorsAboutFinish failed:', err)
+      logEvent('error', 'notifyInstructorsAboutFinish failed:', err)
     );
   }
   return finalized;

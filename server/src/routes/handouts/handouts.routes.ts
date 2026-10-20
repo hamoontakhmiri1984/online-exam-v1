@@ -1,3 +1,4 @@
+import { logEvent } from '../../lib/logger';
 import { Router } from 'express';
 
 import { prisma } from '../../lib/prisma';
@@ -111,7 +112,7 @@ router.post(
 
     // اعلان به دانشجوهای مخاطب - best-effort، جلوی موفقیت خودِ ساخت جزوه رو نمی‌گیره
     notifyAudienceAboutHandout(handout).catch((err) =>
-      console.error('notifyAudienceAboutHandout failed:', err)
+      logEvent('error', 'notifyAudienceAboutHandout failed:', err)
     );
 
     res.status(201).json(serializeHandout(handout));

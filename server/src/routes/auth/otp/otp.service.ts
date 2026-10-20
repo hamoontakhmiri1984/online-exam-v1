@@ -1,3 +1,4 @@
+import { logEvent } from '../../../lib/logger';
 import { env } from '../../../config/env';
 import { prisma } from '../../../lib/prisma';
 
@@ -96,12 +97,12 @@ export async function requestOtp(data: RequestOtpData, ip: string) {
         userId: user.id,
       });
 
-      if (env.NODE_ENV === 'development') console.info(`[OTP] ${data.purpose}: code_created`);
+      if (env.NODE_ENV === 'development') logEvent('info', `[OTP] ${data.purpose}: code_created`);
       sendOtp({ identifier: value, channel, code }).catch((error) => {
-        console.error('sendOtp failed:', error);
+        logEvent('error', 'sendOtp failed:', error);
       });
     } else {
-      if (env.NODE_ENV === 'development') console.info(`[OTP] ${data.purpose}: account_not_found; no code created`);
+      if (env.NODE_ENV === 'development') logEvent('info', `[OTP] ${data.purpose}: account_not_found; no code created`);
       await simulateOtpCreationCost();
     }
 
@@ -267,7 +268,7 @@ async function deliverOtp(
       code,
     });
   } catch (error) {
-    console.error('sendOtp failed:', error);
+    logEvent('error', 'sendOtp failed:', error);
 
     throw new AppError(502, 'ارسال کد تایید ناموفق بود، دوباره تلاش کن');
   }

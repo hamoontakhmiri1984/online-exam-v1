@@ -1,3 +1,4 @@
+import { logEvent } from '../lib/logger';
 import { z } from 'zod';
 import dotenv from 'dotenv';
 
@@ -10,7 +11,7 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(32),
   JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
   JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
-  GOOGLE_CLIENT_ID: z.string().min(1),
+  GOOGLE_CLIENT_ID: z.string().default(''),
   PORT: z.string().default('4000'),
   NODE_ENV: z
     .enum(['development', 'production', 'test'])
@@ -82,6 +83,18 @@ const parsedEnv = envSchema.parse(process.env);
 // بدون پرداخت واقعی پلن پولی می‌گیره. پس تو production بدون مرچنت واقعی و
 // sandbox=false سرور اصلاً بالا نمیاد.
 if (parsedEnv.NODE_ENV === 'production') {
+  for (const key of ['S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY'] as const) {
+    if (!parsedEnv[key].trim() || parsedEnv[key].trim().toLowerCase() === 'minioadmin') {
+      throw new Error(`${key} must be configured with non-default credentials in production`);
+    }
+  }
+  const origin = new URL(parsedEnv.CLIENT_URL);
+  const host = origin.hostname.toLowerCase();
+  if (origin.protocol !== 'https:' || origin.username || origin.password ||
+      host === 'localhost' || host.endsWith('.localhost') || host === '[::1]' ||
+      host === '0.0.0.0' || /^127\./.test(host) || origin.pathname !== '/' || origin.search || origin.hash) {
+    throw new Error('CLIENT_URL must be a public HTTPS origin in production');
+  }
   if (parsedEnv.ZARINPAL_SANDBOX) {
     throw new Error(
       'ZARINPAL_SANDBOX در production باید false باشه (sandbox=true یعنی پرداخت واقعی انجام نمی‌شه)'
@@ -97,9 +110,7 @@ if (parsedEnv.NODE_ENV === 'production') {
   // می‌شه و rate-limit و کپچای مبتنی بر IP برای همه با هم اعمال می‌شه. خطا
   // نمی‌دیم چون اجرای مستقیم (بدون proxy) هم مجازه؛ فقط هشدار می‌دیم
   if (parsedEnv.TRUST_PROXY === 0) {
-    console.warn(
-      'هشدار: TRUST_PROXY=0 در production. اگه پشت proxy/load balancer هستی باید ۱ (یا تعداد proxy ها) باشه.'
-    );
+    logEvent('info', 'هشدار: TRUST_PROXY=0 در production. اگه پشت proxy/load balancer هستی باید ۱ (یا تعداد proxy ها) باشه.');
   }
 }
 

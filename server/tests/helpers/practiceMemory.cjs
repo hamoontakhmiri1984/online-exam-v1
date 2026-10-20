@@ -32,7 +32,7 @@ function practiceMemory() {
       }
       return [];
     },
-    user:{findUnique:async()=>({role:'Instructor',approvalStatus:'Approved'})},
+    user:{findUnique:async({where})=>({role:where.id==='admin'?'SuperAdmin':(where.id.startsWith('student')||where.id==='outsider')?'Student':'Instructor',approvalStatus:'Approved'})},
     group:{count:async({where})=>groups.filter(g=>basic(g,where)).length},
     question:{findMany:async({where})=>source.filter(q=>basic(q,where)&&q.bank.instructorId===where.bank.instructorId).map(copy)},
     practiceSet:{

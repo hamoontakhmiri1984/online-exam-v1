@@ -48,9 +48,7 @@ app.use((_req, res, next) => {
   next();
 });
 
-// نکته: این چهارتا باید قبل از هر روتی بیان، وگرنه اون روت نه بدنه‌ی JSON
-// می‌بینه، نه هدرهای CORS/امنیتی روش اعمال می‌شه (باگی که تو نسخه‌ی قبلی
-// examsRouter قبل از این‌ها mount شده بود و همین مشکل رو داشت)
+// Configure proxy trust and middleware before mounting routes.
 if (env.TRUST_PROXY > 0) {
   app.set('trust proxy', env.TRUST_PROXY);
 }

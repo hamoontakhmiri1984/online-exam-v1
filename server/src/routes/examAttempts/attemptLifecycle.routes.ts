@@ -1,3 +1,4 @@
+import { logEvent } from '../../lib/logger';
 import { Router } from 'express';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
@@ -222,7 +223,7 @@ router.post(
 
     if (won) {
       await notifyInstructorsAboutFinish(attempt).catch((err) =>
-        console.error('notifyInstructorsAboutFinish failed:', err)
+        logEvent('error', 'notifyInstructorsAboutFinish failed:', err)
       );
     }
 

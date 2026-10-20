@@ -15,7 +15,7 @@ export type AccessibleExam = {
   durationMinutes: number;
   allowReview: boolean;
   status: 'Draft' | 'Published';
-  instructorId: string;          
+  instructorId: string;
   groups: { id: string }[];
   _count: { attempts: number };
 };

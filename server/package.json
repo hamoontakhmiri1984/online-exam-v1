@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
-    "test": "node --require ./tests/loadTestEnv.cjs --require ts-node/register/transpile-only --test tests/examTiming.test.ts tests/session.integration.test.ts tests/payments.integration.test.ts tests/quota.integration.test.ts tests/examStartGroups.integration.test.ts tests/otp.integration.test.ts tests/otp.test.cjs tests/sessionAccess.test.cjs tests/adminSuperAdmin.test.cjs tests/adminDashboard.test.cjs tests/questionExcel.test.ts tests/uploadValidation.test.ts tests/questionBankAccess.test.cjs tests/listPagination.test.cjs tests/blogAdmin.test.cjs tests/adminInstructorContent.test.cjs tests/adminExamOversight.test.cjs tests/notificationManagement.test.cjs tests/redisRateLimit.test.cjs tests/imageContent.test.ts tests/pdfContent.test.ts tests/videoContent.test.ts tests/practice.test.cjs tests/practice.integration.test.cjs tests/approvalPolicy.test.cjs tests/approvalPolicy.integration.test.cjs tests/authErrors.test.cjs tests/googleAuth.test.cjs tests/redisConnection.test.cjs tests/operations.test.cjs tests/adminReportingAccess.test.cjs tests/adminReporting.integration.test.ts",
+    "test": "node --require ./tests/loadTestEnv.cjs --require ts-node/register/transpile-only --test tests/examTiming.test.ts tests/session.integration.test.ts tests/payments.integration.test.ts tests/quota.integration.test.ts tests/examStartGroups.integration.test.ts tests/otp.integration.test.ts tests/otp.test.cjs tests/sessionAccess.test.cjs tests/adminSuperAdmin.test.cjs tests/adminDashboard.test.cjs tests/questionExcel.test.ts tests/uploadValidation.test.ts tests/questionBankAccess.test.cjs tests/listPagination.test.cjs tests/blogAdmin.test.cjs tests/adminInstructorContent.test.cjs tests/adminExamOversight.test.cjs tests/notificationManagement.test.cjs tests/redisRateLimit.test.cjs tests/imageContent.test.ts tests/pdfContent.test.ts tests/videoContent.test.ts tests/practice.test.cjs tests/practice.integration.test.cjs tests/approvalPolicy.test.cjs tests/approvalPolicy.integration.test.cjs tests/authErrors.test.cjs tests/googleAuth.test.cjs tests/redisConnection.test.cjs tests/operations.test.cjs tests/adminReportingAccess.test.cjs tests/adminReporting.integration.test.ts tests/envHardening.test.cjs",
     "start": "node dist/server.js",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
@@ -29,7 +29,6 @@
     "express-rate-limit": "^7.4.0",
     "google-auth-library": "^10.9.1",
     "helmet": "^7.1.0",
-    "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.3.0",
     "pdf-lib": "1.17.1",
@@ -37,7 +36,8 @@
     "sharp": "0.35.4",
     "socket.io": "^4.8.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "prisma": "^5.22.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
@@ -47,7 +47,6 @@
     "@types/jsonwebtoken": "^9.0.7",
     "@types/multer": "^2.0.0",
     "@types/node": "^22.7.0",
-    "prisma": "^5.22.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "5.6.2"
   }

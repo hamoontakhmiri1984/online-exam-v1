@@ -1,3 +1,4 @@
+import { logEvent } from '../../lib/logger';
 import type { Request } from 'express';
 import { prisma } from '../../lib/prisma';
 import { verifyAccessToken, verifyRefreshToken } from '../../lib/jwt';
@@ -27,7 +28,7 @@ export async function refreshUserSession(token: string | undefined) {
   const approvalMessage = instructorApprovalBlockMessage(user);
   if (approvalMessage) {
     await revokeSession(user.id).catch((error) => {
-      console.error('revokeSession (blocked instructor) failed:', error);
+      logEvent('error', 'revokeSession (blocked instructor) failed:', error);
     });
     forceLogoutOtherSessions(user.id, undefined, 'account-rejected');
     // فرانت 401 را پایان نشست می‌داند؛ 403 را اختلال موقت تلقی می‌کند.

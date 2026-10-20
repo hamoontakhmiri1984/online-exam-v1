@@ -1,3 +1,4 @@
+import { logEvent } from './logger';
 import crypto from 'crypto';
 import { redis } from './redis';
 import { env } from '../config/env';
@@ -40,7 +41,7 @@ export async function withSessionStore<T>(op: () => Promise<T>): Promise<T> {
       }),
     ]);
   } catch (err) {
-    console.error('session store unavailable:', err);
+    logEvent('error', 'session store unavailable:', err);
     throw new AppError(503, 'سرویس نشست موقتاً در دسترس نیست');
   } finally {
     clearTimeout(timer);
