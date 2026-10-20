@@ -17,9 +17,6 @@ import type { CategoryStatus } from '@prisma/client';
 
 const router = Router();
 
-// لیستِ کاملِ دسته‌بندی‌ها برای پنلِ ادمین. پیش‌فرض همون صفِ Pending (که
-// نیازِ اصلیِ رسیدگیه)، با ?status=Approved یا بدونِ status هم می‌شه بقیه/همه
-// رو دید - هم‌الگو با /admin/instructors
 router.get(
   '/',
   asyncHandler(async (req, res) => {
@@ -33,7 +30,6 @@ router.get(
   })
 );
 
-// اضافه‌کردنِ مستقیمِ یه دسته توسط SuperAdmin - همون لحظه Approved می‌شه
 router.post(
   '/',
   asyncHandler(async (req, res) => {
@@ -52,8 +48,6 @@ router.post(
   })
 );
 
-// تغییرِ نامِ یه دسته - با cascade رویِ گروه/آزمون/جلسه‌هایی که ازش استفاده
-// کردن (جزئیات تو lib/categories.ts -> renameCategory)
 router.patch(
   '/:id',
   asyncHandler(async (req, res) => {
@@ -65,8 +59,6 @@ router.patch(
   })
 );
 
-// رد کردنِ یه پیشنهادِ Pending یا حذفِ یه دسته‌ی Approved که دیگه جایی
-// استفاده نمی‌شه
 router.delete(
   '/:id',
   asyncHandler(async (req, res) => {

@@ -8,9 +8,6 @@ import {
   type Notification,
 } from '../api/notificationApi';
 
-// جای state داخلی AppLayout رو می‌گیره - از api/notificationApi.ts (که خودش
-// تو localStorage پرسیستشون می‌کنه) می‌خونه، پس با تعویض صفحه یا رفرش،
-// وضعیت خونده/نخونده از دست نمی‌ره
 function useNotifications() {
   const currentUser = getCurrentUser();
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -23,8 +20,7 @@ function useNotifications() {
   const owner = useRef(currentUser?.id);
   owner.current = currentUser?.id;
 
-  // آخرین درخواستِ در حال اجرا؛ اگه بین‌راه درخواست جدیدی (مثلاً refresh با
-  // باز کردن پنل) شروع بشه، جوابِ قدیمی‌تر نادیده گرفته می‌شه
+  // Only the latest notification request may replace the list.
   const requestIdRef = useRef(0);
 
   const load = useCallback(() => {
@@ -37,8 +33,7 @@ function useNotifications() {
     const requestId = ++requestIdRef.current;
     setLoading(true);
 
-    // قبلاً catch نداشت: هر خطای شبکه یه unhandled rejection می‌شد.
-    // اعلان‌ها حیاتی نیستن، پس موقع خطا همون لیست قبلی می‌مونه.
+    // Keep the previous notification list when refresh fails.
     getNotificationsForUser(currentUser.id, currentUser.role)
       .then((data) => {
         if (requestId === requestIdRef.current) setNotifications(data.filter(item => !removedIds.current.has(item.id)));
@@ -60,7 +55,7 @@ function useNotifications() {
     load();
 
     return () => {
-      // جلوگیری از setState بعد از unmount
+
       requestIdRef.current += 1;
       owner.current = undefined;
     };
@@ -88,7 +83,7 @@ function useNotifications() {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   function markOneRead(id: string) {
-    // کلیک روی اعلانِ از قبل خونده‌شده نباید درخواست الکی بفرسته
+
     if (notifications.find((n) => n.id === id)?.read !== false) return;
 
     markNotificationRead(id);

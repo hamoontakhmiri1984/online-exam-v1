@@ -1,6 +1,5 @@
 import { listen, createShutdown, httpDrainer } from './lib/serverLifecycle';
 import { logEvent } from './lib/logger';
-// server/src/server.ts
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -48,7 +47,6 @@ app.use((_req, res, next) => {
   next();
 });
 
-// Configure proxy trust and middleware before mounting routes.
 if (env.TRUST_PROXY > 0) {
   app.set('trust proxy', env.TRUST_PROXY);
 }
@@ -58,7 +56,6 @@ app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 
-// API entry point; dependency readiness is reported separately by /health.
 app.get('/', (_req, res) => {
   res.json({ service: 'online-exam-api', health: '/health' });
 });
@@ -66,9 +63,7 @@ app.get('/', (_req, res) => {
 app.get(
   '/health',
   asyncHandler(async (_req, res) => {
-    // هر وابستگی جدا چک می‌شه و با تایم‌اوت: Redis/DB که قطع باشه نباید request
-    // رو معلق کنه. اتصال اصلی و اتصال محدودکننده جدا بررسی می‌شوند. خطا
-    // هم به errorHandler نمی‌ره - health check باید ۵۰۳ + وضعیتِ هر وابستگی بده
+    // Bound each dependency probe and report failures as 503.
     const check = (name: string, run: () => Promise<unknown>) => {
       let timer: NodeJS.Timeout | undefined;
       const timeout = new Promise<never>((_, reject) => {
@@ -98,10 +93,7 @@ app.get(
   })
 );
 
-// دیگه هیچ فایلی رو دیسک سرور نگه‌داری/استاتیک سرو نمی‌شه - ویدیو/جزوه‌ها
-// تو MinIO/S3 (lib/storage.ts) هستن و فقط با signed URL موقت (بعد از چک
-// دسترسی، از routes/lessonSessions.ts) قابل‌دیدن‌ان. برای همین app.use('/uploads', express.static(...))
-// قبلی این‌جا کامل حذف شد.
+// Private uploads are served through authorized signed URLs, never a static directory.
 
 app.use('/auth', authRouter);
 app.use('/groups', groupsRouter);
@@ -113,29 +105,17 @@ app.use('/subscriptions', subscriptionsRouter);
 app.use('/categories', categoriesRouter);
 app.use('/handouts', handoutsRouter);
 app.use('/admin', adminRouter);
-// این دوتا برخلاف بقیه (behind requireAuth تو خیلی از sub-route هاشون) از
-// اول باید بخشِ GET عمومیِ بدون توکن داشته باشن - صفحه‌ی فرود و بلاگ باید
-// بدون لاگین قابل‌دیدن باشن؛ requireAuth+requireRole فقط رو زیرمسیر
-// /admin/... همین دو router اعمال می‌شه (خودِ فایل‌هاشون)
+// Public content routes apply authentication only to their admin endpoints.
 app.use('/blog', blogRouter);
 app.use('/cms', cmsRouter);
-// مسیرِ مستقل از examId - تاریخچه‌ی خودِ دانشجو رو مستقیم رو studentId
-// می‌گیره (routes/myAttempts.ts)، نه از زیرِ یه آزمونِ خاص
 app.use('/attempts', myAttemptsRouter);
 app.use('/exams/:examId/attempts', examAttemptsRouter);
-// این روت (routes/questions.ts) از قبل کامل نوشته شده بود - سوالاتِ
-// خودِ آزمون (ExamQuestion) + ایمپورت از بانک سوال (from-bank) - ولی
-// اینجا هیچ‌وقت mount نشده بود، برای همین GET/POST به
-// /exams/:examId/questions همیشه 404 می‌داد (دقیقاً همون خطای
-// «دریافت سوال‌ها با خطا مواجه شد» که تو صفحه‌ی سوالاتِ یه آزمون می‌دیدی)
 app.use('/exams/:examId/questions', examQuestionsRouter);
 app.use('/banks', questionBanksRouter);
 app.use('/exams', examsRouter);
 app.use('/practice', practiceRouter);
 
-// این دوتا باید آخرِ همه‌ی route ها بیان: notFoundHandler برای مسیری که هیچ
-// router‌ای match نکرده، errorHandler (چهار پارامتری) برای هر throw/next(err)
-// که تو کل زنجیره بالا اتفاق بیفته - از جمله چیزهایی که asyncHandler می‌گیره
+// Mount not-found and error handlers after every route.
 app.use(notFoundHandler);
 app.use(errorHandler);
 

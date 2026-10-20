@@ -17,8 +17,7 @@ export type AdminAuditEntry = {
   after?: Prisma.InputJsonValue;
 };
 
-// همیشه با tx همان تراکنشی صدا زده می‌شود که خود تغییر را انجام می‌دهد؛
-// یعنی یا تغییر و تاریخچه‌اش هر دو ثبت می‌شوند یا هیچ‌کدام
+// Use the mutation transaction so the change and audit record commit together.
 export async function recordAdminAction(
   db: Prisma.TransactionClient,
   entry: AdminAuditEntry

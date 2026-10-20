@@ -3,10 +3,10 @@ import { prisma } from './prisma';
 
 export type InstructorStats = {
   groups: number;
-  students: number; // دانشجوی یکتا در گروه‌های همان مدرس
+  students: number;
   exams: number;
   banks: number;
-  lessons: number; // جلسهٔ درس یکتا که به گروه‌های مدرس وصل است
+  lessons: number;
   handouts: number;
 };
 
@@ -21,9 +21,7 @@ const EMPTY: InstructorStats = {
 
 type CountRow = { instructorId: string; count: number };
 
-// مالکیت درس از رابطهٔ واقعی Group.instructorId -> _GroupSessions استخراج
-// می‌شود (LessonSession فیلد مالک مستقیم ندارد). جدول‌های _Group... همان
-// جدول‌های implicit پریزما هستند: A = groups.id و B = طرف دیگر رابطه
+// Lesson ownership follows Group.instructorId; implicit join columns are A=group, B=related record.
 async function distinctViaGroups(
   joinTable: '_GroupMembers' | '_GroupSessions',
   ids: string[]
@@ -37,7 +35,6 @@ async function distinctViaGroups(
   `);
 }
 
-// آمار چند مدرس با تعداد ثابتی کوئری (نه یکی به‌ازای هر مدرس)
 export async function loadInstructorStats(
   ids: string[]
 ): Promise<Map<string, InstructorStats>> {
@@ -95,8 +92,7 @@ export async function loadInstructorStats(
   return result;
 }
 
-// اشتراک فعلی چند مدرس با یک کوئری؛ مدرس بدون ردیف «رایگان» حساب می‌شود
-// (بدون ساختن ردیف در دیتابیس و بدون اعلان انقضا - خواندنِ ادمین اثر جانبی ندارد)
+// Missing subscriptions read as free without creating rows or notifications.
 export async function loadCurrentPlans(ids: string[]) {
   const map = new Map<
     string,

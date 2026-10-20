@@ -14,9 +14,7 @@ export type AccessDecision =
   | { kind: 'redirect'; to: '/login' | '/onboarding' | '/dashboard' }
   | { kind: 'allow' };
 
-// ترتیب مهمه: تا نشست تأیید نشده (loading/unavailable) هیچ تصمیمی بر پایهٔ user
-// گرفته نمی‌شه؛ چون user ممکنه از حافظه مونده باشه و هنوز اعتبارسنجی نشده باشه.
-// خطای موقت سرویس هم هیچ‌وقت به /login نمی‌رسه.
+// Do not trust cached users before session validation; temporary failures must not redirect to login.
 export function resolveAccess({
   isSessionReady,
   isSessionUnavailable,

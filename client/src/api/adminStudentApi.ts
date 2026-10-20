@@ -15,8 +15,7 @@ export type AdminStudent = {
   }[];
 };
 
-// instructorId و ungrouped با هم معتبر نیستند (سرور ۴۰۰ می‌دهد)؛ اینجا هم
-// فقط یکی از آن‌ها به URL اضافه می‌شود
+// Instructor and ungrouped filters are mutually exclusive.
 export type AdminStudentFilter = { instructorId?: string; ungrouped?: boolean };
 
 export function getAdminStudents(
@@ -34,7 +33,6 @@ export function getAdminStudents(
 
 export const UNGROUPED_SELECTION = '__ungrouped';
 
-// مقدار select صفحهٔ دانشجوها -> فیلتر API ('' = همه)
 export function filterFromSelection(value: string): AdminStudentFilter {
   if (value === UNGROUPED_SELECTION) return { ungrouped: true };
   return value ? { instructorId: value } : {};

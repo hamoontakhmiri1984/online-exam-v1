@@ -21,67 +21,41 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().default(''),
   CLIENT_URL: z.string().default('http://localhost:5173'),
 
-  // تعداد proxy (مثل nginx/Cloudflare) بین کاربر و سرور. ۰ یعنی مستقیم (لوکال).
-  // پشت proxy باید ۱ (یا بیشتر) باشه، وگرنه req.ip همه‌ی کاربرها یکسان می‌شه و
-  // rate-limit و کپچای مبتنی بر IP برای همه با هم اعمال می‌شه
+  // Set the trusted proxy count to match the deployment topology.
   TRUST_PROXY: z.coerce.number().int().min(0).default(0),
 
-  // زرین‌پال: merchant ID واقعی رو از پنل زرین‌پال می‌گیری. تا وقتی مرچنت
-  // واقعی نداری، همین مقدار sandbox پیش‌فرض کار می‌کنه چون در حالت sandbox
-  // (ZARINPAL_SANDBOX=true) هر مرچنت آیدی معتبری پذیرفته می‌شه.
   ZARINPAL_MERCHANT_ID: z
     .string()
     .default('00000000-0000-0000-0000-000000000000'),
-  // sandbox یعنی پرداخت واقعی انجام نمی‌شه (محیط تست خودِ زرین‌پال) - قبل از
-  // رفتن به production حتماً false بشه
   ZARINPAL_SANDBOX: z
     .string()
     .default('true')
     .transform((v) => v === 'true'),
-  // آدرس بک‌اند خودمون (نه کلاینت) - زرین‌پال بعد از پرداخت کاربر رو به این
-  // آدرس (route کال‌بک ما) برمی‌گردونه، بعد ما خودمون کاربر رو با ریدایرکت
-  // به CLIENT_URL می‌فرستیم
+  // Public backend origin used for payment callbacks.
   SERVER_URL: z.string().default('http://localhost:4000'),
 
-  // Storage (MinIO محلی یا هر S3-compatible دیگه مثل Liara/ArvanCloud/S3
-  // واقعی) - کد storage.ts فقط با این envها کار می‌کنه، برای همین سوییچ
-  // کردن بین محلی و ابری فقط تغییر همینا رو می‌خواد، نه تغییر کد
   S3_ENDPOINT: z.string().default('http://localhost:9000'),
   S3_REGION: z.string().default('us-east-1'),
   S3_ACCESS_KEY_ID: z.string().default('minioadmin'),
   S3_SECRET_ACCESS_KEY: z.string().default('minioadmin'),
   S3_BUCKET: z.string().default('exam-platform-uploads'),
-  // MinIO (و بیشتر S3-compatible های محلی) به‌جای virtual-hosted style
-  // (bucket.endpoint.com) به path-style (endpoint.com/bucket) نیاز دارن -
-  // اگه بعداً رفتی رو S3 واقعی/Liara/ArvanCloud که هردو رو ساپورت می‌کنن،
-  // می‌تونی بذاریش false یا همون true رو نگه داری، فرقی نمی‌کنه
+  // MinIO uses path-style bucket addressing.
   S3_FORCE_PATH_STYLE: z
     .string()
     .default('true')
     .transform((v) => v === 'true'),
-  // مدت اعتبار (ثانیه) هر signed URL که برای پخش ویدیو/دانلود جزوه صادر
-  // می‌شه - بعد از این مدت لینک از کار می‌افته و باید دوباره از سرور یکی
-  // تازه گرفت (endpoint های .../signed-url تو routes/lessonSessions.ts)
   SIGNED_URL_EXPIRES_IN: z
     .string()
     .default('300')
     .transform((v) => parseInt(v, 10)),
 
-  // آدرس عمومیِ خواندنی که تصویرهای بلاگ/CMS ازش سرو می‌شن (بدون signed URL،
-  // چون این‌ها برخلاف ویدیو/جزوه از اول قرار بوده عمومی باشن - صفحه‌ی فرود
-  // و بلاگ نباید پشت لاگین باشن). یا یه bucket جدا با دسترسیِ خواندنِ عمومی
-  // رو همون S3_ENDPOINT، یا یه CDN جلوش. خالی یعنی آپلود تصویر بلاگ/CMS
-  // (لایه‌ی publicAssets تو storage.ts) موقع صدا زده‌شدن خطای واضح می‌ده -
-  // نه اینکه لینکِ از کار نیفتاده بسازه
+  // Public origin for blog/CMS assets; private lesson files use signed URLs.
   S3_PUBLIC_BASE_URL: z.string().default(''),
 });
 
 const parsedEnv = envSchema.parse(process.env);
 
-// جلوگیری از اشتباه خطرناک: اگه ZARINPAL_SANDBOX یادمون بره و پیش‌فرض (true)
-// روی production بمونه، پرداخت‌ها تو محیط تست زرین‌پال انجام می‌شن و هرکسی
-// بدون پرداخت واقعی پلن پولی می‌گیره. پس تو production بدون مرچنت واقعی و
-// sandbox=false سرور اصلاً بالا نمیاد.
+// Production must not accept sandbox payments or default storage credentials.
 if (parsedEnv.NODE_ENV === 'production') {
   for (const key of ['S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY'] as const) {
     if (!parsedEnv[key].trim() || parsedEnv[key].trim().toLowerCase() === 'minioadmin') {
@@ -107,9 +81,6 @@ if (parsedEnv.NODE_ENV === 'production') {
     throw new Error('ZARINPAL_MERCHANT_ID در production باید مرچنت واقعی باشه');
   }
 
-  // پشت nginx/Cloudflare اگه TRUST_PROXY=0 بمونه، req.ip همه‌ی کاربرها یکسان
-  // می‌شه و rate-limit و کپچای مبتنی بر IP برای همه با هم اعمال می‌شه. خطا
-  // نمی‌دیم چون اجرای مستقیم (بدون proxy) هم مجازه؛ فقط هشدار می‌دیم
   if (parsedEnv.TRUST_PROXY === 0) {
     logEvent('warn', 'هشدار: TRUST_PROXY=0 در production. اگه پشت proxy/load balancer هستی باید ۱ (یا تعداد proxy ها) باشه.');
   }

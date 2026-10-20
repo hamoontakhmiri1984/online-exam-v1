@@ -43,8 +43,6 @@ function PlansPage() {
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [paymentsRefreshKey, setPaymentsRefreshKey] = useState(0);
 
-  // تاریخچه‌ی پرداخت‌ها جدا از useSubscription می‌گیریمش - چون فقط این
-  // صفحه بهش نیاز داره، لازم نیست جزو hook مشترک بشه
   useEffect(() => {
     if (!currentUser || currentUser.role !== 'Instructor') return;
     let cancelled = false;
@@ -52,7 +50,6 @@ function PlansPage() {
       .then((data) => {
         if (!cancelled) setPayments(data);
       })
-      // قبلاً catch نداشت و خطای شبکه unhandled rejection می‌شد
       .catch(() => {});
     return () => {
       cancelled = true;
@@ -60,8 +57,6 @@ function PlansPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id, paymentsRefreshKey]);
 
-  // نتیجه‌ی برگشت از درگاه زرین‌پال - سرور بعد از verify کاربر رو به
-  // /plans?payment=success یا /plans?payment=failed ریدایرکت می‌کنه
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const payment = params.get('payment');
@@ -77,9 +72,7 @@ function PlansPage() {
         tone: 'danger',
       });
     } else if (payment === 'pending') {
-      // نتیجه‌ی تایید پرداخت هنوز قطعی نیست (مثلاً قطعی شبکه موقع تایید).
-      // اگه پول از حسابت کم شده، چند دقیقه بعد همین صفحه رو رفرش کن یا با
-      // پشتیبانی تماس بگیر - اشتراک بعد از تایید نهایی فعال می‌شه
+      // An unknown payment outcome remains pending until provider verification succeeds.
       setToast({
         message:
           'نتیجه‌ی پرداخت هنوز تایید نشده. اگه مبلغ از حسابت کسر شده، چند دقیقه بعد دوباره سر بزن یا با پشتیبانی تماس بگیر',
@@ -87,7 +80,6 @@ function PlansPage() {
       });
     }
 
-    // پاک کردن query param از URL تا رفرش دستی صفحه دوباره toast نشون نده
     params.delete('payment');
     const newSearch = params.toString();
     window.history.replaceState(
@@ -98,8 +90,7 @@ function PlansPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // برگشت با دکمه‌ی Back از درگاه پرداخت: مرورگر صفحه رو با state قبلی (لودینگِ
-  // روشن) از cache برمی‌گردونه؛ بدون این، دکمه‌ها برای همیشه غیرفعال می‌مونن
+  // Clear restored loading state when returning from the payment gateway through the back-forward cache.
   useEffect(() => {
     function handlePageShow(event: PageTransitionEvent) {
       if (event.persisted) {
@@ -111,13 +102,9 @@ function PlansPage() {
     return () => window.removeEventListener('pageshow', handlePageShow);
   }, []);
 
-  // برای پلن رایگان مستقیم تمدید می‌کنه؛ برای پلن پولی باید دوباره از درگاه
-  // پرداخت رد بشه (چون سرور تمدید مستقیم پلن پولی رو رد می‌کنه)
   async function handleRenew() {
     if (!currentUser || !subscription) return;
     setActionLoading(true);
-    // وقتی به درگاه ریدایرکت می‌شیم، لودینگ باید روشن بمونه تا تا لحظه‌ی
-    // عوض شدنِ صفحه کلیکِ دوباره یه checkoutِ دوم نسازه
     let redirecting = false;
     try {
       if (PLANS[subscription.planId].price === 0) {
@@ -158,13 +145,10 @@ function PlansPage() {
   async function confirmPlanChange() {
     if (!currentUser || !pendingPlanId) return;
     setActionLoading(true);
-    // مثل handleRenew: موقع ریدایرکت به درگاه لودینگ و مودال باز می‌مونن
     let redirecting = false;
     try {
       const result = await startCheckout(pendingPlanId);
       if (!result.free) {
-        // ریدایرکت به درگاه زرین‌پال - از این‌جا به بعد کنترل دست کاربره،
-        // نیازی به toast/refresh این‌جا نیست چون صفحه عوض می‌شه
         redirecting = true;
         window.location.href = result.paymentUrl;
         return;

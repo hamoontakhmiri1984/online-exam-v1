@@ -8,7 +8,6 @@ type AuthLayoutProps = {
   title: string;
   subtitle: string;
   children: ReactNode;
-  /** خط پایین کارت، مثلاً «حساب ندارید؟ ساخت حساب» */
   footer: ReactNode;
 };
 
@@ -18,18 +17,13 @@ const BRAND_POINTS = [
   'مدیریت گروه‌های دانشجویی با کد دعوت',
 ];
 
-/**
- * پوسته‌ی مشترک صفحات لاگین/ثبت‌نام. توی دسکتاپ یه چیدمان دوستونه‌ست
- * (پنل برندینگ + پنل فرم)، توی موبایل فقط پنل فرم (تمام‌عرض) نشون داده
- * می‌شه. LoginPage و SignupPage فقط عنوان/فرم/فوتر رو بهش می‌دن.
- */
 function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProps) {
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen flex bg-white dark:bg-gray-950 transition-colors">
-      {/* پنل برندینگ - فقط از lg به بالا نشون داده می‌شه */}
+
       <div className="relative hidden lg:flex lg:w-[42%] xl:w-[38%] flex-col justify-between overflow-hidden bg-brand-700 px-10 py-12 text-white">
         <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
 
@@ -85,9 +79,8 @@ function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProps) {
         </p>
       </div>
 
-      {/* پنل فرم */}
       <div className="relative flex min-w-0 flex-1 flex-col items-center justify-center px-4 py-16">
-        {/* دکمه‌ی تم ثابت: با تغییر مرحله یا ارتفاع فرم جابه‌جا نمی‌شود */}
+
         <button
           type="button"
           onClick={toggleTheme}

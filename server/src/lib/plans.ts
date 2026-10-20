@@ -1,13 +1,11 @@
-// معادل سرور-ساید constants/plans.ts تو فرانت - فقط فیلدهای «کارکردی»
-// (قیمت، مدت، سقف‌ها) که برای محاسبه‌ی endDate و چک محدودیت لازمه؛ چیزهای
-// نمایشی مثل priceLabel/features فقط سمت فرانت لازمه و اینجا نیست
+// Server-side plan prices and limits are authoritative; display labels live in the client.
 
 export type PlanId = 'free' | 'gold' | 'platinum' | 'vip';
 
 export type Plan = {
   id: PlanId;
   price: number;
-  durationDays: number | null; // null یعنی همیشگی (پلن رایگان)
+  durationDays: number | null;
   maxQuestions: number | null;
   maxActiveExams: number | null;
   maxGroups: number | null;

@@ -4,8 +4,7 @@ import ProtectedRoute from '../components/ProtectedRoute/ProtectedRoute';
 import Spinner from '../components/Spinner/Spinner';
 import type { RouteConfig } from './routeConfig';
 
-// جدول مسیرها رو رندر می‌کنه. هیچ گیتِ نشستی اینجا نیست: مسیر عمومی فوراً رندر
-// می‌شه و فقط ProtectedRoute منتظر تأیید نشست می‌مونه.
+// Public routes render immediately; only ProtectedRoute waits for session validation.
 function RouteTable({ routeTable }: { routeTable: RouteConfig[] }) {
   return (
     <Suspense fallback={<Spinner />}>

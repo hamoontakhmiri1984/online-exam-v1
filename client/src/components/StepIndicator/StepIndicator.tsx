@@ -1,7 +1,5 @@
 type StepIndicatorProps = {
-  /** برچسب کوتاه هر مرحله، به ترتیب نمایش */
   steps: string[];
-  /** ایندکس مرحله‌ی فعلی (از صفر) */
   currentIndex: number;
 };
 

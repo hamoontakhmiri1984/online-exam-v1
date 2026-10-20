@@ -60,8 +60,6 @@ function ExamsPage() {
     { visibleGroupIds, currentUser }
   );
 
-  // SuperAdmin پنل محتوا نیست - آزمون‌ساز کارِ مدرسه. اینجا فقط UI مدیریت
-  // رو مخفی می‌کنیم؛ SuperAdmin هنوز کل لیست رو برای نظارت می‌بینه
   const canManage = currentUser?.role === 'Instructor';
   const isObserver = currentUser?.role === 'SuperAdmin';
   const [search, setSearch] = useState('');
@@ -78,8 +76,6 @@ function ExamsPage() {
     const request = getGroupsByInstructor(currentUser.id);
     let cancelled = false;
 
-    // بدون catch با خطای شبکه unhandled rejection می‌شد؛ فرم آزمون با لیست
-    // گروهِ خالی باز می‌شه
     request
       .then((groups) => {
         if (!cancelled) setAvailableGroups(groups);

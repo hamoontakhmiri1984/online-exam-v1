@@ -37,7 +37,7 @@ function useGroupMembership(
     getGroupsByStudent(studentId)
       .then(setMyGroups)
       .catch(() => {
-        // لیست خالی نشون داده می‌شه؛ مهم اینه که اسپینر برای همیشه نمونه
+
       })
       .finally(() => setGroupsLoading(false));
   }, [studentId, refreshKey]);
@@ -55,10 +55,7 @@ function useGroupMembership(
     setJoining(true);
     setJoinError(null);
     try {
-      // سرور lookup و join رو تو یه endpoint اتمیک و idempotent انجام می‌ده،
-      // برای همین برای پیام «قبلاً عضو هستی» باید از قبل (قبل از صدا زدن)
-      // چک کنیم که این گروه تو لیست فعلی هست یا نه - چون خودِ پاسخ سرور فرقی
-      // بین «تازه عضو شد» و «از قبل عضو بود» نمی‌ذاره
+      // The idempotent join response cannot distinguish existing membership; preserve the prior local state.
       const alreadyMemberIds = new Set(myGroups.map((g) => g.id));
       const group = await joinGroupByCode(trimmed);
 

@@ -52,9 +52,7 @@ export async function loadAccessibleExam(
   return { exam, allowed: hasAttempt > 0 };
 }
 
-// چک عضویتِ دانشجو تو گروه‌های *فعلیِ* آزمون، روی هر client (prisma یا tx).
-// برای استفاده بعد از قفل آزمون تو تراکنش: چون تغییر گروه‌ها FOR UPDATE
-// می‌گیره، بعد از FOR SHARE این نتیجه کهنه نمی‌شه
+// Recheck membership after locking the exam to avoid stale group assignments.
 export async function isStudentInExamGroups(
   db: Prisma.TransactionClient,
   examId: string,

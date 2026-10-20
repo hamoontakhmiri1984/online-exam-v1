@@ -17,8 +17,6 @@ import {
   countParticipants,
 } from './Dashboard.utils';
 
-// این صفحه دیگه خودش منطقی نداره: فچ/فیلتر توی useDashboardData، محاسبات آماری
-// و آماده‌سازی داده‌ی چارت‌ها توی dashboard.utils، و UI توی components/ هستن.
 function MemberDashboard() {
   const { user, exams, attempts, studentCount, error, clearError } =
     useDashboardData();
@@ -45,8 +43,6 @@ function MemberDashboard() {
       <DashboardHeader user={user} />
 
       <StatsCards
-        // «فعال» یعنی پیش‌رو؛ قبلاً همه‌ی آزمون‌ها (حتی پایان‌یافته و
-        // پیش‌نویس) شمرده می‌شدن
         examCount={exams.filter((e) => e.status === 'upcoming').length}
         studentCount={studentCount}
         showStudentCount={user?.role !== 'Student'}

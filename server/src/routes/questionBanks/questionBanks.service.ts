@@ -36,8 +36,6 @@ export function serializeQuestion(q: {
   };
 }
 
-// Instructor فقط بانک‌های خودش رو می‌بینه/مدیریت می‌کنه؛ SuperAdmin به همه
-// دسترسی داره (دقیقاً هم‌الگوی groups.ts/exams.ts)
 export async function loadOwnedBank(
   bankId: string,
   userId: string,
@@ -49,9 +47,7 @@ export async function loadOwnedBank(
   return { bank, allowed: bank.instructorId === userId };
 }
 
-// دسترسی به تک‌تک سوال‌ها همیشه از طریق بانکِ والدشه (نه مستقیم از روی
-// questionId)، تا هیچ‌وقت نشه با حدس‌زدن یه id سوالِ یه بانکِ دیگه رو
-// ویرایش/حذف کرد
+// Authorize each question through its parent bank.
 export async function loadOwnedQuestion(
   bankId: string,
   questionId: string,

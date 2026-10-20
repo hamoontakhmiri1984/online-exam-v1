@@ -4,9 +4,7 @@ import type { Attachment, LessonSession, VideoSource } from '../api/lessonApi';
 import { uploadLessonVideo, uploadLessonAttachment } from '../api/uploadApi';
 import { toEmbedUrl } from '../utils/video';
 
-// همون سقف‌های سمت سرور (lib/videoUpload.ts و lib/attachmentUpload.ts)؛ اینجا
-// چک می‌شن تا مدرس بعد از آپلودِ چند دقیقه‌ایِ یه فایل ۶۰۰ مگابایتی تازه
-// نفهمه که رد شده
+// Keep upload limits aligned with the server to reject oversized files before transfer.
 const MAX_VIDEO_BYTES = 500 * 1024 * 1024;
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 
@@ -39,9 +37,7 @@ function useSessionFormModal({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // با هر باز/بسته‌شدنِ فرم یکی زیاد می‌شه. اگه آپلودی وسط کار باشه و فرم
-  // بسته (یا برای جلسه‌ی دیگه‌ای باز) بشه، نتیجه‌ی اون آپلود قدیمی نباید تو
-  // فرمِ جدید بشینه.
+  // Ignore upload completions from a closed or replaced form.
   const formVersion = useRef(0);
 
   function openAdd() {
@@ -89,17 +85,12 @@ function useSessionFormModal({
     setIsOpen(false);
   }
 
-  // قبلاً اینجا فقط URL.createObjectURL(file) صدا زده می‌شد که یه blob:
-  // URL محلی و موقتیه - فقط تو همین تب مرورگر معتبره، با رفرش از بین
-  // می‌ره و از هیچ مرورگر دیگه‌ای (مثلاً دانشجو) قابل‌دسترس نیست. الان فایل
-  // واقعاً به bucket خصوصی آپلود می‌شه و فقط object key برمی‌گرده - پخش
-  // واقعی بعداً با یه signed URL موقت انجام می‌شه (SessionPlayer.tsx)
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const input = event.target;
     const file = input.files?.[0];
     if (!file) return;
 
-    // اجازه بده همون فایل دوباره انتخاب بشه (مثلاً بعد از شکست آپلود)
+    // Allow retrying the same file after an upload failure.
     input.value = '';
 
     if (file.size > MAX_VIDEO_BYTES) {
@@ -132,7 +123,7 @@ function useSessionFormModal({
     const file = input.files?.[0];
     if (!file) return;
 
-    // اجازه بده همون فایل دوباره انتخاب بشه (مثلاً بعد از شکست آپلود)
+    // Allow retrying the same file after an upload failure.
     input.value = '';
 
     if (file.size > MAX_ATTACHMENT_BYTES) {
@@ -175,8 +166,6 @@ function useSessionFormModal({
       return;
     }
 
-    // سرور عنوانِ کمتر از ۲ حرف رو رد می‌کنه؛ همینجا با پیام روشن جلوش رو
-    // می‌گیریم
     if (title.trim().length < 2) {
       setValidationError('عنوان جلسه باید حداقل ۲ حرف باشه');
       return;
@@ -188,8 +177,7 @@ function useSessionFormModal({
         setValidationError('لطفاً لینک ویدیو را وارد کنید');
         return;
       }
-      // همون اعتبارسنجی‌ای که پلیر استفاده می‌کنه؛ وگرنه لینکِ خراب ذخیره
-      // می‌شد و بعداً تو پلیر «لینک نامعتبر است» می‌دیدن
+      // Use the player's URL validation before saving links.
       if (!toEmbedUrl(videoUrl)) {
         setValidationError('لینک ویدیو نامعتبر است');
         return;
@@ -224,8 +212,7 @@ function useSessionFormModal({
       setIsSubmitting(false);
     }
 
-    // useCrud/هوک صفحه موقع خطا پیام رو تو Toast نشون می‌ده و undefined برمی‌گردونه؛
-    // تو اون حالت مودال باز می‌مونه تا اطلاعات واردشده از بین نره
+    // Keep the form open when saving fails.
     if (saved) {
       setIsOpen(false);
     }

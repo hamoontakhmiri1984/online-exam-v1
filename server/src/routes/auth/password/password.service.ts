@@ -176,8 +176,7 @@ export async function loginWithPassword(data: PasswordLoginData, ip: string) {
 export async function resetPassword(resetTicket: string, newPassword: string) {
   let userId: string;
 
-  // فقط خودِ تیکت نامعتبر/منقضی/مصرف‌شده «لینک نامعتبر» حساب می‌شه؛ خطای
-  // بعدی (دیتابیس و ...) دیگه به‌اشتباه با همین پیام پنهان نمی‌شه
+  // Only invalid reset tickets are auth failures; forward infrastructure errors separately.
   try {
     ({ sub: userId } = await verifyResetTicket(resetTicket));
   } catch {
@@ -195,8 +194,7 @@ export async function resetPassword(resetTicket: string, newPassword: string) {
     },
   });
 
-  // کاربری که رمزش رو فراموش کرده ممکنه قفلِ ناشی از تلاش‌های ناموفق باشه؛
-  // بعد از ریست نباید تا پایان قفل بلاک بمونه
+  // Password recovery clears previous login lockouts.
   await clearFailedAttempts(userId);
 
   forceLogoutOtherSessions(userId);

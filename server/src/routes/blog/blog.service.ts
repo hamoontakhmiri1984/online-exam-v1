@@ -15,9 +15,6 @@ export type BlogPostRecord = {
   author: { id: string; name: string | null };
 };
 
-// خروجیِ عمومی (لیست/تک‌پست منتشرشده): contentMarkdown فقط تو حالت detail
-// برمی‌گرده، نه تو لیست - لیست فقط برای preview/کارت لازمه و لازم نیست کل
-// محتوا رو دانلود کنه
 export function serializeSummary(post: BlogPostRecord) {
   return {
     id: post.id,
@@ -39,8 +36,6 @@ export function serializeDetail(post: BlogPostRecord) {
   };
 }
 
-// خروجیِ ادمین (لیست/ویرایش): برخلاف بالا published/draft هم داره و
-// contentMarkdown همیشه همراهشه (فرم ویرایش بهش نیاز داره)
 export function serializeAdmin(post: BlogPostRecord) {
   return {
     id: post.id,

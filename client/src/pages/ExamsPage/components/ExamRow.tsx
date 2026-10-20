@@ -98,8 +98,7 @@ function ExamRow({
       </td>
       <td className="py-3">
         <div className="flex items-center gap-2">
-          {/* فقط دانشجو می‌تونه آزمون بده (روت /exams/:examId/take و سرور هر دو
-              Student-only ـن)؛ برای مدرس/ادمین این دکمه فقط به داشبورد برمی‌گردوند */}
+
           {canTake && exam.status !== 'draft' && (
             <button
               onClick={() => onTake(exam)}

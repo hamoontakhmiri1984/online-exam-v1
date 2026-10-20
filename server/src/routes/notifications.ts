@@ -9,9 +9,6 @@ import { notFound, forbidden, badRequest } from '../lib/errors';
 const router = Router();
 router.use(requireAuth);
 
-// اعلان‌های قابل‌دیدن برای کاربر جاری: یا مستقیم مال خودشه (userId)، یا
-// عمومیه و نقشش تو targetRoles هست - دقیقاً معادل getNotificationsForUser
-// تو mock (client/src/api/notificationApi.ts)
 router.get(
   '/',
   asyncHandler(async (req, res) => {
@@ -23,13 +20,9 @@ router.get(
         OR: [{ userId: sub }, { userId: null, targetRoles: { has: role } }],
       },
       orderBy: { createdAt: 'desc' },
-      // بدون سقف، با گذشت زمان کل تاریخچه‌ی اعلان‌ها با هر بار باز شدنِ صفحه
-      // (و حالا با هر بار بازکردنِ پنل) دریافت می‌شد
       take: 100,
     });
 
-    // اعلان‌های گروهی این batch رو جدا کن و برای همینِ کاربر چک کن کدوم‌ها
-    // رو قبلاً دیده (NotificationRead) - اعلانِ شخصی نیازی به این چک نداره
     const broadcastIds = notifications
       .filter((n) => n.userId === null)
       .map((n) => n.id);
@@ -68,7 +61,6 @@ router.delete('/:id', asyncHandler(async (req, res) => {
   res.status(204).end();
 }));
 
-// یه اعلان رو خونده‌شده علامت می‌زنه - فقط اگه واقعاً برای این کاربر قابل‌دیدن باشه
 router.post(
   '/:id/read',
   asyncHandler(async (req, res) => {
@@ -92,10 +84,7 @@ router.post(
       return res.json(serializeNotification(updated, true));
     }
 
-    // اعلانِ گروهیه - ستونِ مشترکِ read رو دست نمی‌زنیم (وگرنه برای بقیه‌ی
-    // کاربرهای همون نقش هم «خونده‌شده» می‌شد)، فقط برای همینِ کاربر یه ردیف
-    // NotificationRead ثبت می‌کنیم. upsert چون ممکنه از قبل هم خونده باشتش
-    // (دوبار کلیک/ریفرش) و باید idempotent بمونه.
+    // Broadcast read state is per recipient; never update a shared read flag.
     await prisma.notificationRead.upsert({
       where: {
         userId_notificationId: { userId: sub, notificationId: existing.id },
@@ -107,8 +96,6 @@ router.post(
   })
 );
 
-// معادل markAllNotificationsRead تو mock - فقط از بین idهای ارسالی، همونایی
-// که واقعاً برای این کاربر قابل‌دیدنن رو خونده‌شده می‌کنه (نه هر id دلخواهی)
 router.post(
   '/read-all',
   asyncHandler(async (req, res) => {
@@ -117,8 +104,7 @@ router.post(
 
     const { sub, role } = req.user!;
 
-    // فقط idهایی که واقعاً برای همینِ کاربر قابل‌دیدنن رو در نظر بگیر (نه
-    // هر id دلخواهی که تو بدنه‌ی درخواست اومده)
+    // Restrict supplied IDs to notifications visible to the current user.
     const visible = await prisma.notification.findMany({
       where: {
         id: { in: parsed.data.ids },
@@ -134,8 +120,6 @@ router.post(
       .filter((n) => n.userId === null)
       .map((n) => n.id);
 
-    // شخصی‌ها روی ستونِ خودشون، گروهی‌ها به‌عنوانِ ردیفِ جدا per-user - دقیقاً
-    // همون منطقِ /:id/read، اینجا فقط batch شده
     await prisma.$transaction([
       ...(personalIds.length
         ? [

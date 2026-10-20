@@ -16,8 +16,6 @@ export type SubscriptionRow = {
   expiryNotifiedAt: Date | null;
 };
 
-// فقط فیلدهایی که serializeSubscription لازم داره - برای لیست‌هایی که ردیف
-// «رایگانِ پیش‌فرض» رو بدون ساختنش تو دیتابیس برمی‌گردونن
 export type SubscriptionSummary = Pick<
   SubscriptionRow,
   'instructorId' | 'planId' | 'startDate' | 'endDate'
@@ -29,8 +27,7 @@ export function computeEndDate(planId: PlanId, from: Date): Date | null {
   return new Date(from.getTime() + plan.durationDays * DAY_MS);
 }
 
-// خرید پولی: اگه همون پلنِ فعلی هنوز منقضی نشده، مدت جدید از انتهای اشتراک
-// فعلی شروع می‌شه تا روزهای باقی‌مونده‌ی پرداخت‌شده نسوزه؛ وگرنه از الان
+// Renewals extend an unexpired matching plan from its current end date.
 export function computePurchaseEndDate(
   planId: PlanId,
   current: { planId: PlanId; endDate: Date | null } | null,
@@ -53,10 +50,7 @@ export function serializeSubscription(s: SubscriptionSummary) {
   };
 }
 
-// چک lazy برای اطلاع‌رسانیِ انقضا: به‌جای یه cron/job جداگانه (که این پروژه
-// زیرساختش رو نداره)، همینجا هر بار getCurrentSubscription صدا زده می‌شه
-// چک می‌کنیم. expiryNotifiedAt جلوی اسپم رو می‌گیره - یه‌بار که نوتیف
-// فرستاده شد، دیگه هیچ‌وقت دوباره چک نمی‌کنه. updateMany atomic ـه.
+// Claim the expiry notification atomically to prevent duplicate delivery.
 async function notifyIfNewlyExpired(sub: SubscriptionRow): Promise<void> {
   if (!sub.endDate || sub.endDate.getTime() >= Date.now()) return;
   if (sub.expiryNotifiedAt) return;
@@ -74,10 +68,7 @@ async function notifyIfNewlyExpired(sub: SubscriptionRow): Promise<void> {
   );
 }
 
-// طبق کامنت schema.prisma: تاریخچه‌ی اشتراک نگه داشته می‌شه (هر ارتقا/تمدید
-// یه ردیف جدیده)، «پلن فعلی» یعنی جدیدترین ردیف بر اساس startDate. اگه
-// مدرسی هنوز هیچ ردیفی نداشته باشه، دقیقاً مثل mock یه ردیف «رایگان»
-// می‌سازیم و همون رو برمی‌گردونیم
+// The newest subscription is current; changes append history rather than overwriting it.
 export async function getCurrentSubscription(
   instructorId: string
 ): Promise<SubscriptionRow> {
@@ -90,11 +81,7 @@ export async function getCurrentSubscription(
     return existing;
   }
 
-  // مدرسِ بدون ردیف: چند درخواستِ هم‌زمانِ اول (مثلاً چند تب، یا سهمیه +
-  // /subscriptions/me) همه «ردیفی نیست» می‌دیدن و هرکدوم یه ردیف «رایگان»
-  // می‌ساخت. ساخت الان پشت قفل ردیف مدرس (همون قفل تسویه‌ی پرداخت و سهمیه)
-  // و با چکِ دوباره *بعد از قفل* انجام می‌شه. فقط تو همین مسیرِ کم‌تکرار
-  // تراکنش باز می‌شه، نه تو هر خواندنِ اشتراک
+  // Create the initial free subscription under the instructor lock.
   return prisma.$transaction(async (tx) => {
     await lockInstructorForUpdate(tx, instructorId);
 
@@ -115,10 +102,7 @@ export async function getCurrentSubscription(
   });
 }
 
-// تا وقتی پلن پولیِ فعلی منقضی نشده، رفتن به پلن پایین‌تر (رایگان یا پولیِ
-// ارزون‌تر) رد می‌شه؛ وگرنه ردیفِ جدید از «همین الان» جای پلن فعلی رو
-// می‌گیره و روزهای پرداخت‌شده می‌سوزه. ارتقا و تمدیدِ همون پلن مجازه.
-// اختصاص دستیِ SuperAdmin (assign) از این چک رد نمی‌شه
+// Reject downgrades while a paid plan remains active.
 export async function assertPlanChangeAllowed(
   instructorId: string,
   targetPlanId: PlanId
@@ -135,9 +119,7 @@ export async function assertPlanChangeAllowed(
   }
 }
 
-// اشتراک فعلیِ همه‌ی مدرس‌ها با دو کوئری (نه N+1) و بدون اثر جانبی: مدرسِ
-// بدون ردیف «رایگان» حساب می‌شه ولی چیزی تو دیتابیس ساخته نمی‌شه و اعلان
-// انقضا هم از مسیر خواندنِ ادمین فرستاده نمی‌شه
+// Administrative reads must not create subscriptions or send expiry notifications.
 export async function listCurrentSubscriptions(): Promise<
   SubscriptionSummary[]
 > {
@@ -165,9 +147,7 @@ export async function listCurrentSubscriptions(): Promise<
   );
 }
 
-// انتخاب/ارتقای پلن - همیشه یه ردیف تازه می‌سازه (نه آپدیت ردیف قبلی) تا
-// تاریخچه حفظ بشه. فقط برای مسیرهای بدون پرداخت (پلن رایگان، اختصاص دستی
-// توسط SuperAdmin)؛ پلن پولی‌ای که پرداخت شده از lib/payments.ts اعمال می‌شه
+// Append free/manual assignments; paid activation belongs to verified checkout.
 export async function selectPlan(
   instructorId: string,
   planId: PlanId,
@@ -193,7 +173,6 @@ export async function selectPlan(
   });
 }
 
-// تمدید همون پلن فعلی - یه ردیف جدید با تاریخ شروع/پایان تازه
 export async function renewSubscription(
   instructorId: string
 ): Promise<SubscriptionRow> {

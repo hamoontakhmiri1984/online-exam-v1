@@ -9,7 +9,6 @@ import Difficulty from '../../../components/QuestionDifficultyBadge/QuestionDiff
 type BankQuestionCardProps = {
   question: BankQuestion;
   order: number;
-  // وقتی داده نشن (مثلاً برای SuperAdmin) دکمه‌های ویرایش/حذف نمایش داده نمی‌شن
   onEdit?: (question: BankQuestion) => void;
   onDelete?: (question: BankQuestion) => void;
 };

@@ -4,7 +4,6 @@ import Reveal, { RevealGroup, RevealItem } from '../../../components/motion/Reve
 type FeatureItem = { icon: string; title: string; description: string };
 
 type FeaturesProps = {
-  // خروجیِ FeaturesSectionForm (پنل ادمین -> /site-content)
   data?: Record<string, unknown>;
 };
 

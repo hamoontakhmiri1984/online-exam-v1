@@ -14,9 +14,7 @@ function useExamAnswers(
   const [answers, setAnswers] = useState<AnswersMap>({});
   const [isReviewing, setIsReviewing] = useState<boolean>(false);
 
-  // وقتی initialAnswers از سرور می‌رسه (شروع تازه یا resume)، answers رو
-  // باهاش seed می‌کنیم - فقط همون لحظه‌ای که از null به یه مقدار واقعی
-  // تغییر می‌کنه
+  // Seed answers once when the server initial state becomes available.
   useEffect(() => {
     if (initialAnswers) {
       setAnswers(initialAnswers);

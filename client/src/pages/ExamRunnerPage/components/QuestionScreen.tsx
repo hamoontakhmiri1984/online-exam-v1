@@ -47,7 +47,7 @@ function QuestionScreen({
       <ExamWarnings activeWarning={activeWarning} onDismiss={onDismissWarning} />
 
       <div className="mx-auto max-w-2xl">
-        {/* Header: progress + timer */}
+
         <div className="mb-6 flex items-center justify-between">
           <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
             سوال {(currentIndex + 1).toLocaleString('fa-IR')} از{' '}
@@ -59,7 +59,6 @@ function QuestionScreen({
           </div>
         </div>
 
-        {/* Progress bar */}
         <div className="mb-8 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
           <div
             className="h-full rounded-full bg-brand-600 transition-all"
@@ -69,7 +68,6 @@ function QuestionScreen({
           />
         </div>
 
-        {/* Question card */}
         <div className="mb-6 rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
           <h2 className="mb-6 text-lg font-bold text-gray-900 dark:text-white">
             {currentQuestion?.text}
@@ -108,7 +106,6 @@ function QuestionScreen({
           </div>
         </div>
 
-        {/* Navigation */}
         <div
           className={`flex items-center gap-3 ${
             exam.allowReview ? 'justify-between' : 'justify-end'

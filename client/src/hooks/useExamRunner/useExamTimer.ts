@@ -13,19 +13,16 @@ function useExamTimer(
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [activeWarning, setActiveWarning] = useState<TimeWarning>(null);
 
-  // جلوگیری از نمایش تکراری هشدار در هر ثانیه‌ای که زیر آستانه‌ست
+  // Emit each countdown warning once.
   const warnedRef = useRef<{ five: boolean; one: boolean }>({
     five: false,
     one: false,
   });
 
-  // وقتی مدت‌زمان آزمون از بیرون مشخص می‌شه (بعد از لود شدن exam)، شمارنده ریست می‌شه
   useEffect(() => {
     setTimeLeft(durationSeconds);
   }, [durationSeconds]);
 
-  // شمارش معکوس: یک interval واحد که خودش دقیق تا صفر می‌شمره و متوقف می‌شه
-  // فقط وقتی isActive باشه فعاله (بعد از شروع آزمون و قبل از پایانش)
   useEffect(() => {
     if (!isActive) return;
 
@@ -42,14 +39,12 @@ function useExamTimer(
     return () => clearInterval(intervalId);
   }, [isActive]);
 
-  // پایان خودکار آزمون وقتی زمان تمام شد
   useEffect(() => {
     if (isActive && timeLeft <= 0) {
       onTimeout();
     }
   }, [timeLeft, isActive, onTimeout]);
 
-  // هشدارهای زمانی: هرکدوم دقیقاً یک‌بار فعال می‌شن
   useEffect(() => {
     if (!isActive) return;
 

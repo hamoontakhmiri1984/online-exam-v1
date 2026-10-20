@@ -24,9 +24,6 @@ const EMPTY_FORM: QuestionBankInput = {
 
 function QuestionBanksPage() {
   const navigate = useNavigate();
-  // SuperAdmin پنل محتوا نیست: بک‌اند دیگه ایجاد/ویرایش/حذف بانک رو ازش
-  // قبول نمی‌کنه (server/src/routes/questionBanks/banks.routes.ts) - فقط
-  // مشاهده برای نظارت باقی می‌مونه
   const canManage = getCurrentUser()?.role !== 'SuperAdmin';
 
   const { banks, loading, error, clearError, addBank, updateBank, deleteBank, page, pageSize, total, q, setPage, setSearch } =
@@ -95,7 +92,6 @@ function QuestionBanksPage() {
 
     const removed = await deleteBank(bank.id);
 
-    // اگه حذف شکست خورد، فرمِ ویرایش رو پاک نکن
     if (removed && editingBank?.id === bank.id) {
       resetForm();
     }
@@ -200,12 +196,7 @@ function QuestionBanksPage() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {banks.map((bank) => (
-                // کلیکِ ماوس روی هرجای کارت جزئیات رو باز می‌کنه. برای کیبورد،
-                // خودِ کارت فوکوس نمی‌گیره (قبلاً role="button" + onKeyDown روی
-                // کارت بود و Enter/Space روی دکمه‌های ویرایش/حذف داخلش بالا
-                // می‌اومد و به‌جای اون‌ها صفحه‌ی جزئیات باز می‌شد)؛ به‌جاش
-                // اسمِ بانک یه <button> واقعیه و Enter/Space روش همون کلیکِ
-                // کارت رو صدا می‌زنه.
+                // Use the title button for keyboard access; a focusable card would nest interactive controls.
                 <article
                   key={bank.id}
                   onClick={() => navigate(`/question-banks/${bank.id}`)}

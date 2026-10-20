@@ -1,11 +1,4 @@
-// لایه‌ی مشترک ارتباط با بک‌اند واقعی. توکن دسترسی (accessToken) فقط تو
-// حافظه نگه داشته می‌شه، نه localStorage - چون عمرش کوتاهه (۱۵ دقیقه) و
-// بعد از رفرش صفحه دوباره از رو کوکی httpOnly رفرش (که مرورگر خودکار
-// می‌فرسته) با bootstrapSession() تو authApi.ts ساخته می‌شه.
-
-// آدرس بک‌اند از یه متغیر محیطی Vite خونده می‌شه - تا وقتی .env نداریم،
-// یه مقدار پیش‌فرض محلی می‌ذاریم. توجه: بدون پیشوند /api چون سرور روت‌ها
-// رو مستقیم رو ریشه mount کرده (/auth, /groups, ...)
+// Access tokens stay in memory; the refresh token is an HttpOnly cookie.
 const API_BASE_URL: string =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
   'http://localhost:4000';
@@ -22,11 +15,6 @@ export function getAuthToken(): string | null {
   return accessToken;
 }
 
-// خطای یکسان برای همه‌ی خطاهای بک‌اند - به‌جای این‌که هر api/*.ts خودش
-// جدا شکل خطای fetch رو تفسیر کنه، همه از همین یک نوع استفاده می‌کنن.
-// status رو نگه می‌داریم تا لایه‌های بالاتر (مثلاً هوک‌ها) بتونن رفتار
-// متفاوتی برای 401/403/404/... داشته باشن، بدون این‌که به جزئیات fetch
-// وابسته بشن
 export class ApiError extends Error {
   status: number;
   body: unknown;
@@ -45,22 +33,7 @@ type RequestOptions = {
   signal?: AbortSignal;
 };
 
-// چند درخواست هم‌زمان که هرکدوم با 401 مواجه می‌شن نباید هرکدوم جدا
-// /auth/refresh رو صدا بزنن - همه‌شون منتظر همین یه promise مشترک می‌مونن.
-// export شده چون bootstrapSession (تو authApi.ts) هم باید از همین promise
-// مشترک استفاده کنه، نه این‌که خودش جدا apiRequest('/auth/refresh') رو صدا
-// بزنه - وگرنه (مثلاً با دوبار اجرا شدن useEffect تو React StrictMode) دو
-// درخواست رفرش هم‌زمان می‌رفت، هرکدوم سمت سرور یه sid/نشست جدید می‌ساخت و
-// چون سیستم تک‌نشستیه، دومی اولی رو خودکار force-logout می‌کرد (باگ #۴)
-//
-// نتیجه‌ی refresh سه‌حالته‌ست، نه «توکن یا null»:
-//   ok          توکن تازه گرفتیم
-//   expired     سرور صریحاً ۴۰۱ داد: رفرش‌توکن باطل/منقضی/جایگزین‌شده - نشست
-//               واقعاً تموم شده
-//   unavailable شبکه قطع، ۵xx (مثلاً Redis/DB موقتاً قطع)، ۴۲۹ و ...: نمی‌دونیم
-//               نشست معتبره یا نه. این حالت نباید کاربر رو logout کنه - قبلاً
-//               هر شکستی «null» بود و با یه قطعیِ چند‌ثانیه‌ایِ سرور همه‌ی
-//               کاربرها به /login پرت می‌شدن
+// Concurrent 401 responses share one refresh request.
 export type RefreshOutcome =
   | { status: 'ok'; token: string }
   | { status: 'expired' }
@@ -80,7 +53,7 @@ export async function refreshSession(): Promise<RefreshOutcome> {
         const data = (await res.json().catch(() => null)) as {
           accessToken?: string;
         } | null;
-        // ۲xx بدون توکن یعنی پاسخ خراب - قطعیِ نشست نیست
+        // A successful response without a token is unavailable, not an expired session.
         return data?.accessToken
           ? { status: 'ok', token: data.accessToken }
           : { status: 'unavailable' };
@@ -93,27 +66,19 @@ export async function refreshSession(): Promise<RefreshOutcome> {
   return refreshPromise;
 }
 
-// سازگار با کدهای قبلی (bootstrapSession): فقط توکن یا null
 export async function refreshAccessToken(): Promise<string | null> {
   const outcome = await refreshSession();
   return outcome.status === 'ok' ? outcome.token : null;
 }
 
-// وقتی حتی رفرش هم جواب نده (رفرش‌توکن باطل/منقضی شده)، یعنی نشست واقعاً
-// تمومه - authApi.ts این رو ست می‌کنه تا سشن محلی رو پاک و کاربر رو به
-// لاگین بفرسته، بدون این‌که این فایل چیزی از React/routing بدونه
+// Notify the auth layer only when the refresh session is explicitly rejected.
 let onSessionExpired: (() => void) | null = null;
 
 export function setOnSessionExpired(handler: () => void): void {
   onSessionExpired = handler;
 }
 
-// منطق مشترکِ «بعد از 401»، برای apiRequest و apiMultipartRequest:
-//   true  -> توکن تازه گرفته شد و ذخیره شد؛ فراخواننده باید یک بار retry کند
-//   false -> نشست واقعاً تمام شده (expired)؛ onSessionExpired صدا زده شد و
-//            فراخواننده همان پاسخ 401 را به‌عنوان خطا پرتاب می‌کند
-//   throw -> نتیجه‌ی نشست نامعلوم است (شبکه/۵xx/۴۲۹): logout نمی‌کنیم و
-//            خطای «موقتاً در دسترس نیست» می‌دهیم تا کاربر بعداً دوباره تلاش کند
+// Retry once after refresh; only an explicit refresh rejection ends the session.
 async function refreshForRetry(): Promise<boolean> {
   const outcome = await refreshSession();
   if (outcome.status === 'ok') {
@@ -130,19 +95,12 @@ async function refreshForRetry(): Promise<boolean> {
   );
 }
 
-// خروجی خطای بک‌اند واقعی همیشه شکل { error: string } ـه (نه message)
 function errorMessageFrom(data: unknown, fallback: string): string {
   return data && typeof data === 'object' && 'error' in data
     ? String((data as { error?: unknown }).error)
     : fallback;
 }
 
-// تابع اصلی و تنها نقطه‌ای که واقعاً fetch صدا می‌زنه. هر api/*.ts فقط
-// یه wrapper نازک دور همینه، مثلاً:
-//   export function getExams() { return apiRequest<Exam[]>('/exams'); }
-//   export function addExam(exam) {
-//     return apiRequest<Exam>('/exams', { method: 'POST', body: exam });
-//   }
 export async function apiRequest<T>(
   path: string,
   options: RequestOptions = {},
@@ -164,21 +122,15 @@ export async function apiRequest<T>(
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal,
-      // کوکی refresh (httpOnly) رو با هر درخواست می‌فرسته/می‌گیره - چون
-      // کلاینت (۵۱۷۳) و سرور (۴۰۰۰) دو origin جدان، بدون این کوکی رد و بدل
-      // نمی‌شه، حتی با همون‌مرورگر
+      // Include the refresh cookie on cross-origin API requests.
       credentials: 'include',
     });
   } catch {
-    // خطای شبکه (سرور خاموشه، اینترنت قطعه، و ...) - نه یه خطای معتبر
-    // HTTP، پس status صفر می‌ذاریم تا از خطاهای واقعی سرور قابل‌تشخیص باشه
+    // Status zero represents a transport failure, not an HTTP response.
     throw new ApiError(0, 'اتصال به سرور برقرار نشد');
   }
 
-  // accessToken منقضی شده - قبل از این‌که خطا رو به بالا پرتاب کنیم، یه بار
-  // تلاش می‌کنیم با کوکی refresh یکی تازه بگیریم و همین درخواست رو تکرار
-  // کنیم. مسیر /auth/refresh خودش رو دوباره retry نمی‌کنیم وگرنه اگه رفرش‌توکن
-  // هم باطل باشه، لوپ بی‌نهایت می‌شه
+  // Retry once after refreshing; never recursively refresh the refresh endpoint.
   if (
     response.status === 401 &&
     !isRetryAfterRefresh &&
@@ -189,7 +141,7 @@ export async function apiRequest<T>(
     }
   }
 
-  // پاسخ‌های بدون بدنه (مثل 204 موقع حذف) رو نباید سعی کنیم JSON پارس کنیم
+  // Do not parse empty responses such as 204 as JSON.
   const hasBody = response.status !== 204;
   const data = hasBody ? await response.json().catch(() => null) : null;
 
@@ -204,19 +156,11 @@ export async function apiRequest<T>(
   return data as T;
 }
 
-// درخواست multipart/form-data (آپلود فایل). همان منطق refresh/retry مشترکِ
-// apiRequest را دارد، با این تفاوت‌ها:
-//   - بدنه FormData است و Content-Type را عمداً نمی‌گذاریم تا مرورگر خودش
-//     multipart/form-data را با boundary درست بسازد.
-//   - فقط پس از 401 و فقط یک بار (و فقط اگر refresh موفق باشد) دوباره
-//     ارسال می‌شود. خطای شبکه، 429 و 5xx هرگز باعث ارسال دوباره‌ی فایل
-//     نمی‌شوند (آپلود می‌تواند غیرتکرارپذیر یا سنگین باشد).
-// FormData قابل استفاده‌ی مجدد است (File هر بار از نو خوانده می‌شود)، پس retry
-// همان formData را می‌فرستد.
+// Let the browser set the multipart boundary; share the JSON refresh/retry policy.
 export type MultipartOptions = {
   method?: 'POST' | 'PUT' | 'PATCH';
   signal?: AbortSignal;
-  // پیام پیش‌فرض وقتی بدنه‌ی خطای سرور { error } ندارد
+
   fallbackMessage?: (status: number) => string;
 };
 

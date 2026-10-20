@@ -42,8 +42,6 @@ function AdminBlogPostEditorPage() {
     event.preventDefault();
     const saved = await handleSave();
     if (saved && !isEditMode) {
-      // بعدِ اولین ذخیره، پست id گرفته - آدرس رو عوض می‌کنیم تا ذخیره‌ی
-      // بعدی «ویرایش» باشه نه «ساختِ دوباره»، و آپلودِ کاور هم فعال بشه
       navigate(`/blog-posts/${saved.id}`, { replace: true });
     }
   }

@@ -21,13 +21,7 @@ export type DbSession = {
   }[];
 };
 
-// شکل خروجی رو معادل LessonSession تو client/src/api/lessonApi.ts می‌سازیم:
-// چهار فیلد پراکنده‌ی video* تو دیتابیس رو به یونیون video: {type:'link'|'upload', ...} تبدیل می‌کنیم.
-// توجه: ستون‌های videoObjectUrl/fileUrl تو دیتابیس همون اسم قدیمی رو دارن
-// (برای این‌که migration لازم نشه)، ولی از این به بعد فقط object key
-// (نه یه URL دائمی قابل‌دسترس) توشون ذخیره می‌شه - برای همین تو JSON خروجی
-// اسمش رو به objectKey تغییر می‌دیم تا فرانت اشتباه مستقیم به‌عنوان src/href
-// استفاده‌ش نکنه؛ به‌جاش باید signed-url بگیره.
+// Expose stored video/file keys as objectKey, never as directly usable URLs.
 export function serializeSession(s: DbSession) {
   const video =
     s.videoType === 'LINK'
@@ -58,18 +52,14 @@ export const withGroups = {
   groups: { select: { id: true } },
   attachments: {
     select: { id: true, fileName: true, fileUrl: true, fileSize: true },
-    // بدون orderBy ترتیب پیوست‌ها تضمین‌شده نیست و بعد از هر ویرایش ممکنه
-    // جابه‌جا بشه
+    // Keep attachment order deterministic across updates.
     orderBy: { createdAt: 'asc' },
   },
 } as const;
 
-// بدون orderBy، Postgres ترتیب رو تضمین نمی‌کنه (و بعد از UPDATE معمولاً
-// عوض می‌شه)؛ چون فرانت جلسات رو با شماره‌ی ترتیب نشون می‌ده («جلسه ۱، ۲، …»)،
-// با ویرایش یه جلسه شماره‌ها جابه‌جا می‌شدن
+// Use deterministic ordering because the client numbers lessons by list position.
 export const sessionOrder = { createdAt: 'asc' } as const;
 
-// عکس serializeSession: یونیون video رو به چهار فیلد پراکنده‌ی دیتابیس برمی‌گردونه
 export function videoToDbFields(
   video:
     | { type: 'link'; url: string }
@@ -90,9 +80,7 @@ export function videoToDbFields(
       };
 }
 
-// جلوی ثبت کلید فایلِ مال یه کاربر دیگه رو می‌گیره: Instructor فقط کلیدهایی رو
-// می‌تونه بذاره که خودش آپلود کرده یا از قبل روی همین جلسه بوده (existing).
-// SuperAdmin معاف از چک مالکیته (شکل کلید تو schema چک شده).
+// Instructors may reuse existing keys or their own uploads; SuperAdmin bypasses ownership checks.
 export function assertFileKeysAllowed(
   user: { sub: string; role: Role },
   data: {
@@ -123,8 +111,7 @@ export function assertFileKeysAllowed(
   }
 }
 
-// SuperAdmin چک مالکیت گروه نداره، پس وجود گروه‌ها رو جدا چک می‌کنیم -
-// وگرنه connect روی groupId ناموجود یه 500 (P2025) می‌داد
+// Check group existence explicitly for SuperAdmin before connecting relations.
 export async function assertGroupsExist(groupIds: string[]) {
   const unique = new Set(groupIds);
   if (unique.size === 0) return;
@@ -134,8 +121,6 @@ export async function assertGroupsExist(groupIds: string[]) {
   if (found !== unique.size) throw badRequest('گروه یافت نشد');
 }
 
-// گروه‌هایی که این کاربر (بسته به نقشش) بهشون دسترسی داره - برای چک اینکه
-// groupIds ارسالی تو بدنه‌ی درخواست، همه واقعاً متعلق به خودشن
 export async function ownedGroupIds(userId: string): Promise<Set<string>> {
   const groups = await prisma.group.findMany({
     where: { instructorId: userId, approvalStatus: 'Approved' },
@@ -144,11 +129,7 @@ export async function ownedGroupIds(userId: string): Promise<Set<string>> {
   return new Set(groups.map((g) => g.id));
 }
 
-// معادل loadAccessibleExam تو lib/examAccess.ts، برای LessonSession: فقط
-// برای دو endpoint امضای لینک (تو lessonSessions.routes.ts) لازمه، چون اونجا
-// برخلاف GET '/' که فقط فیلتر می‌کنه، باید صریح allowed/not-allowed بدونیم.
-// SuperAdmin: همیشه مجاز. Instructor: اگه حداقل یکی از گروه‌های جلسه مال
-// خودش باشه. Student: فقط اگه عضو حداقل یکی از گروه‌های جلسه باشه.
+// Authorize lesson access explicitly before issuing private download URLs.
 export async function loadAccessibleSession(
   sessionId: string,
   userId: string,

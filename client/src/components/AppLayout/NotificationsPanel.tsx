@@ -68,8 +68,6 @@ function NotificationsPanel() {
 
   useOnClickOutside(panelRef, () => setIsOpen(false), isOpen);
 
-  // لیست فقط یه‌بار موقع mount گرفته می‌شد و اعلان‌های جدید (تا رفرش صفحه)
-  // هیچ‌وقت نمی‌رسید؛ هر بار که پنل باز می‌شه لیست تازه می‌شه
   function togglePanel() {
     if (!isOpen) refresh();
     setIsOpen((prev) => !prev);

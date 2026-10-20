@@ -23,13 +23,10 @@ async function isAccountAllowed(userId: string, role: string): Promise<boolean> 
 }
 
 const userRoom = (userId: string) => `user:${userId}`;
-// برای اعلان‌های عمومی (targetRoles) - هر سوکت علاوه بر روم شخصی خودش، تو
-// روم نقشش هم عضو می‌شه تا notifyRoles بتونه بدون دونستن userId خاصی پوش کنه
 const roleRoom = (role: string) => `role:${role}`;
 
 export function initSocket(httpServer: HttpServer): Server {
   io = new Server(httpServer, {
-    // همون origin ـی که CORS اکسپرس هم بهش اجازه می‌ده، نه '*'
     cors: { origin: env.CLIENT_URL, credentials: true },
   });
 
@@ -40,10 +37,7 @@ export function initSocket(httpServer: HttpServer): Server {
 
       const payload = verifyAccessToken(token);
 
-      // قطعیِ مخزن نشست (Redis) با «توکن نامعتبر» فرق داره: 'unavailable'
-      // یعنی «الان نمی‌تونیم چک کنیم» و کلاینت با تأخیر دوباره تلاش می‌کنه
-      // (lib/socket.ts)؛ اگه 'unauthorized' برمی‌گشت هیچ تلاش مجددی نبود و
-      // کاربر تا رفرش صفحه بدون سوکت (و بدون force-logout) می‌موند
+      // Unavailable session storage is retryable, not an authentication rejection.
       let valid: boolean;
       try {
         valid = await isSessionValid(payload.sub, payload.sid);
@@ -74,10 +68,7 @@ export function initSocket(httpServer: HttpServer): Server {
   return io;
 }
 
-// اتصال سوکت فقط موقع handshake چک می‌شه؛ اگه نشست بعداً باطل بشه (logout،
-// تعلیق/رد توسط ادمین، انقضای ردیس) سوکت همچنان اعلان‌ها رو می‌گرفت. اینجا
-// هر دقیقه کاربرهایی که دیگه هیچ نشست فعالی ندارن قطع می‌شن. sid اینجا چک
-// نمی‌شه چون با refresh عوض می‌شه ولی سوکت با sid اولیه وصل مونده
+// Revalidate connected sessions so revocation also stops socket delivery.
 const SESSION_SWEEP_INTERVAL_MS = 60_000;
 
 function startSocketSessionSweep(server: Server) {

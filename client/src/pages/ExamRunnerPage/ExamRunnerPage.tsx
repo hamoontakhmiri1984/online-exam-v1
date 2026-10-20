@@ -93,11 +93,7 @@ function ExamRunnerPage() {
     );
   }
 
-  // exam پیدا شده ولی تعداد سوال‌ها صفره: یا واقعاً هنوز سوالی ثبت نشده، یا
-  // (سمت سرور، questions.ts) هنوز به scheduledAt نرسیدیم و سرور عمداً
-  // چیزی برنگردونده - این دومی رو از رو تاریخ خود exam تشخیص می‌دیم تا
-  // پیام درست‌تری نشون بدیم، نه یه «یافت نشد» گمراه‌کننده. useExamData
-  // خودش تا رسیدن این لحظه poll می‌کنه، پس این صفحه خودکار عوض می‌شه
+  // Before scheduledAt, a zero count can mean questions have not been released yet.
   if (!exam || questionCount === 0) {
     const notStartedYet = exam && new Date(exam.date).getTime() > Date.now();
     return (
@@ -140,8 +136,6 @@ function ExamRunnerPage() {
     );
   }
 
-  // start شده ولی سوال‌ها هنوز از سرور نرسیدن (سوال‌ها فقط بعد از start
-  // گرفته می‌شن)
   if (questions.length === 0) {
     return (
       <AppLayout title="در حال بارگذاری آزمون...">

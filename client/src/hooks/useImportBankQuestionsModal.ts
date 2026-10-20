@@ -8,7 +8,7 @@ import { ApiError } from '../lib/apiClient';
 
 type UseImportBankQuestionsModalParams = {
   bankId?: string;
-  onImported: () => void; // بعد از ایمپورتِ موفق، لیستِ سوال‌ها رو رفرش کن
+  onImported: () => void;
 };
 
 function useImportBankQuestionsModal({
@@ -45,14 +45,10 @@ function useImportBankQuestionsModal({
     setImportError('');
     setCreatedCount(null);
     setRowErrors([]);
-    // اجازه بده همون فایل رو دوباره انتخاب کنه (مثلاً بعد از تصحیح و ذخیره‌ی
-    // دوباره‌ی همون اسم فایل) - وگرنه onChange دوم با همون فایل فایر نمی‌شه
+    // Reset the input so the same corrected file can be selected again.
     event.target.value = '';
   }
 
-  // قبلاً مودال مستقیم downloadBankQuestionTemplate رو با void صدا می‌زد؛ اگه
-  // سرور خطا می‌داد فقط یه unhandled rejection تو کنسول می‌شد و کاربر هیچی
-  // نمی‌دید
   async function downloadTemplate() {
     setImportError('');
 

@@ -15,8 +15,6 @@ Docker پس از build وابستگی‌های توسعه را حذف می‌ک�
 ## تاریخچهٔ دیتابیس
 نام کامل پوشهٔ migration شامل timestamp است؛ تکرار پسوند نام به‌تنهایی تکرار migration نیست. فایل‌های اجراشده و fixture تاریخی recovery عمداً از تبدیل پایان‌خط مستثنا هستند تا checksum عوض نشود. سایر متن‌ها LF هستند.
 
-در بررسی اولیه، تنها اختلاف تاریخچه با مدل، مقدار پیش‌فرض `approval_policy.updatedAt` بود. مدل با پیش‌فرض CURRENT_TIMESTAMP موجود در migration هم‌راستا شد؛ نیازی به تغییر داده یا migration قبلی نبود.
-
 CI ابتدا migrationها را روی PostgreSQL موقت اجرا و سپس با `prisma migrate diff --exit-code` نتیجه را با مدل فعلی مقایسه می‌کند. این بررسی جایگزین بررسی دیتابیس Codespace یا production نیست. برای بررسی فقط‌خواندنی دیتابیس تنظیم‌شده، از پوشهٔ server:
 
 ```bash

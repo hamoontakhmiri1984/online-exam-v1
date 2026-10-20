@@ -61,7 +61,6 @@ function StatsCards({
       <StatCard
         icon={TrendingUp}
         label="میانگین نمره"
-        // بدون هیچ تلاشِ تموم‌شده‌ای «۰٪» گمراه‌کننده‌ست؛ خط تیره نشون می‌دیم
         value={
           hasAttempts ? `${averageScorePercent.toLocaleString('fa-IR')}٪` : '—'
         }

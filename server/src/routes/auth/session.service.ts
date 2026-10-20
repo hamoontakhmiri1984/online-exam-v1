@@ -18,7 +18,6 @@ export async function refreshUserSession(token: string | undefined) {
     throw new AppError(401, 'refresh token نامعتبر یا منقضی‌شده');
   }
 
-  // خطای زیرساخت باید مستقل از نامعتبر بودن نشست به بالا منتقل شود.
   if (!(await isSessionValid(payload.sub, payload.sid))) {
     throw new AppError(401, 'نشست دیگر معتبر نیست');
   }
@@ -31,7 +30,6 @@ export async function refreshUserSession(token: string | undefined) {
       logEvent('error', 'revokeSession (blocked instructor) failed:', error);
     });
     forceLogoutOtherSessions(user.id, undefined, 'account-rejected');
-    // فرانت 401 را پایان نشست می‌داند؛ 403 را اختلال موقت تلقی می‌کند.
     throw new AppError(401, approvalMessage);
   }
 
@@ -49,7 +47,6 @@ export async function resolveLogoutSubject(req: Request): Promise<string | null>
     try {
       payload = verifyAccessToken(header.slice('Bearer '.length));
     } catch {
-      // به refresh cookie می‌رسیم
     }
     if (payload && (await isSessionValid(payload.sub, payload.sid))) {
       return payload.sub;
@@ -62,7 +59,6 @@ export async function resolveLogoutSubject(req: Request): Promise<string | null>
     try {
       payload = verifyRefreshToken(cookie);
     } catch {
-      // نامعتبر - فقط کوکی پاک می‌شه
     }
     if (payload && (await isSessionValid(payload.sub, payload.sid))) {
       return payload.sub;
@@ -71,4 +67,3 @@ export async function resolveLogoutSubject(req: Request): Promise<string | null>
 
   return null;
 }
-

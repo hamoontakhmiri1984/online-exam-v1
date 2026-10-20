@@ -67,9 +67,7 @@ router.post(
       throw badRequest(parsed.error.issues[0].message);
     }
 
-    // عمداً چک سهمیه‌ی پلن اینجا نیست: سوالِ ایمپورت‌شده از بانک تو
-    // getInstructorUsage جدا شمرده نمی‌شه (همون سوالِ بانکه)، پس مصرفِ
-    // جدیدی نداره. سهمیه موقع ساخت سوال تو بانک چک می‌شه
+    // Bank imports retain source identity and do not consume the question quota twice.
 
     const questions = (await importBankQuestionsToExam(
       exam.id,

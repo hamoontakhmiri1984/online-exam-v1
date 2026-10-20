@@ -9,10 +9,7 @@ type SubmissionState = {
   error: string | null;
 };
 
-// ثبت خودکار نتیجه‌ی آزمون - اولین تلاش خودکاره، تلاش‌های بعدی (retry) فقط
-// با اقدام کاربر (دکمه‌ی «تلاش دوباره»). چون finish سمت سرور idempotent-ه
-// (اگه از قبل finish شده باشه همون نتیجه رو برمی‌گردونه، نه خطا)، retry
-// امنه و نمره رو دوباره حساب/duplicate نمی‌کنه
+// Submit once automatically; retries are explicit and server-side finish is idempotent.
 function useExamSubmission(
   exam: Exam | null,
   isFinished: boolean,

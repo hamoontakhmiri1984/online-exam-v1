@@ -24,7 +24,6 @@ router.get(
     if (!exam) throw notFound('آزمون یافت نشد');
     if (!allowed) throw forbidden();
 
-    // attempt‌های رهاشده‌ی این آزمون قبل از لیست شدن بسته می‌شن
     await finalizeExpiredAttempts({ examId: exam.id });
 
     const attempts = await prisma.examAttempt.findMany({
@@ -54,9 +53,7 @@ router.get(
     });
     if (!attempt) throw notFound('هنوز تو این آزمون شرکت نکردی');
 
-    // در حال انجام (هنوز finish نشده): answers همیشه برمی‌گرده - برای
-    // resume بعد از رفرش لازمه. محدودیت allowReview فقط بعد از پایان
-    // آزمون معنی داره، نه وسط انجامش
+    // Unfinished attempts always return saved answers for re-entry, regardless of allowReview.
     if (attempt.finishedAt && !exam.allowReview) {
       return res.json({ ...serializeAttempt(attempt), answers: undefined });
     }

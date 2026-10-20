@@ -77,9 +77,7 @@ export async function issueTokenPair(
   };
 }
 
-// null یعنی sid درخواست دیگه معتبر نیست (logout شده یا از دستگاه دیگه لاگین
-// شده) - route باید 401 بده. درخواست‌های هم‌زمان با *همون* sid قدیمی، همه
-// همون sid جدید رو می‌گیرن (نگاه کن به rotateSessionWithGrace)
+// Concurrent refreshes of the same old SID resolve to the same replacement SID.
 export async function issueRefreshedTokenPair(
   userId: string,
   role: Role,

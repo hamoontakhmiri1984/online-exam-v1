@@ -23,11 +23,6 @@ function LessonsPage() {
   const [sessionsError, setSessionsError] = useState<string | null>(null);
 
   useEffect(() => {
-    // قبلاً اینجا catch نداشت: اگه getSessions() به هر دلیلی reject می‌شد
-    // (خطای سرور، توکن و ...)، sessionsLoading برای همیشه true می‌موند و
-    // کل صفحه رو یه اسپینر بی‌نهایت می‌گرفت - نه خطایی نشون داده می‌شد نه
-    // محتوایی. حالا finally همیشه loading رو false می‌کنه و خطا هم نشون
-    // داده می‌شه.
     getSessions()
       .then((data) => {
         setSessions(data);

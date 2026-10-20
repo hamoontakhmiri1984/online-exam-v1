@@ -33,9 +33,7 @@ function jalaliMonthInfo(iso: string): { label: string; sortKey: number } {
   return { label, sortKey: year * 100 + month };
 }
 
-// فقط تلاش‌های تموم‌شده: برای دانشجو، GET .../attempts/me تلاشِ «در حال
-// انجام» رو هم برمی‌گردونه (correctCount=۰) که نباید جزو شرکت‌کننده یا
-// میانگین نمره حساب بشه
+// Exclude unfinished attempts from participation and score averages.
 export function countParticipants(
   attempts: ExamAttempt[],
   examId: string
@@ -52,8 +50,6 @@ export function buildAverageScorePercent(attempts: ExamAttempt[]): number {
   const finished = attempts.filter(isFinishedAttempt);
   if (finished.length === 0) return 0;
 
-  // totalQuestions=۰ (آزمونی که سوالش پاک شده) قبلاً NaN می‌داد و «NaN٪»
-  // نمایش داده می‌شد
   return Math.round(
     (finished.reduce(
       (sum, a) => sum + a.correctCount / (a.totalQuestions || 1),

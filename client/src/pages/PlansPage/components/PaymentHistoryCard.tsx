@@ -23,8 +23,6 @@ function formatAmount(amount: number): string {
   return amount.toLocaleString('fa-IR');
 }
 
-// فقط پرداخت‌های واقعی (نه لزوماً موفق) رو نشون می‌ده - پرداخت‌های Pending
-// که هیچ‌وقت کامل نشدن هم قابل‌مشاهده‌ان (شفافیت برای مدرس)
 function PaymentHistoryCard({ payments }: { payments: PaymentRecord[] }) {
   if (payments.length === 0) return null;
 

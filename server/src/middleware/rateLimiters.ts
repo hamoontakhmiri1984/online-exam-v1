@@ -3,9 +3,7 @@ import rateLimit from 'express-rate-limit';
 import { RedisRateLimitStore } from '../lib/redisRateLimitStore';
 import { rateLimitRedis } from '../lib/rateLimitRedis';
 
-// فقط درخواست‌های «ناموفق» شمرده می‌شن (skipSuccessfulRequests) - چون تو یه
-// کلاس/مدرسه ده‌ها دانشجو پشت یک IP مشترک همزمان وارد می‌شن و لاگین‌های
-// موفق نباید سهمیه‌ی همدیگه رو مصرف کنن
+// Successful logins do not consume the shared-IP failure budget.
 export const authLimiter = rateLimit({
   store: new RedisRateLimitStore(rateLimitRedis, 'auth'),
   passOnStoreError: false,
@@ -19,8 +17,7 @@ export const authLimiter = rateLimit({
   },
 });
 
-// همون ۹۰ ثانیه‌ی شمارنده‌ی «ارسال مجدد» تو کلاینت (RESEND_COOLDOWN_SECONDS)؛
-// اگه این عدد از شمارنده بزرگ‌تر باشه، دکمه فعال می‌شه ولی سرور رد می‌کنه
+// Keep the resend window aligned with the client countdown.
 export const otpSendLimiter = rateLimit({
   store: new RedisRateLimitStore(rateLimitRedis, 'otpSend'),
   passOnStoreError: false,
@@ -52,12 +49,7 @@ export const otpVerifyLimiter = rateLimit({
   message: { error: 'تعداد تلاش‌های اشتباه بیش از حد مجاز بود.' },
 });
 
-// چک آنی دردسترس‌بودن username حین تایپ (debounce شده سمت کلاینت، هر ۴۵۰ms)
-// می‌تونه راحت به ده‌ها درخواست در چند دقیقه برسه - نباید زیر سقف مشترک
-// authLimiter (که برای لاگین/ثبت‌نام/OTP هست) حساب بشه، وگرنه کاربری که چندبار
-// username‌ش رو عوض می‌کنه، سهمیه‌ی کل روتر auth رو مصرف می‌کنه و بعد موقع
-// ثبت‌نام/ورود واقعی بلاک می‌شه. این لیمیتر جدا و سبک‌تره: هدفش فقط جلوگیری
-// از اسکرپ/enumeration سنگین username هاست، نه محدود کردن تایپ عادی کاربر.
+// Username availability checks must not consume the login failure budget.
 export const usernameCheckLimiter = rateLimit({
   store: new RedisRateLimitStore(rateLimitRedis, 'usernameCheck'),
   passOnStoreError: false,
@@ -68,8 +60,7 @@ export const usernameCheckLimiter = rateLimit({
   message: { error: 'تعداد درخواست‌ها بیش از حد مجاز بود. کمی صبر کن.' },
 });
 
-// گرفتن یه تصویر کپچای جدید (مثلاً با زدن دکمه‌ی «چالش جدید») - همون منطق
-// usernameCheckLimiter: نباید سهمیه‌ی مشترک authLimiter رو مصرف کنه
+// Captcha refreshes use a separate budget from authentication attempts.
 export const captchaLimiter = rateLimit({
   store: new RedisRateLimitStore(rateLimitRedis, 'captcha'),
   passOnStoreError: false,
@@ -80,9 +71,7 @@ export const captchaLimiter = rateLimit({
   message: { error: 'تعداد درخواست‌ها بیش از حد مجاز بود. کمی صبر کن.' },
 });
 
-// حدس‌زدن کد عضویت (۶ کاراکتر از ۳۲ نماد): فقط تلاش‌های ناموفق (کد نامعتبر)
-// شمرده می‌شن و کلید per-user ـه، نه per-IP، چون تو مدرسه/کلاس ده‌ها دانشجو
-// پشت یه IP مشترک هستن و عضویت موفق نباید سهمیه‌ی همدیگه رو بسوزونه
+// Count failed join attempts per user so shared classroom IPs are not penalized.
 export const joinGroupLimiter = rateLimit({
   store: new RedisRateLimitStore(rateLimitRedis, 'joinGroup'),
   passOnStoreError: false,
@@ -98,9 +87,6 @@ export const joinGroupLimiter = rateLimit({
   },
 });
 
-// شروع پرداخت برای هر مدرس: هر درخواست یه Payment(Pending) و یه فراخوانی به
-// زرین‌پال می‌سازه؛ سقف per-user جلوی انباشته‌شدن ردیف و فشار روی درگاه رو
-// می‌گیره
 export const checkoutLimiter = rateLimit({
   store: new RedisRateLimitStore(rateLimitRedis, 'checkout'),
   passOnStoreError: false,

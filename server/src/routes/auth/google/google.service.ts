@@ -31,7 +31,6 @@ async function verifyGoogleToken(idToken: string) {
     throw badRequest('توکن گوگل نامعتبره');
   }
 
-  // ایمیل نرمال (lowercase) - همون فرمتی که تو دیتابیس ذخیره می‌شه
   return { sub: payload.sub, email: payload.email.toLowerCase() };
 }
 
@@ -85,9 +84,7 @@ export async function loginWithGoogle(
 ) {
   const payload = await verifyGoogleToken(idToken);
 
-  // اول با googleId (شناسه‌ی پایدار گوگل)، بعد با ایمیل. قبلاً یه OR واحد بود
-  // و اگه googleId مال یه حساب و ایمیل مال حساب دیگه بود، حساب اشتباه
-  // انتخاب می‌شد
+  // Match the stable Google subject before considering email ownership.
   const user = await prisma.$transaction(async (db) => {
     // Serialize Google sign-ins; lock existing users against simultaneous registration edits.
     await db.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${payload.sub}))`;
@@ -124,9 +121,7 @@ export async function loginWithGoogle(
     await db.$queryRaw`SELECT id FROM users WHERE id = ${user.id} FOR UPDATE`;
     user = await db.user.findUniqueOrThrow({ where: { id: user.id } });
 
-    // ایمیل ممکنه بعداً به آدم دیگه‌ای (مثلاً ایمیل سازمانی بازیافت‌شده) با
-    // حساب گوگل دیگه‌ای داده بشه؛ اگه این حساب قبلاً به یه حساب گوگلِ دیگه
-    // وصل شده، فقط با ایمیل واردش نمی‌کنیم
+    // Do not relink an existing account to a different Google subject via a recycled email.
     if (user.googleId && user.googleId !== payload.sub) {
       throw new AppError(
         403,
@@ -134,8 +129,7 @@ export async function loginWithGoogle(
       );
     }
 
-    // حساب تایید‌نشده ممکنه رمزش رو یه نفر دیگه موقع ثبت‌نام ناتمام گذاشته باشه؛
-    // صاحب واقعی ایمیل (با گوگل) تاییدش می‌کنه، پس اون رمز باید پاک بشه
+    // Discard passwords set before ownership of the identifier was verified.
     const wasNeverVerified = !user.emailVerifiedAt && !user.phoneVerifiedAt;
 
     if (!user.googleId || !user.emailVerifiedAt) {

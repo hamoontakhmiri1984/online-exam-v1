@@ -1,13 +1,12 @@
 import { apiRequest, apiMultipartRequest } from '../lib/apiClient';
 
-// خلاصه (برای لیست /blog) - contentMarkdown نداره چون فقط برای preview/کارته
 export type BlogPostSummary = {
   id: string;
   slug: string;
   title: string;
   excerpt: string;
   coverImageUrl: string | null;
-  publishedAt: string | null; // ISO
+  publishedAt: string | null;
   authorName: string | null;
 };
 
@@ -31,10 +30,6 @@ export type CreateBlogPostInput = {
 
 export type UpdateBlogPostInput = Partial<CreateBlogPostInput>;
 
-// ---------------------------------------------------------------------------
-// عمومی - بدون نیاز به لاگین (صفحه‌ی /blog و /blog/:slug)
-// ---------------------------------------------------------------------------
-
 export function getPublishedBlogPosts(): Promise<BlogPostSummary[]> {
   return apiRequest<BlogPostSummary[]>('/blog');
 }
@@ -42,10 +37,6 @@ export function getPublishedBlogPosts(): Promise<BlogPostSummary[]> {
 export function getBlogPostBySlug(slug: string): Promise<BlogPostDetail> {
   return apiRequest<BlogPostDetail>(`/blog/${encodeURIComponent(slug)}`);
 }
-
-// ---------------------------------------------------------------------------
-// ادمین - فقط SuperAdmin (پنل CMS)
-// ---------------------------------------------------------------------------
 
 export function getAllBlogPosts(): Promise<BlogPostAdmin[]> {
   return apiRequest<BlogPostAdmin[]>('/blog/admin');
@@ -78,8 +69,6 @@ export function deleteBlogPost(id: string): Promise<void> {
   return apiRequest<void>(`/blog/admin/${id}`, { method: 'DELETE' });
 }
 
-// multipart - مثل uploadApi.ts از apiMultipartRequest استفاده می‌کنه (apiRequest
-// همیشه JSON می‌فرسته)؛ refresh مشترک و یک بار retry بعد از 401 رو داره
 export function uploadBlogCoverImage(
   postId: string,
   file: File

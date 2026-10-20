@@ -3,7 +3,6 @@ import type { Exam } from '../api/examApi';
 
 export const DURATION_PRESETS = [10, 15, 30, 60];
 
-// همون حداقل سرور برای عنوان آزمون (createExamSchema)
 const MIN_TITLE_LENGTH = 2;
 
 type ExamInput = Omit<Exam, 'id'>;
@@ -14,11 +13,6 @@ type UseExamFormModalParams = {
   updateItem: (id: string, input: ExamInput) => Promise<unknown>;
 };
 
-// input[type=datetime-local] تو خیلی مرورگرها (بخصوص فایرفاکس‌های قدیمی‌تر و
-// بعضی نسخه‌های سافاری) اصلاً پشتیبانی نمی‌شه یا تقویمش قابل‌کلیک نیست -
-// این‌جا برای همین به دو تا input جدا (date + time) تقسیمش کردیم که پشتیبانی‌ش
-// خیلی گسترده‌تره. این دو تابع بینِ اون دو مقدارِ محلی و ISO (که examApi.ts و
-// بقیه‌ی اپ باهاش کار می‌کنن) تبدیل می‌کنن
 function isoToLocalDateAndTime(iso: string): { date: string; time: string } {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -123,9 +117,7 @@ function useExamFormModal({
 
     const scheduledIso = localDateAndTimeToIso(scheduledDate, scheduledTime);
 
-    // زمان گذشته فقط موقع ساخت، یا وقتی زمانِ آزمونِ موجود تغییر کرده رد
-    // می‌شه؛ ویرایش بقیه‌ی فیلدهای آزمونِ قدیمی (با همون زمان) مجازه.
-    // مقایسه تا دقیقه‌ست تا انتخابِ «همین الان» رد نشه
+    // Validate past schedules only on creation or schedule changes, at minute precision.
     const currentMinute = Math.floor(Date.now() / 60_000);
     const isScheduledInPast =
       Math.floor(Date.parse(scheduledIso) / 60_000) < currentMinute;
@@ -154,8 +146,7 @@ function useExamFormModal({
       ? await updateItem(editingId, examData)
       : await addItem(examData);
 
-    // useCrud موقع خطا پیام رو تو Toast نشون می‌ده و undefined برمی‌گردونه؛
-    // تو اون حالت مودال باز می‌مونه تا اطلاعات واردشده از بین نره
+    // Keep the form contents when saving fails.
     if (saved) {
       setIsOpen(false);
     }

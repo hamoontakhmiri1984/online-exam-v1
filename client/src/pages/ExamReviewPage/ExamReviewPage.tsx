@@ -19,8 +19,6 @@ function ExamReviewPage() {
   const [retryToken, setRetryToken] = useState<number>(0);
 
   useEffect(() => {
-    // قبلاً: بدون catch، با هر خطای شبکه/سرور اسپینر برای همیشه می‌موند؛ و
-    // بدون examId هم loading هیچ‌وقت false نمی‌شد
     if (!examId) {
       setLoading(false);
       return;
@@ -78,7 +76,6 @@ function ExamReviewPage() {
     );
   }
 
-  // یا آزمون پیدا نشد، یا این دانشجو اصلاً شرکت نکرده، یا هنوز تمومش نکرده
   if (!exam || !attempt || !attempt.finishedAt) {
     return (
       <AppLayout title="مرور آزمون">
@@ -89,18 +86,13 @@ function ExamReviewPage() {
     );
   }
 
-  // سرور correctOptionIndex رو فقط وقتی برمی‌گردونه که allowReview آزمون
-  // فعال باشه (server/src/routes/questions/examQuestions.routes.ts). اگه
-  // غیرفعال باشه، به‌جای صفحه‌ی گمراه‌کننده (بدون مشخص بودن جواب درست) این
-  // پیام رو نشون می‌دیم
   const canReview =
     exam.allowReview &&
     questions.length > 0 &&
     questions.every((q) => typeof q.correctOptionIndex === 'number');
 
   if (!canReview) {
-    // سرور پاسخنامه رو تا پایان عمومی آزمون (+ مهلت ارسال) برای دانشجوها
-    // نگه می‌داره؛ تو این بازه allowReview فعاله ولی جواب صحیح هنوز نیومده
+    // allowReview alone does not release answers before the shared exam window and grace period end.
     const answerKeyPending = exam.allowReview && questions.length > 0;
     return (
       <AppLayout title={exam.title}>
@@ -146,7 +138,6 @@ function ExamReviewPage() {
 
         <div className="flex flex-col gap-4">
           {questions.map((question, index) => {
-            // answers اگه allowReview خاموش باشه اصلاً از سرور نمیاد
             const selectedIndex = attempt.answers?.[question.id];
             const correctIndex = question.correctOptionIndex;
             const wasAnswered = selectedIndex !== undefined;

@@ -1,10 +1,6 @@
 import { apiRequest } from '../lib/apiClient';
 import type { CategoryOption, CategoryStatus } from './categoryApi';
 
-// شکل خروجی سرور دقیقاً معادل serializeInstructor تو
-// server/src/routes/admin.ts ـه. این روت‌ها فقط برای SuperAdmin مجازن
-// (سرور خودش هم requireRole('SuperAdmin') رو چک می‌کنه).
-
 export type InstructorApprovalStatus = 'Pending' | 'Approved' | 'Rejected';
 
 export type AdminInstructor = {
@@ -14,7 +10,7 @@ export type AdminInstructor = {
   phone?: string;
   username?: string;
   approvalStatus: InstructorApprovalStatus;
-  createdAt: string; // ISO timestamp
+  createdAt: string;
 };
 
 export function getInstructorsByStatus(
@@ -35,10 +31,6 @@ export function rejectInstructor(id: string): Promise<AdminInstructor> {
   });
 }
 
-// شکل خروجی سرور دقیقاً معادل serializeCategory تو
-// server/src/lib/categories.ts ـه. این روت‌ها فقط برای SuperAdmin مجازن.
-
-// status اختیاریه - بدونِ اون سرور همه رو برمی‌گردونه (تبِ «همه» تو پنل)
 export function getAdminCategories(
   status?: CategoryStatus
 ): Promise<CategoryOption[]> {
@@ -46,7 +38,6 @@ export function getAdminCategories(
   return apiRequest<CategoryOption[]>(`/admin/categories${query}`);
 }
 
-// اضافه‌کردنِ مستقیم توسط ادمین - همون لحظه Approved می‌شه
 export function addCategoryAsAdmin(name: string): Promise<CategoryOption> {
   return apiRequest<CategoryOption>('/admin/categories', {
     method: 'POST',
@@ -60,8 +51,6 @@ export function approveCategory(id: string): Promise<CategoryOption> {
   });
 }
 
-// تغییرِ نام - سرور خودش cascade می‌زنه رویِ گروه/آزمون/جلسه‌هایی که ازش
-// استفاده کردن
 export function renameCategory(
   id: string,
   name: string
@@ -72,8 +61,6 @@ export function renameCategory(
   });
 }
 
-// رد کردنِ Pending یا حذفِ Approved (اگه دیگه جایی استفاده نشه - وگرنه
-// سرور 409 برمی‌گردونه)
 export function deleteCategory(id: string): Promise<void> {
   return apiRequest<void>(`/admin/categories/${id}`, { method: 'DELETE' });
 }

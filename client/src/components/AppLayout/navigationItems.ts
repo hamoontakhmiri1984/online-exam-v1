@@ -37,7 +37,6 @@ export type NavigationItem = {
   to: string;
   icon: LucideIcon;
   roles: Role[];
-  /** فقط برای منوی کاربر ارشد: آیتم‌های هم‌گروه زیر یک سرتیتر می‌آیند */
   group?: NavigationGroupId;
 };
 
@@ -105,7 +104,6 @@ export const navigationItems: NavigationItem[] = [
     icon: CreditCard,
     roles: ['Instructor'],
   },
-  // --- منوی کاربر ارشد: ترتیب این بلوک همان ترتیب گروه‌ها و آیتم‌های سایدبار است ---
   {
     label: 'مدرس‌ها',
     to: '/instructors',
@@ -179,9 +177,6 @@ export type NavigationSection<T extends { group?: NavigationGroupId }> = {
   items: T[];
 };
 
-// آیتم‌ها را به بخش‌های پشت‌سرهم تقسیم می‌کند (ترتیب بخش‌ها = ترتیب اولین
-// دیده‌شدنشان). آیتم‌های بدون group یک بخش بدون سرتیتر می‌سازند؛ منوی
-// مدرس و دانشجو فقط همین یک بخش را دارد و ظاهرشان عوض نمی‌شود
 export function groupNavigationItems<T extends { group?: NavigationGroupId }>(
   items: T[]
 ): NavigationSection<T>[] {

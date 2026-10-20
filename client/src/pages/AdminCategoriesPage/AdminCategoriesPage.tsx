@@ -30,8 +30,6 @@ const EMPTY_STATE_TEXT: Record<CategoryTab, string> = {
   All: 'هنوز هیچ دسته‌بندی‌ای ثبت نشده.',
 };
 
-// سطرِ یه دسته‌بندی - جدا شده چون حالتِ ویرایشِ inline (rename) مخصوصِ
-// خودشه و بهتره state ـش تو کل صفحه پخش نشه
 function CategoryRow({
   category,
   showActions,

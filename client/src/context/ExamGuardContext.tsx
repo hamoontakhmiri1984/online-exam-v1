@@ -16,10 +16,7 @@ type ExamGuardContextValue = {
 
 const ExamGuardContext = createContext<ExamGuardContextValue | null>(null);
 
-// وقتی دانشجو وسط یه آزمون فعاله (hasStarted && !isFinished تو useExamRunner)،
-// هر تلاش برای رفتن به یه صفحه‌ی دیگه (منو، لوگو، خروج) به‌جای اجرای مستقیم،
-// اول یه مودال تایید نشون می‌ده. عملیات واقعی (navigate/logout) فقط بعد از
-// تایید کاربر اجرا می‌شه.
+// Prevent navigation while an unfinished attempt is active.
 export function ExamGuardProvider({ children }: { children: ReactNode }) {
   const [isExamActive, setIsExamActive] = useState<boolean>(false);
   const [pendingConfirm, setPendingConfirm] = useState<boolean>(false);

@@ -9,7 +9,6 @@ import {
 import { ApiError } from '../lib/apiClient';
 import type { CategoryOption, CategoryStatus } from '../api/categoryApi';
 
-// تب «همه» با status=undefined به سرور می‌ره (یعنی فیلتری اعمال نمی‌شه)
 export type CategoryTab = CategoryStatus | 'All';
 
 function useAdminCategories() {
@@ -17,12 +16,10 @@ function useAdminCategories() {
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // چون تایید/رد/تغییرِ نام هرکدوم روی یه ردیفِ مشخص عمل می‌کنه، به‌جای یه
-  // لودینگِ سراسری فقط همون ردیف غیرفعال می‌شه - هم‌الگو با useInstructorApprovals
+
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
-  // شماره‌ی آخرین درخواستِ لیست: اگه کاربر سریع بینِ تب‌ها عوض کنه و جوابِ
-  // درخواستِ قدیمی‌تر دیرتر برسه، نباید لیستِ تبِ فعلی رو بازنویسی کنه
+  // Only the latest list request may replace the active tab.
   const requestIdRef = useRef(0);
 
   const load = useCallback(() => {
@@ -49,7 +46,7 @@ function useAdminCategories() {
     setActioningId(id);
     try {
       await approveCategory(id);
-      // اگه تبِ فعلی Pending‌ـه، بعدِ تایید دیگه نباید تو همین لیست باشه
+
       setCategories((prev) =>
         tab === 'Pending' ? prev.filter((c) => c.id !== id) : prev
       );
@@ -105,7 +102,7 @@ function useAdminCategories() {
     try {
       const created = await addCategoryAsAdmin(trimmed);
       if (tab === 'Pending') {
-        // چون این دسته Approved ساخته می‌شه، تو تبِ Pending دیده نمی‌شه
+
       } else {
         setCategories((prev) => [...prev, created]);
       }

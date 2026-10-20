@@ -42,7 +42,6 @@ export type AdminDashboard = {
   }[];
 };
 
-// فقط‌خواندنی؛ سرور فقط برای SuperAdmin جواب می‌دهد (مدرس/دانشجو ۴۰۳)
 export function getAdminDashboard(): Promise<AdminDashboard> {
   return apiRequest<AdminDashboard>('/admin/dashboard');
 }

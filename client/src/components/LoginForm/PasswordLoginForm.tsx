@@ -11,17 +11,14 @@ import Captcha from '../Captcha/Captcha';
 import PasswordField from '../PasswordField/PasswordField';
 
 type Props = {
-  /** شناسه‌ی نرمال‌شده (مرحله‌ی اول) */
   identifier: string;
   rememberMe: boolean;
   captchaRequired: boolean;
   captcha: CaptchaAnswer | null;
 
-  /** برگشت به مرحله‌ی اول برای ویرایش شناسه */
   onBack?: () => void;
   onEdit: () => void;
 
-  /** برگشت به انتخاب روش ورود */
   onChangeMethod: () => void;
   codeLabel: string;
 
@@ -54,10 +51,8 @@ function PasswordLoginForm({
 
   const [password, setPassword] = useState('');
 
-  // خطای همین فیلد (خالی‌بودن)
   const [passwordError, setPasswordError] = useState('');
 
-  // خطای سرور (رمز اشتباه، قفل موقت، ...) در بنر بالای فرم
   const [serverError, setServerError] = useState('');
 
   const [submitted, setSubmitted] = useState(false);
@@ -69,14 +64,12 @@ function PasswordLoginForm({
   function handlePasswordChange(event: React.ChangeEvent<HTMLInputElement>) {
     setPassword(event.target.value);
 
-    // با شروع اصلاح، خطای همین فیلد پاک می‌شود
     if (passwordError) {
       setPasswordError('');
     }
   }
 
   function handlePasswordBlur() {
-    // قبل از اولین ارسال، روی فیلد خالی خطا نشان نمی‌دهیم
     if (!password && !submitted) {
       return;
     }
@@ -129,7 +122,6 @@ function PasswordLoginForm({
         onCaptchaRequired();
       }
 
-      // کپچا یک‌بارمصرف است: بعد از هر تلاش ناموفق چالش جدید بگیر و ورودی را پاک کن
       if (result.captchaRequired || captchaRequired) {
         onCaptchaChange(null);
         setCaptchaResetSignal((current) => current + 1);
@@ -155,7 +147,6 @@ function PasswordLoginForm({
 
       <IdentifierSummary identifier={identifier} onEdit={onEdit} disabled={loading} />
 
-      {/* فیلد نام کاربری مخفی: مدیر رمز مرورگر برای ذخیره‌ی درست به آن نیاز دارد */}
       <input
         type="text"
         name="username"

@@ -4,9 +4,6 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { asyncHandler } from '../../lib/asyncHandler';
 
-// داشبورد مدیر ارشد: فقط خواندنی است و هیچ چیزی را تغییر نمی‌دهد.
-// محافظ requireAuth + requireRole('SuperAdmin') روی کل /admin در admin.ts
-// نصب شده؛ پس مدرس/دانشجو ۴۰۳ و کاربر وارد‌نشده ۴۰۱ می‌گیرد.
 const router = Router();
 
 const ATTENTION_LIMIT = 5;
@@ -14,7 +11,6 @@ const RECENT_EXAMS_LIMIT = 8;
 
 type ExamState = 'draft' | 'upcoming' | 'completed';
 
-// همان قاعدهٔ serializeExam: پیش‌نویس، پیش‌رو یا پایان‌یافته
 function examState(exam: {
   status: string;
   scheduledAt: Date;
@@ -43,8 +39,7 @@ router.get(
         where: { role: 'Instructor', approvalStatus: 'Approved' },
       }),
       prisma.user.count({ where: { role: 'Student' } }),
-      // «فعال» = منتشرشده و هنوز تمام‌نشده (پایان = شروع + مدت). زمانِ فعلی از
-      // اپلیکیشن می‌آید (نه NOW() دیتابیس) چون ستون‌ها timestamp بدون منطقه‌اند
+      // Use the application clock so active-exam metrics match serialized status.
       prisma.$queryRaw<{ count: number }[]>(Prisma.sql`
         SELECT COUNT(*)::int AS "count"
         FROM "exams"
@@ -97,7 +92,7 @@ router.get(
       }),
     ]);
 
-    // شرکت‌کننده = تلاشِ شروع‌شده (هر دانشجو برای هر آزمون یک ردیف دارد)
+    // Participants count started attempts, including unfinished ones.
     const examIds = recentExams.map((e) => e.id);
     const attemptRows =
       examIds.length === 0

@@ -28,7 +28,6 @@ import { serializeAttempt } from './examAttempts.service';
 const router = Router({ mergeParams: true });
 router.use(requireAuth);
 
-// POST /exams/:examId/attempts/start
 router.post(
   '/start',
   requireRole('Student'),
@@ -42,11 +41,6 @@ router.post(
     if (!exam) throw notFound('آزمون یافت نشد');
     if (!allowed) throw forbidden();
 
-    // دفاع در عمق: علاوه بر این‌که GET /questions قبل از scheduledAt چیزی
-    // برنمی‌گردونه (و IntroScreen سمت کلاینت اصلاً رندر نمی‌شه)، این چک هم
-    // مستقل لازمه - وگرنه یه کاربر که مستقیم به /start درخواست بزنه
-    // (بدون رد شدن از UI) می‌تونه یه attempt زودهنگام بسازه و expiresAt
-    // رو زودتر از موعد واقعی قفل کنه
     if (Date.now() < exam.scheduledAt.getTime()) {
       throw forbidden('این آزمون هنوز شروع نشده');
     }
@@ -59,14 +53,12 @@ router.post(
       if (existing.finishedAt) {
         throw conflict('قبلاً تو این آزمون شرکت کردی');
       }
-      // رهاشده: وقتش (+ مهلت) تموم شده ولی finish نشده - همین‌جا با
-      // جواب‌های autosave‌شده بسته می‌شه، نه اینکه دوباره resume بشه
+      // Finalize expired attempts from saved answers rather than resuming them.
       if (Date.now() > existing.expiresAt.getTime() + FINISH_GRACE_MS) {
         await finalizeExpiredAttempts({ examId: exam.id, studentId: sub });
         throw conflict('قبلاً تو این آزمون شرکت کردی');
       }
-      // idempotent resume: قبلاً start شده و هنوز finish نشده (مثلاً رفرش
-      // صفحه وسط آزمون) - همون startedAt/expiresAt قبلی رو برمی‌گردونیم
+      // Re-entry preserves the original start and deadline.
       return res.json({
         startedAt: existing.startedAt.toISOString(),
         expiresAt: existing.expiresAt.toISOString(),
@@ -75,32 +67,20 @@ router.post(
     }
 
     try {
-      // ساخت attempt و چک‌های وابسته به «وضعیتِ فعلیِ آزمون» همه داخل یه
-      // تراکنش با قفل مشترکِ ردیف آزمون انجام می‌شن (lib/examLock.ts): همون
-      // قفلی که ویرایش/حذف/افزودنِ سوال، تغییر زمان/مدت/گروه و لغو انتشار
-      // می‌گیرن. پس یا اون تغییر کامل قبل از start commit شده و اینجا دیده
-      // می‌شه، یا start اول commit می‌شه و اون تغییر رد می‌شه
+      // Create attempts under the shared exam lock; edits use the exclusive lock.
       const attempt = await prisma.$transaction(async (tx) => {
         const locked = await lockExamForShare(tx, exam.id);
 
-        // مقدارهای بالا (exam) قبل از قفل خونده شدن و ممکنه کهنه باشن
+        // Read current values again after acquiring the exam lock.
         if (locked.status !== 'Published') throw forbidden();
 
-        // عضویت تو گروه‌های آزمون هم بعد از قفل دوباره چک می‌شه: allowed بالا
-        // قبل از تراکنش محاسبه شده و اگه گروه‌های آزمون (یا عضویت دانشجو) تو
-        // این فاصله عوض شده باشه کهنه‌ست. تغییر گروه‌های آزمون FOR UPDATE
-        // می‌گیره، پس بعد از FOR SHARE این نتیجه ثابته
+        // Recheck group membership under the exam lock.
         const stillMember = await isStudentInExamGroups(tx, exam.id, sub);
         if (!stillMember) throw forbidden();
         if (Date.now() < locked.scheduledAt.getTime()) {
           throw forbidden('این آزمون هنوز شروع نشده');
         }
 
-        // آزمونِ بدون سوال (مثلاً بعد از انتشار، همه‌ی سوال‌هاش پاک شده) نباید
-        // شروع بشه: attempt ساخته‌شده تنها فرصتِ دانشجو رو با نمره‌ی ۰ از ۰
-        // می‌سوزونه و آزمون رو هم برای همیشه قفل می‌کنه
-        // (assertExamQuestionsEditable). این چک بعد از شاخه‌ی resume هست،
-        // چون attempt موجود یعنی سوال‌ها قفل بودن و تعدادشون صفر نمی‌شه
         const questionCount = await tx.examQuestion.count({
           where: { examId: exam.id },
         });
@@ -108,19 +88,13 @@ router.post(
           throw forbidden('این آزمون هنوز سوالی نداره');
         }
 
-        // بازه‌ی آزمون: از scheduledAt تا scheduledAt + durationMinutes. بعد از
-        // این بازه نمی‌شه attempt جدید ساخت (ادامه‌ی attempt قبلاً‌شروع‌شده
-        // بالاتر بدون این چک برمی‌گرده)
         const windowEnd = getExamWindowEndMs(locked);
         if (Date.now() >= windowEnd) {
           throw forbidden('زمان این آزمون تموم شده');
         }
 
         const now = new Date();
-        // سقفِ واقعیِ زمان: تا پایانِ بازه‌ی آزمون (windowEnd)، نه لزوماً کل
-        // durationMinutes. وگرنه دانشجویی که دیر (مثلاً یه دقیقه مونده به
-        // پایانِ بازه) start بزنه، بازم کل مدت‌زمانِ آزمون رو از همون لحظه
-        // می‌گرفت و عملاً بیشتر از بقیه وقت داشت - چیزی که نباید ممکن باشه.
+        // Late starters receive only the time remaining in the shared exam window.
         const fullDurationEnd =
           now.getTime() + locked.durationMinutes * 60_000;
         const expiresAt = new Date(Math.min(fullDurationEnd, windowEnd));
@@ -142,15 +116,11 @@ router.post(
       res.status(201).json({
         startedAt: attempt.startedAt.toISOString(),
         expiresAt: attempt.expiresAt.toISOString(),
-        // ساعت سرور: کلاینت با این، ساعتِ خودش رو با سرور هم‌تراز می‌کنه
-        // (client/src/hooks/useExamRunner/examClock.ts) تا تایمر روی ساعتِ
-        // غلطِ دستگاه دانشجو حساب نشه
+        // Return server time so device clock skew does not alter the countdown.
         serverNow: new Date().toISOString(),
       });
     } catch (err) {
-      // race: دو request هم‌زمان start بزنن؛ unique index (examId, studentId)
-      // جلوی رکورد دوم رو می‌گیره (P2002) - رکورد برنده‌ی race رو برگردون.
-      // فقط برای همین خطا: خطاهای دیگه (forbidden و ...) باید همون‌طور بالا برن
+      // Concurrent starts return the attempt that won the unique constraint.
       const isUniqueViolation =
         err instanceof Prisma.PrismaClientKnownRequestError &&
         err.code === 'P2002';
@@ -171,7 +141,6 @@ router.post(
   })
 );
 
-// POST /exams/:examId/attempts/finish
 router.post(
   '/finish',
   requireRole('Student'),
@@ -193,8 +162,7 @@ router.post(
     });
     if (!existing) throw notFound('هنوز این آزمون رو شروع نکردی');
     if (existing.finishedAt) {
-      // قبلاً finish شده - نتیجه‌ی همونو برگردون (idempotent) نه خطا، چون
-      // ممکنه این request بر اثر retry شبکه دوباره فرستاده شده باشه
+      // Return the existing result when finish is retried.
       return res.json(serializeAttempt(existing));
     }
 
@@ -202,17 +170,14 @@ router.post(
     const endedByTimeout = now.getTime() >= existing.expiresAt.getTime();
     const finishedAt = endedByTimeout ? existing.expiresAt : now;
 
-    // ارسال خیلی دیرتر از پایان زمان: جواب‌های ارسالی کلاینت قبول نمی‌شن؛
-    // فقط جواب‌هایی که قبلاً (تا مهلت) autosave شدن حساب می‌شن - دقیقاً همون
-    // چیزی که sweep رهاشده‌ها هم حساب می‌کنه
+    // After the grace period, ignore incoming answers and grade the saved ones.
     const tooLate =
       now.getTime() > existing.expiresAt.getTime() + FINISH_GRACE_MS;
     const answers = tooLate
       ? sanitizeAnswers(existing.answers)
       : parsed.data.answers;
 
-    // اتمیک: اگه هم‌زمان request/sweep دیگه‌ای زودتر finalize کرده باشه،
-    // won=false می‌شه و نتیجه‌ی ثبت‌شده برمی‌گرده (بدون اعلان دوبل)
+    // Only the winning finalizer may send the completion notification.
     const { won, attempt } = await finalizeAttempt({
       attemptId: existing.id,
       examId: exam.id,
@@ -231,7 +196,6 @@ router.post(
   })
 );
 
-// PATCH /exams/:examId/attempts/answers
 router.patch(
   '/answers',
   requireRole('Student'),
@@ -252,31 +216,12 @@ router.patch(
       where: { examId_studentId: { examId: exam.id, studentId: sub } },
     });
     if (!existing) throw notFound('هنوز این آزمون رو شروع نکردی');
-    // بعد از finish، جواب‌های نهایی رو خود finish (idempotent) نگه می‌داره؛
-    // autosave بعد از اون معنی نداره
     if (existing.finishedAt) throw conflict('این آزمون قبلاً ثبت شده');
-    // بعد از پایان زمان (+ مهلت) autosave پذیرفته نمی‌شه
     if (Date.now() > existing.expiresAt.getTime() + FINISH_GRACE_MS) {
       throw conflict('زمان این آزمون تموم شده');
     }
 
-    // اتمیک و «فقط رو به جلو»: ذخیره فقط وقتی انجام می‌شه که
-    //  - attempt هنوز finish نشده باشه (بازنویسی بعد از finish هم‌زمان ممنوع)
-    //  - هنوز تو مهلت باشه (expiresAt + FINISH_GRACE_MS). چکِ بالا قبل از
-    //    نوشتن انجام شده و ممکنه تا لحظه‌ی نوشتن کهنه بشه. اگه cutoff رو تو
-    //    Node حساب کنیم و به کوئری بدیم، وقتی کوئری پشتِ قفلِ ردیف (مثلاً
-    //    finalize هم‌زمان) یا تو صف کانکشن معطل بمونه، همون cutoffِ قدیمی
-    //    استفاده می‌شه و ذخیره بعد از مهلت هم می‌شینه. برای همین زمان رو
-    //    خودِ Postgres تو لحظه‌ی اجرای نوشتن می‌سنجه: clock_timestamp()
-    //    (برخلاف now() که ثابتِ شروعِ statement ـه) volatile ـه و وقتی UPDATE
-    //    بعد از گرفتنِ قفل شرط رو دوباره ارزیابی می‌کنه (READ COMMITTED)، با
-    //    زمانِ واقعیِ همون لحظه حساب می‌شه. AT TIME ZONE 'UTC' لازمه چون
-    //    Prisma ستون‌های DateTime رو UTC و بدون timezone (timestamp(3)) ذخیره
-    //    می‌کنه و مقایسه‌ی مستقیم با timestamptz به TimeZone سشنِ دیتابیس
-    //    وابسته می‌شد
-    //  - revision این درخواست از revision ذخیره‌شده بزرگ‌تر باشه. اگه یه
-    //    درخواستِ قدیمی‌تر دیرتر از درخواستِ جدیدتر برسه، رد می‌شه و جواب
-    //    جدیدتر رو بازنویسی نمی‌کنه
+    // Persist only newer revisions on unfinished attempts within the deadline.
     const { answers, revision } = parsed.data;
     const count = await prisma.$executeRaw`
       UPDATE "exam_attempts"
@@ -297,12 +242,10 @@ router.patch(
       if (!current || current.finishedAt) {
         throw conflict('این آزمون قبلاً ثبت شده');
       }
-      // مهلت وسطِ راه تموم شده (بین چکِ اول و نوشتن) - ذخیره نشد
       if (Date.now() > current.expiresAt.getTime() + FINISH_GRACE_MS) {
         throw conflict('زمان این آزمون تموم شده');
       }
-      // نسخه‌ی قدیمی/تکراری: خطا نیست - یه ذخیره‌ی جدیدتر قبلاً نشسته. کلاینت
-      // با revision برگشتی شمارنده‌ش رو جلو می‌بره و اگه لازم بود دوباره می‌فرسته
+      // Return the stored revision so clients can recover from stale writes.
       return res.json({ saved: false, revision: current.answersRevision });
     }
 

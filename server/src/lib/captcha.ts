@@ -2,19 +2,9 @@ import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import { redis } from './redis';
 
-// کپچای تصویری واقعی، سمت سرور تولید و تایید می‌شه (برخلاف نسخه‌ی قبلی که
-// فقط یه سوال ریاضی تو خودِ کلاینت بود و هیچ‌وقت به سرور نمی‌رسید - یعنی هر
-// اسکریپتی که مستقیم API رو صدا می‌زد ازش رد می‌شد بدون هیچ مانعی).
-//
-// به‌جای کتابخونه‌ی خارجی مثل canvas/svg-captcha (که نصبشون به اینترنت/npm
-// install نیاز داره)، خودِ SVG رو دستی با کاراکترهای کج/رنگی + نویز پس‌زمینه
-// می‌سازیم - از نظر بصری همون سطح یه کپچای معمولیه.
-
 const CODE_LENGTH = 5;
-const TTL_SECONDS = 5 * 60; // ۵ دقیقه فرصت برای پر کردن بقیه‌ی فرم و submit
-const SALT_ROUNDS = 8; // کد کوتاه‌مدت و کم‌حساسیته؛ نیازی به SALT_ROUNDS سنگینِ پسورد نیست
-
-// حروف/عددهای شبیه‌به‌هم (0/O, 1/l/I) حذف شدن تا کاربر سرِ خوندن کد گیج نشه
+const TTL_SECONDS = 5 * 60;
+const SALT_ROUNDS = 8; // Exclude visually ambiguous characters from captcha challenges.
 const CHARSET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 const captchaKey = (id: string) => `captcha:${id}`;
@@ -32,7 +22,6 @@ function renderSvg(code: string): string {
   const height = 60;
   const charWidth = width / code.length;
 
-  // چندتا خط رنگی نویز پشت متن - سخت‌تر کردن OCR خودکار
   const noiseLines = Array.from({ length: 4 }, () => {
     const x1 = crypto.randomInt(width);
     const y1 = crypto.randomInt(height);
@@ -54,7 +43,7 @@ function renderSvg(code: string): string {
     .map((ch, i) => {
       const x = charWidth * i + charWidth / 2 + (crypto.randomInt(9) - 4);
       const y = height / 2 + (crypto.randomInt(11) - 5);
-      const rotate = crypto.randomInt(41) - 20; // بین -20 تا 20 درجه
+      const rotate = crypto.randomInt(41) - 20;
       const hue = crypto.randomInt(360);
       const fontSize = 26 + crypto.randomInt(6);
       return `<text x="${x}" y="${y}" font-size="${fontSize}" font-family="Georgia, 'Times New Roman', serif" font-weight="bold" fill="hsl(${hue},55%,40%)" text-anchor="middle" dominant-baseline="middle" transform="rotate(${rotate} ${x} ${y})">${ch}</text>`;
@@ -77,8 +66,7 @@ export async function createCaptcha(): Promise<{
   return { captchaId, svg: renderSvg(code) };
 }
 
-// یک‌بارمصرف: چه جواب درست باشه چه غلط، بلافاصله بعد از یه بار چک کلید از
-// Redis پاک می‌شه - وگرنه می‌شه رو یه captchaId ثابت جواب رو brute-force کرد
+// Consume the challenge on every verification, including incorrect answers.
 export async function verifyCaptcha(
   captchaId: unknown,
   answer: unknown

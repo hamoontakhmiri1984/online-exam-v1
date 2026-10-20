@@ -12,8 +12,6 @@ import useSiteContent from '../../hooks/useSiteContent';
 function BlogPage() {
   const [posts, setPosts] = useState<BlogPostSummary[] | null>(null);
   const [error, setError] = useState(false);
-  // فوتر باید همون محتوایی رو نشون بده که تو صفحه‌ی فرود هست (لینک‌ها،
-  // شبکه‌های اجتماعی و ...) - نه نسخه‌ی هاردکدِ پیش‌فرض
   const sections = useSiteContent();
 
   useEffect(() => {

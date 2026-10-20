@@ -24,14 +24,13 @@ export async function getInstructorUsage(
   });
   const groupIds = groups.map((g) => g.id);
 
-
   const questionsPromise = (async () => {
     const [bankCount, localExamQuestionCount] = await Promise.all([
       db.question.count({ where: { bank: { instructorId } } }),
       db.examQuestion.count({
         where: {
           questionId: null,
-          exam: { instructorId },          // ← قبلاً: exam: { groups: { some: { instructorId } } }
+          exam: { instructorId },
         },
       }),
     ]);
@@ -39,7 +38,6 @@ export async function getInstructorUsage(
   })();
 
   const handoutsPromise = db.handout.count({ where: { instructorId } });
-
 
   const examsPromise = db.exam.findMany({
     where: { instructorId },
@@ -116,7 +114,6 @@ async function checkLimit(
     : { allowed: false, reason: 'limit_reached' };
 }
 
-
 async function checkLimitForCount(
   instructorId: string,
   count: number,
@@ -130,7 +127,6 @@ async function checkLimitForCount(
     ? { allowed: true }
     : { allowed: false, reason: 'limit_reached' };
 }
-
 
 export type QuotaKind = 'groups' | 'activeExams' | 'questions' | 'handouts';
 
@@ -180,7 +176,6 @@ async function enforceQuotaInTx(
   if (plan.limit - used < count) throw planLimitError('limit_reached');
 }
 
-
 export async function prepareQuotaGuard(
   instructorId: string,
   kind: QuotaKind,
@@ -211,7 +206,6 @@ export async function withQuotaLock<T>(
     { timeout: opts.timeoutMs ?? QUOTA_TX_TIMEOUT_MS }
   );
 }
-
 
 export async function withQuotaForRole<T>(
   role: string,

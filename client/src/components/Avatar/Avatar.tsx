@@ -1,11 +1,8 @@
 import { useEffect, useState } from 'react';
 
 type AvatarProps = {
-  /** نام (یا نام کاربری) برای حرف اولِ جایگزین */
   name?: string;
-  /** آدرس تصویر پروفایل؛ اگر نبود یا بارگذاری نشد، حرف اول نمایش داده می‌شود */
   src?: string;
-  /** اندازه‌ی ضلع به پیکسل */
   size?: number;
   className?: string;
 };
@@ -13,7 +10,6 @@ type AvatarProps = {
 function Avatar({ name, src, size = 36, className = '' }: AvatarProps) {
   const [failed, setFailed] = useState(false);
 
-  // با عوض‌شدن آدرس (تصویر تازه) دوباره امتحان می‌کنیم
   useEffect(() => {
     setFailed(false);
   }, [src]);

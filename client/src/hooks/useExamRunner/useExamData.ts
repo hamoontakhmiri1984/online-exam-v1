@@ -6,14 +6,10 @@ import {
   type Question,
 } from '../../api/questionApi';
 
-// وقتی صفحه‌ی آزمون قبل از زمان شروع باز بمونه، سرور عمداً تعداد سوال‌ها رو
-// صفر برمی‌گردونه (GET /exams/:examId/questions/count قبل از exam.date).
-// تا وقتی این حالته، هر چند ثانیه یه‌بار خودکار دوباره چک می‌کنیم - تا کاربر
-// مجبور به رفرش دستی نباشه وقتی زمان شروع می‌رسه
+// Poll unreleased question counts so scheduled exams become available without a reload.
 const POLL_INTERVAL_MS = 5000;
 
-// خودِ سوال‌ها فقط بعد از start (hasStarted) از سرور گرفته می‌شن - سرور
-// قبل از شروع attempt سوالی به دانشجو نمی‌ده
+// Fetch question content only after an attempt has started.
 function useExamData(examId: string, hasStarted: boolean) {
   const [exam, setExam] = useState<Exam | null>(null);
   const [questionCount, setQuestionCount] = useState<number>(0);
@@ -44,7 +40,6 @@ function useExamData(examId: string, hasStarted: boolean) {
         setError(null);
         setLoading(false);
 
-        // هنوز سوالی نیومده - تا وقتی زمان شروع آزمون نرسیده دوباره چک کن
         const notStartedYet =
           examData !== null && new Date(examData.date).getTime() > Date.now();
         if (count === 0 && notStartedYet) {

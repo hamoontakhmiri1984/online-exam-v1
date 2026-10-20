@@ -2,12 +2,10 @@ import { useRef, useState } from 'react';
 import { ImagePlus, Loader2, X } from 'lucide-react';
 
 type ImageUploadFieldProps = {
-  /** آدرسِ تصویرِ فعلی (از سرور) - اگه هنوز چیزی آپلود نشده، null/undefined */
   imageUrl?: string | null;
   onUpload: (file: File) => void;
   uploading?: boolean;
   disabled?: boolean;
-  /** وقتی disabled=true (مثلاً پستِ بلاگ هنوز ذخیره نشده) این پیام نشون داده می‌شه */
   disabledHint?: string;
 };
 
@@ -60,8 +58,6 @@ function ImageUploadField({
           className="hidden"
           onChange={(e) => {
             handleFiles(e.target.files);
-            // ریست کردنِ value - وگرنه انتخابِ دوباره‌ی همون فایل (مثلاً
-            // بعدِ خطا) رویدادِ onChange رو فایر نمی‌کنه
             e.target.value = '';
           }}
           disabled={disabled || uploading}

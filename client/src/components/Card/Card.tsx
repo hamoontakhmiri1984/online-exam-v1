@@ -2,15 +2,11 @@ import type { ElementType, ReactNode } from 'react';
 
 type CardProps = {
   children: ReactNode;
-  /** تگ HTML خروجی؛ برای بخش‌های معنادار `section` بده */
   as?: ElementType;
-  /** padding پیش‌فرض ۲۴ پیکسل؛ برای جدول‌ها و لیست‌های لبه‌به‌لبه false بده */
   padded?: boolean;
   className?: string;
 };
 
-// تنها «سطح» استاندارد پنل: سفید، گوشه‌ی گرد، سایه‌ی خیلی ملایم و یک هرم
-// نازک به‌جای کادر پررنگ. همه‌ی صفحه‌ها باید کارت‌هاشان را از همین بسازند
 export const cardSurfaceClass =
   'rounded-2xl bg-white shadow-soft ring-1 ring-gray-950/5 dark:bg-gray-900 dark:shadow-none dark:ring-white/10';
 

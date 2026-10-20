@@ -20,10 +20,8 @@ type Props = {
   sendError: string;
   onResend: () => void;
   captchaSlot?: ReactNode;
-  /** true یعنی کپچا نمایش داده می‌شود و برای «تأیید و ورود» الزامی است */
   captchaRequired?: boolean;
   captcha?: CaptchaAnswer | null;
-  /** بعد از هر تأیید ناموفق صدا زده می‌شود؛ کپچا یک‌بارمصرف است و باید چالش تازه گرفته شود */
   onVerifyFailed?: (captchaRequired: boolean) => void;
 };
 export default function OtpVerifyForm({
@@ -75,8 +73,6 @@ export default function OtpVerifyForm({
       const captchaProblem =
         result.status === 'error' && Boolean(result.captchaRequired);
       onVerifyFailed?.(captchaProblem);
-      // سرور قبل از بررسی کد، کپچا را چک می‌کند؛ پس وقتی مشکل فقط کپچاست
-      // کد هنوز معتبر است و نباید کاربر مجبور شود دوباره تایپش کند
       if (!captchaProblem) {
         setCode('');
         setInputKey((current) => current + 1);
@@ -137,8 +133,7 @@ export default function OtpVerifyForm({
             onChange={(value) => {
               setCode(value);
               setError('');
-              // paste یا تایپ کامل کد: بدون کپچا خودکار تأیید می‌شود؛ وقتی کپچا
-              // نمایش داده می‌شود، کاربر باید کپچا را وارد کند و دکمه را بزند
+              // Auto-submit a complete OTP only when no captcha is required.
               if (value.length === OTP_CODE_LENGTH && !captchaRequired) {
                 void verify(value);
               }

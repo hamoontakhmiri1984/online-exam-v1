@@ -7,40 +7,20 @@ type TextBoxProps = {
   placeholder: string;
   value: string;
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  /** برای وصل‌کردن به <label htmlFor> - بدونش لیبل کلیک‌پذیر نیست و screen reader اسمی برای فیلد نداره */
   id?: string;
   name?: string;
-  /** مقدار استاندارد autocomplete (مثلاً 'username', 'current-password') - برای پیشنهاد درستِ مدیر رمزهای مرورگر */
   autoComplete?: string;
   autoFocus?: boolean;
-  /** آیکن سمت راست ورودی (در RTL یعنی ابتدای فیلد) */
   icon?: ReactNode;
-  /**
-   * فقط برای type="password" کاربرد داره؛ اگه true باشه یه دکمه‌ی
-   * چشم برای نمایش/مخفی‌کردن رمز کنار فیلد اضافه می‌شه
-   */
   toggleablePassword?: boolean;
-  /** پیام خطای مختص همین فیلد (اختیاری) - حاشیه‌ی قرمز + متن زیر فیلد */
   error?: string;
-  /**
-   * اگه true باشه جای پیام خطا از قبل رزرو می‌شه تا با ظاهر/ناپدیدشدن خطا
-   * فرم بالا و پایین نپره. پیش‌فرض false تا صفحه‌های قبلی تغییر نکنن.
-   */
   reserveErrorSpace?: boolean;
-  /**
-   * برای ایمیل/شماره: تا وقتی فیلد خالیه راست‌چین می‌مونه (placeholder فارسی
-   * درست دیده بشه)، با شروع تایپ چپ‌به‌راست می‌شه (ایمیل و رقم به‌هم نریزن)
-   */
+  // Keep empty identifiers RTL for the label; switch typed email/phone values to LTR.
   ltrInput?: boolean;
-  /** کیبورد مناسب موبایل (مثلاً numeric برای کد تایید) */
   inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
-  /** حداکثر تعداد کاراکتر مجاز */
   maxLength?: number;
-  /** برای اعتبارسنجی بعد از خروج از فیلد */
   onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
-  /** مثلاً هنگام ارسال فرم برای جلوگیری از تغییر و کلیک تکراری */
   disabled?: boolean;
-  /** برای فوکوس‌کردن روی اولین فیلد خطادار بعد از ارسال */
   ref?: Ref<HTMLInputElement>;
 };
 
@@ -71,9 +51,7 @@ function TextBox({
   const resolvedType = isPasswordField && revealed ? 'text' : type;
   const showToggle = isPasswordField && toggleablePassword;
 
-  // راست فیلد (ابتدای متن در RTL): جا برای آیکن یا پدینگ معمولی
   const rightPadding = icon ? 'pr-10' : 'pr-4';
-  // چپ فیلد (انتهای متن در RTL): جا برای دکمه‌ی toggle یا پدینگ معمولی
   const leftPadding = showToggle ? 'pl-10' : 'pl-4';
 
   const errorId = id ? `${id}-error` : undefined;
@@ -122,8 +100,6 @@ function TextBox({
         {isPasswordField && toggleablePassword && (
           <button
             type="button"
-            // به‌جای toggle با کلیک: تا وقتی دکمه پایینه رمز نمایش داده می‌شه،
-            // با ول‌کردن (یا خروج ماوس از روی دکمه) دوباره مخفی می‌شه
             onMouseDown={() => setRevealed(true)}
             onMouseUp={() => setRevealed(false)}
             onMouseLeave={() => setRevealed(false)}
@@ -143,8 +119,6 @@ function TextBox({
         )}
       </div>
       {showErrorSlot && (
-        // این عنصر همیشه توی DOM می‌مونه (وقتی reserveErrorSpace فعاله) تا
-        // aria-live تغییر متن رو اعلام کنه و ارتفاع فرم هم ثابت بمونه
         <p
           id={errorId}
           aria-live="polite"

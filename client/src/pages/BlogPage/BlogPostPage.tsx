@@ -82,9 +82,6 @@ function BlogPostPage() {
               )}
             </div>
 
-            {/* همون کلاس‌های تایپوگرافیِ پیش‌نمایشِ MarkdownEditor تو پنل
-                ادمین - تا چیزی که ادمین موقعِ نوشتن دید، همینجا هم همونطور
-                رندر بشه */}
             <div className="mt-8 max-w-none text-sm leading-7 text-gray-700 dark:text-gray-200 [&_a]:text-brand-600 [&_a]:underline [&_h1]:mt-6 [&_h1]:text-xl [&_h1]:font-bold [&_h2]:mt-6 [&_h2]:text-lg [&_h2]:font-bold [&_h3]:mt-4 [&_h3]:text-base [&_h3]:font-bold [&_li]:mr-5 [&_ol]:list-decimal [&_p]:mb-4 [&_strong]:font-bold [&_ul]:list-disc">
               <ReactMarkdown>{post.contentMarkdown}</ReactMarkdown>
             </div>

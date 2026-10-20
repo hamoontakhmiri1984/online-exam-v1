@@ -15,11 +15,6 @@ function digitsOnly(raw: string): string {
   return toLatinDigits(raw).replace(/\D/g, '');
 }
 
-/**
- * ۶ خانه‌ی جدا برای وارد کردن کد تأیید - به‌جای یک TextBox معمولی.
- * تایپ هر رقم خودکار می‌ره خانه‌ی بعد، Backspace رو خانه‌ی خالی می‌ره عقب،
- * و Paste کردن یه کد کامل بین خانه‌ها پخش می‌شه.
- */
 function OtpInput({
   length = 6,
   value,
@@ -59,7 +54,6 @@ function OtpInput({
       return;
     }
     if (cleaned.length > 1) {
-      // کاربر چندتا رقم با هم تایپ/چسبونده - پخششون کن بین خانه‌ی فعلی و بعدی‌ها
       const next = digits.slice();
       let cursor = index;
       for (const d of cleaned) {

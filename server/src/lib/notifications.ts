@@ -4,13 +4,7 @@ import type { Role } from './jwt';
 
 export type NotificationIcon = 'info' | 'people' | 'award';
 
-// خروجی رو دقیقاً هم‌شکل Notification تو client/src/api/notificationApi.ts
-// نگه می‌داریم.
-// isRead جدا از خودِ n پاس داده می‌شه: برای اعلانِ شخصی همون n.read ـه، ولی
-// برای اعلانِ گروهی (targetRoles) n.read دیگه معتبر نیست - چون اون ردیف
-// بینِ چند کاربر مشترکه و وضعیتِ خوندن باید جدا جدا (از NotificationRead)
-// برای همین کاربر خاص محاسبه بشه؛ صدازننده (routes/notifications.ts)
-// مسئولِ این حساب‌کتابه.
+// Broadcast read state belongs to the recipient, not the shared notification.
 export function serializeNotification(
   n: {
     id: string;
@@ -33,9 +27,7 @@ export function serializeNotification(
   };
 }
 
-// پوش لحظه‌ای رو صرفاً best-effort انجام می‌دیم - اگه سوکت هنوز بالا نیومده
-// (مثلاً تو یه اسکریپت/تست که initSocket صدا زده نشده)، فقط ردیف دیتابیس
-// ساخته می‌شه و بعدی که کاربر رفرش/GET بزنه می‌بینتش
+// Socket delivery is best-effort; persisted notifications remain available.
 function pushLive(notification: ReturnType<typeof serializeNotification>) {
   try {
     const io = getIo();
@@ -50,11 +42,9 @@ function pushLive(notification: ReturnType<typeof serializeNotification>) {
       }
     }
   } catch {
-    // سوکت هنوز init نشده - نادیده می‌گیریم
   }
 }
 
-// اعلان مخصوص یه کاربر (معادل notifyStudentAddedToGroup / notifyInstructorOfAttempt تو mock)
 export async function notifyUser(
   userId: string,
   title: string,
@@ -68,7 +58,6 @@ export async function notifyUser(
   return serialized;
 }
 
-// اعلان عمومی برای همه‌ی کاربرهای یه نقش خاص (یا چند نقش)
 export async function notifyRoles(
   roles: Role[],
   title: string,

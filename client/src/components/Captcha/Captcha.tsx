@@ -3,13 +3,8 @@ import { RotateCw, Loader2 } from 'lucide-react';
 import { getCaptcha, type CaptchaAnswer } from '../../api/authApi';
 
 type CaptchaProps = {
-  // برخلاف نسخه‌ی قبلی (که فقط true/false اعتبار محلی رو گزارش می‌داد)،
-  // الان چون تایید واقعی سمت سرور انجام می‌شه، وقتی چالش آماده و جواب
-  // پر شده باشه شیء {captchaId, captchaAnswer} رو بالا می‌فرسته (که باید
-  // مستقیم به بدنه‌ی درخواست لاگین/ثبت‌نام/OTP اضافه بشه)، وگرنه null
   onChange: (value: CaptchaAnswer | null) => void;
-  // هر بار که این عدد تغییر کنه، چالش جدید از سرور گرفته و ورودی پاک می‌شه
-  // (سرور کپچا رو یک‌بارمصرف می‌کنه، پس بعد از هر تلاش ناموفق باید ریست بشه)
+  // Refresh the one-use challenge after every failed attempt.
   resetSignal?: number;
 };
 

@@ -38,26 +38,18 @@ export function serializePayment(p: PaymentRow) {
   };
 }
 
-// ---------------------------------------------------------------------------
-// شروع پرداخت
-// ---------------------------------------------------------------------------
-
 export type CheckoutResult =
   | { free: true; subscription: SubscriptionRow }
   | { free: false; paymentUrl: string };
 
-// شروع فرآیند پرداخت. پلن رایگان نیازی به درگاه نداره و مستقیم اعمال می‌شه؛
-// پلن‌های پولی یه ردیف Payment(Pending) می‌سازن و لینک درگاه برمی‌گردن -
-// پلن واقعی هیچ‌وقت این‌جا اعمال نمی‌شه، فقط بعد از verify موفق
-// (settlePendingPayment).
+// Activate paid plans only after successful provider verification.
 export async function startCheckout(
   instructorId: string,
   planId: PlanId
 ): Promise<CheckoutResult> {
   const plan = getPlan(planId);
 
-  // قبل از هر کاری (مخصوصاً قبل از ساخت Payment) تا کسی پولی نده که بعد
-  // رد بشه
+  // Validate eligibility before creating a payable transaction.
   await assertPlanChangeAllowed(instructorId, planId);
 
   if (plan.price === 0) {
@@ -89,13 +81,7 @@ export async function startCheckout(
   return { free: false, paymentUrl: result.paymentUrl };
 }
 
-// ---------------------------------------------------------------------------
-// تسویه‌ی پرداخت (verify + اعمال پلن) - تنها مسیرِ اعمال پلن پولی، چه از
-// callback مرورگر کاربر بیاد چه از reconciler پس‌زمینه
-// ---------------------------------------------------------------------------
-
-// «pending» یعنی نتیجه‌ی پرداخت هنوز قطعی نیست - ردیف Payment عمداً
-// Pending می‌مونه؛ verify زرین‌پال idempotent ـه پس دوباره‌کاری خطری نداره.
+// Unknown verification outcomes remain pending and can be retried safely.
 export type PaymentCallbackResult = 'success' | 'failed' | 'pending';
 
 function resultFromStatus(status: PaymentStatus): PaymentCallbackResult {
@@ -104,8 +90,7 @@ function resultFromStatus(status: PaymentStatus): PaymentCallbackResult {
   return 'failed';
 }
 
-// شرط status:'Pending' تو همون کوئریِ update ـه، پس اتمیکه: اگه دو
-// ریکوئست هم‌زمان با یه authority برسن، فقط یکیشون count=1 می‌گیره
+// The conditional update allows only one request to settle a pending payment.
 async function markFailed(authority: string): Promise<void> {
   await prisma.payment.updateMany({
     where: { authority, status: 'Pending' },
@@ -113,19 +98,13 @@ async function markFailed(authority: string): Promise<void> {
   });
 }
 
-// Failed هم قابل‌تبدیل به Success ـه: منبع حقیقت زرین‌پاله (verify)، نه
-// وضعیت ما. مثلاً یه callback با Status=NOK یا یه reconcile زودهنگام نباید
-// باعث بشه پرداختِ واقعاً موفق برای همیشه بی‌اثر بمونه
+// Provider verification is authoritative; a locally failed payment may still settle successfully.
 async function applyVerifiedPayment(
   payment: PaymentRow,
   refId: number
 ): Promise<boolean> {
   return prisma.$transaction(async (tx) => {
-    // تسویه‌ی چند پرداختِ هم‌زمانِ *یه مدرس* (مثلاً دو تب/دو خرید پشت‌سرهم)
-    // باید نوبتی بشه: بدون این قفل هر دو تراکنش «اشتراک فعلی» یکسانی رو
-    // می‌خوندن و computePurchaseEndDate برای هر دو از همون endDate شروع
-    // می‌کرد - یکی از دو ماهِ پرداخت‌شده گم می‌شد. `current` پایین‌تر عمداً
-    // *بعد* از گرفتن قفل خونده می‌شه تا تسویه‌ی قبلی رو ببینه
+    // Lock the instructor before reading the current subscription to preserve consecutive purchases.
     await lockInstructorForUpdate(tx, payment.instructorId);
 
     const { count } = await tx.payment.updateMany({
@@ -185,7 +164,6 @@ async function settlePendingPayment(
   }
 }
 
-// نقطه‌ی ورود callback زرین‌پال (مرورگر کاربر)
 export async function handlePaymentCallback(params: {
   authority: string;
   status: string;
@@ -208,16 +186,7 @@ export async function handlePaymentCallback(params: {
   return settlePendingPayment(payment);
 }
 
-// ---------------------------------------------------------------------------
-// reconciler پس‌زمینه
-// ---------------------------------------------------------------------------
-
-// پرداخت‌هایی که کاربر بعد از پرداخت به callback برنگشته (بستن مرورگر،
-// قطعی نت) یا verify اون لحظه نتیجه‌ی نامشخص داد، بدون این job برای همیشه
-// Pending می‌موندن و پول گرفته‌شده پلنی فعال نمی‌کرد.
-// MIN_AGE: کاربر ممکنه هنوز تو صفحه‌ی درگاه باشه؛ verify زودهنگام روی
-// تراکنشِ در حال پرداخت خطای «ناموفق» می‌ده. MAX_AGE: بعد از این مدت دیگه
-// خودکار پیگیری نمی‌شه (نیاز به بررسی دستی).
+// Reconcile missed callbacks within the age window; older payments require manual review.
 const RECONCILE_MIN_AGE_MS = 30 * 60 * 1000;
 const RECONCILE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -242,19 +211,11 @@ export async function reconcilePendingPayments(limit = 50): Promise<number> {
   return settled;
 }
 
-// چند instance هم‌زمان اجرا بشن مشکلی نیست - اعمال پلن اتمیکه
 export function startPaymentReconciler(intervalMs = 5 * 60 * 1000) {
   return periodicTask(reconcilePendingPayments, intervalMs, error => logEvent('error', 'payment_reconcile_failed', error));
 }
 
-// ---------------------------------------------------------------------------
-// استرداد و تاریخچه
-// ---------------------------------------------------------------------------
-
-// استرداد یه پرداختِ موفق - فقط SuperAdmin. زرین‌پال API استرداد خودکار
-// نداره؛ این تابع فقط سمتِ خودمون رو ثبت می‌کنه و endDate رو به «الان»
-// می‌بنده تا دسترسی از همین لحظه قطع بشه (نه دستکاری تاریخچه). هر دو تغییر
-// تو یه تراکنشن تا وسطش نیمه‌کاره نمونه
+// Record the manual refund and end access atomically; this does not transfer money.
 export async function refundPayment(paymentId: string): Promise<PaymentRow> {
   const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
   if (!payment) throw notFound('پرداخت پیدا نشد');
@@ -263,7 +224,7 @@ export async function refundPayment(paymentId: string): Promise<PaymentRow> {
   }
 
   await prisma.$transaction(async (tx) => {
-    // همون قفلِ تسویه، با همون ترتیب (اول مدرس، بعد Payment)
+    // Keep lock order consistent: instructor, then payment.
     await lockInstructorForUpdate(tx, payment.instructorId);
 
     const { count } = await tx.payment.updateMany({

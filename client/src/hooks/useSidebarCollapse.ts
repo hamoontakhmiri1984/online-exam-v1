@@ -21,8 +21,6 @@ function useSidebarCollapse() {
     return () => mql.removeEventListener('change', handleChange);
   }, []);
 
-  // فقط تو دسکتاپ معنی داره؛ تو موبایل همیشه false برمی‌گرده
-  // که رفتار فعلیِ باز/بسته‌شدنِ کامل سایدبار دست‌نخورده بمونه
   return {
     isCollapsed: isCollapsed && isDesktop,
     toggleCollapse: () => setIsCollapsed((prev) => !prev),

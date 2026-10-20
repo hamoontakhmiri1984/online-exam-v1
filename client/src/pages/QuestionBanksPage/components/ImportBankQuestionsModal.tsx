@@ -57,8 +57,6 @@ function ImportBankQuestionsModal({
             type="file"
             accept=".xlsx,.xls,.csv"
             onChange={onFileSelected}
-            // sr-only به‌جای hidden: با display:none اینپوت با Tab فوکوس
-            // نمی‌گرفت و کاربرِ کیبورد نمی‌تونست فایل انتخاب کنه
             className="sr-only"
           />
         </label>

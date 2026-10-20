@@ -21,9 +21,6 @@ export type ExamQuestionInput = {
   correctOptionIndex: number;
 };
 
-// کنترل دسترسیِ مشترکِ هر دو router (خواندن و مدیریت): آزمون رو با دسترسیِ
-// نقش/عضویتِ کاربر می‌خونه و اگه پیدا نشه/مجاز نباشه همون خطای همیشگی رو
-// می‌ده - هر دو router دقیقاً همین رفتار رو قبلاً جدا از هم تکرار کرده بودن
 export async function loadExamOrThrow(
   examId: string,
   userId: string,
@@ -35,8 +32,6 @@ export async function loadExamOrThrow(
   return exam;
 }
 
-// شکل خروجیِ سوال برای Instructor/SuperAdmin (جواب صحیح همیشه همراهشه).
-// دانشجو از این استفاده نمی‌کنه - سریالایزِ خودش رو تو examQuestionsRead.routes.ts داره
 export function serializeExamQuestion(question: ExamQuestionRecord) {
   return {
     id: question.id,
@@ -48,13 +43,7 @@ export function serializeExamQuestion(question: ExamQuestionRecord) {
   };
 }
 
-// بعد از اینکه حتی یه دانشجو آزمون رو شروع کرده، سوال‌ها (متن، گزینه، جواب
-// صحیح، تعداد) نباید عوض بشن - نمره‌دهیِ finish از همین سوال‌ها حساب می‌شه
-// و تغییرشون وسط/بعد از آزمون نمره‌ها رو با هم ناسازگار می‌کنه.
-//
-// توجه: چک روی exam._count که قبل از تراکنش خونده شده فقط یه fail-fast ارزونه
-// (routeها صداش می‌زنن)؛ چک قطعی همین تابع *داخل* withExamWriteLock و با
-// تعداد attempt بعد از قفل ردیف آزمون انجام می‌شه (نگاه کن به لایه‌ی سرویس پایین)
+// Questions become immutable once an attempt starts because grading uses these records.
 export function assertExamQuestionsEditable(exam: {
   _count: { attempts: number };
 }): void {
@@ -65,19 +54,9 @@ export function assertExamQuestionsEditable(exam: {
   }
 }
 
-// تعداد تلاش مجدد وقتی دو درخواست هم‌زمان همان order را بگیرند (P2002)
 const MAX_ORDER_ATTEMPTS = 3;
 
-// order بعدی را از «بیشترین order موجود + ۱» حساب می‌کند، نه از count.
-// با count، بعد از حذف یک سوال از وسط، order جدید با یکی از order های
-// موجود برخورد می‌کرد (unique روی examId + order) و ساخت سوال جدید
-// همیشه با خطای ۴۰۹ رد می‌شد. محاسبه و ساخت داخل یک تراکنش انجام می‌شود.
-// تراکنش اول ردیف آزمون را قفل می‌کند و «هنوز attempt ای نیست» را دوباره
-// (بعد از قفل) چک می‌کند - پس با شروع هم‌زمان آزمون هم race ندارد؛ چون
-// همه‌ی نویسنده‌ها پشت همین قفل صف می‌کشند، برخورد order هم عملاً پیش
-// نمی‌آید، ولی retry برای اطمینان می‌ماند.
-// beforeExamLock: چکِ اتمیکِ سهمیه‌ی پلن (prepareQuotaGuard) - اول‌ترین کارِ
-// تراکنش، قبل از قفل آزمون؛ برای SuperAdmin (معاف از سهمیه) داده نمی‌شه
+// Use max(order) + 1; count would collide after deleting a middle question.
 export type BeforeExamLock = (tx: Prisma.TransactionClient) => Promise<void>;
 
 export async function withNextOrder<T>(

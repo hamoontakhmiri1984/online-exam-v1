@@ -5,16 +5,11 @@ import { conflict, notFound } from './errors';
 import { Prisma } from '@prisma/client';
 import type { Category, CategoryStatus } from '@prisma/client';
 
-// دقیقاً همون پترنِ normalizeUsername (lib/username.ts) - trim + lower-case
-// تا «ریاضی »، «ریاضی» و «RIYAZI»/«Riyazi» به‌عنوان یه دسته حساب بشن. از
-// toLocaleLowerCase (نه toLowerCase) استفاده می‌کنیم چون ورودی می‌تونه
-// فارسی/عربی هم باشه.
 export function normalizeCategoryName(name: string): string {
   return name.trim().toLocaleLowerCase();
 }
 
-// خطای unique index (nameNormalized): دو درخواستِ هم‌زمان با یه اسم، هر دو
-// findUnique رو رد می‌کنن و فقط یکی create می‌شه؛ دومی P2002 می‌گیره
+// The unique index resolves concurrent creation of the same normalized name.
 function isUniqueViolation(err: unknown): boolean {
   return (
     err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002'
@@ -31,9 +26,7 @@ export function serializeCategory(category: Category) {
   };
 }
 
-// لیستِ قابل‌دیدنِ یه مدرسِ خاص برای پر کردن دراپ‌داون: همه‌ی دسته‌های
-// Approved + پیشنهادهای Pending خودِ همین مدرس (که هنوز برای بقیه دیده
-// نمی‌شن ولی خودش باید بلافاصله بتونه ازشون تو فرم استفاده کنه)
+// Include approved categories and the instructor's own pending proposals.
 export async function listCategoriesForInstructor(instructorId: string) {
   const categories = await prisma.category.findMany({
     where: {
@@ -52,10 +45,6 @@ export async function listCategoriesForAdmin(status?: CategoryStatus) {
   return categories.map(serializeCategory);
 }
 
-// عملیات idempotent: اگه دسته‌ای با همین نامِ نرمالایزشده از قبل باشه (چه
-// Approved چه Pending، مال هرکسی)، همونو برمی‌گردونه به‌جای ساختِ تکراری.
-// فقط وقتی واقعاً وجود نداره یه ردیفِ Pendingِ جدید می‌سازه و SuperAdmin رو
-// نوتیف می‌کنه.
 export async function proposeCategory(instructorId: string, rawName: string) {
   const name = rawName.trim();
   const nameNormalized = normalizeCategoryName(name);
@@ -78,8 +67,7 @@ export async function proposeCategory(instructorId: string, rawName: string) {
       },
     });
   } catch (err) {
-    // race: درخواستِ هم‌زمانِ دیگه زودتر همین دسته رو ساخته - idempotent
-    // برمی‌گردونیم (created: false)، بدون نوتیفِ دوباره‌ی SuperAdmin
+    // Return the concurrent winner without emitting a duplicate notification.
     if (isUniqueViolation(err)) {
       const winner = await prisma.category.findUnique({
         where: { nameNormalized },
@@ -103,8 +91,6 @@ export async function proposeCategory(instructorId: string, rawName: string) {
   return { category: serializeCategory(created), created: true };
 }
 
-// فقط برای SuperAdmin: اضافه‌کردنِ مستقیمِ یه دسته که همون لحظه Approved‌ـه
-// (نیازی به تاییدِ خودش نداره چون خودش تاییدکننده‌ست)
 export async function adminCreateCategory(name: string) {
   const trimmed = name.trim();
   const nameNormalized = normalizeCategoryName(trimmed);
@@ -122,7 +108,6 @@ export async function adminCreateCategory(name: string) {
     });
     return serializeCategory(created);
   } catch (err) {
-    // race با یه درخواستِ هم‌زمان: همون پیامِ چکِ بالا، نه ۵۰۰
     if (isUniqueViolation(err)) {
       throw conflict('این دسته‌بندی از قبل وجود داره');
     }
@@ -150,11 +135,7 @@ export async function approveCategory(id: string) {
   return serializeCategory(updated);
 }
 
-// شمارشِ محل‌هایی که یه دسته الان واقعاً توش استفاده شده - قبل از حذف/رد
-// باید صفر باشه، وگرنه رکورد موجود با یه category یتیم (که دیگه تو هیچ
-// فهرستی نیست) می‌مونه. هر جدولی که category رو به‌صورت رشته نگه می‌داره
-// باید هم اینجا باشه هم تو cascade ـِ renameCategory (مثلاً دسترسیِ دانشجو
-// به جزوه‌ها با تطبیقِ دقیقِ رشته‌ی category گروه و جزوه حساب می‌شه)
+// Keep usage checks and rename propagation aligned across every category-bearing table.
 async function countCategoryUsage(name: string) {
   const [groups, exams, sessions, banks, handouts] = await Promise.all([
     prisma.group.count({ where: { category: name } }),
@@ -166,11 +147,7 @@ async function countCategoryUsage(name: string) {
   return groups + exams + sessions + banks + handouts;
 }
 
-// رد یه پیشنهادِ Pending یا حذفِ یه دسته‌ی Approved. تو هر دو حالت اگه دسته
-// جایی استفاده شده باشه، رد/حذف رو نمی‌پذیریم: پیشنهاددهنده همون لحظه‌ی
-// پیشنهاد می‌تونه دسته‌ی Pending خودش رو تو فرم‌ها بذاره (listCategoriesForInstructor)،
-// پس Pending بودن به معنی «استفاده‌نشده» نیست - وگرنه اون رکوردها با یه
-// categoryِ یتیم می‌موندن.
+// Pending categories may already be referenced and cannot be deleted while in use.
 export async function deleteOrRejectCategory(id: string) {
   const category = await prisma.category.findUnique({ where: { id } });
   if (!category) throw notFound('دسته‌بندی پیدا نشد');
@@ -196,9 +173,7 @@ export async function deleteOrRejectCategory(id: string) {
   }
 }
 
-// تغییرِ نامِ یه دسته با cascade رویِ هر جایی که دقیقاً همین رشته رو به‌عنوانِ
-// category ذخیره کرده (Group/Exam/LessonSession/QuestionBank/Handout) - همه‌شون تو یه تراکنش،
-// وگرنه ممکنه دسته عوض بشه ولی بعضی رکوردها با اسمِ قدیمی جا بمونن.
+// Rename every stored category reference in the same transaction.
 export async function renameCategory(id: string, rawNewName: string) {
   const newName = rawNewName.trim();
   const newNormalized = normalizeCategoryName(newName);
@@ -246,8 +221,6 @@ export async function renameCategory(id: string, rawNewName: string) {
       }),
     ]);
   } catch (err) {
-    // race: هم‌زمان یه درخواستِ دیگه همین اسمِ جدید رو گرفته (چکِ collisionِ بالا
-    // فقط قبل از تراکنشه)
     if (isUniqueViolation(err)) {
       throw conflict('دسته‌بندیِ دیگه‌ای همین اسم رو داره');
     }

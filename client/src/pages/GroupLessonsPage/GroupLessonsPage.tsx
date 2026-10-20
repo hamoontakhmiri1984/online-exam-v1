@@ -35,9 +35,6 @@ function GroupLessonsPage() {
     let cancelled = false;
     setGroupLoading(true);
 
-    // قبلاً catch نداشت: با خطای شبکه/سرور groupLoading برای همیشه true
-    // می‌موند و کل صفحه یه اسپینر بی‌نهایت می‌شد. حالا خطا یعنی «گروه
-    // پیدا نشد» و پیام عدم‌دسترسی نشون داده می‌شه.
     getGroupById(groupId)
       .then((data) => {
         if (!cancelled) setGroup(data ?? null);

@@ -9,7 +9,6 @@ import {
 import Reveal from '../../../components/motion/Reveal';
 
 type FooterProps = {
-  // خروجیِ FooterSectionForm (پنل ادمین -> /site-content)
   data?: Record<string, unknown>;
 };
 
@@ -28,9 +27,6 @@ const DEFAULT_DESCRIPTION =
 
 const DEFAULT_COPYRIGHT = '© ۱۴۰۵ سامانه آزمون آنلاین. تمامی حقوق محفوظ است.';
 
-// همون اسم‌هایی که FooterSectionForm تو پنل ادمین از بینشون انتخاب می‌کنه
-// (client/src/pages/AdminSiteContentPage/components/FooterSectionForm.tsx
-// -> SOCIAL_PLATFORMS) باید عیناً همین‌جا هم باشه
 const SOCIAL_ICON_BY_PLATFORM: Record<string, typeof InstagramIcon> = {
   Instagram: InstagramIcon,
   Telegram: TelegramIcon,
@@ -66,8 +62,6 @@ function readSocialLinks(data: Record<string, unknown> | undefined): SocialLinkI
       platform: typeof v.platform === 'string' ? v.platform : '',
       href: typeof v.href === 'string' ? v.href : '',
     }))
-    // فقط پلتفرم‌های شناخته‌شده + لینکِ واقعی (نه خالی) - لینکِ مرده‌ای که
-    // تو تب جدید باز بشه بدتر از نبودنِ آیکونه
     .filter((s) => s.href && s.platform in SOCIAL_ICON_BY_PLATFORM);
 }
 

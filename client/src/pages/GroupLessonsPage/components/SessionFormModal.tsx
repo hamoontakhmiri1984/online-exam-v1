@@ -27,8 +27,6 @@ type SessionFormModalProps = {
   onClose: () => void;
 };
 
-// همون فرمت‌بندی حجم فایل که SessionPlayer هم استفاده می‌کنه - اینجا هم
-// لازمه چون کاربر باید حجم فایلی که تازه آپلود کرده رو همینجا تو فرم ببینه
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} بایت`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} کیلوبایت`;
@@ -160,7 +158,6 @@ function SessionFormModal({
                 accept="video/*"
                 onChange={onFileChange}
                 disabled={isUploading}
-                // sr-only به‌جای hidden تا با Tab قابل فوکوس باشه
                 className="sr-only"
               />
             </label>

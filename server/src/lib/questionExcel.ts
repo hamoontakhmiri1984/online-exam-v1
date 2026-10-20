@@ -3,9 +3,6 @@ import { createQuestionSchema } from '../validation/questionSchemas';
 import { badRequest } from './errors';
 import { toLatinDigits } from './identifier';
 
-// ستون‌های تمپلیت - دقیقاً همین ترتیب باید تو فایل ایمپورتی رعایت بشه.
-// شش ستون گزینه گذاشتیم (اکثر سوال‌ها ۲-۴ گزینه‌ان، ولی چندگزینه‌ای‌های
-// بزرگ‌تر هم جا می‌شن)؛ گزینه‌های خالی نادیده گرفته می‌شن.
 const HEADERS = [
   'متن سوال',
   'گزینه ۱',
@@ -18,19 +15,13 @@ const HEADERS = [
   'سطح دشواری (Easy/Medium/Hard - اختیاری)',
 ] as const;
 
-// دو سقف جدا و صریح:
-//   MAX_IMPORT_ROWS: حداکثر تعداد «سوال» (ردیف غیرخالی) تو هر فایل - جلوی
-//     تراکنش چندده‌هزار create رو می‌گیره
-//   MAX_SHEET_ROWS: حداکثر تعداد ردیف «فیزیکی» شیت (شامل هدر و ردیف‌های خالی)
-//     - سقف حافظه‌ی پارسه (به XLSX.read با sheetRows داده می‌شه). فایلی که
-//     از این سقف بزرگ‌تره هیچ‌وقت ناقص خونده نمی‌شه: رد می‌شه، حتی اگه ردیف‌های
-//     بعد از سقف همه خالی بنویسن یا سوال‌های واقعی اون‌ها بعد از ردیف‌های خالی باشن
+// Limit both physical sheet rows and nonempty questions to bound parsing and writes.
 export const MAX_IMPORT_ROWS = 1000;
 export const MAX_SHEET_ROWS = 5000;
 
 const OPTION_COLUMN_COUNT = 6;
-const CORRECT_INDEX_COL = 1 + OPTION_COLUMN_COUNT; // 7
-const DIFFICULTY_COL = CORRECT_INDEX_COL + 1; // 8
+const CORRECT_INDEX_COL = 1 + OPTION_COLUMN_COUNT;
+const DIFFICULTY_COL = CORRECT_INDEX_COL + 1;
 
 const EXAMPLE_ROWS: (string | number)[][] = [
   [
@@ -47,7 +38,6 @@ const EXAMPLE_ROWS: (string | number)[][] = [
   ['کدام گزینه عدد اول است؟', '4', '6', '7', '9', '10', '', 3, 'Medium'],
 ];
 
-// تمپلیت اکسلی که مدرس دانلود می‌کنه و همون فرمت رو پر می‌کنه
 export function buildQuestionImportTemplate(): Buffer {
   const sheet = XLSX.utils.aoa_to_sheet([[...HEADERS], ...EXAMPLE_ROWS]);
   sheet['!cols'] = HEADERS.map(() => ({ wch: 26 }));
@@ -61,7 +51,7 @@ export function buildQuestionImportTemplate(): Buffer {
 export type ParsedQuestionRow = ReturnType<typeof createQuestionSchema.parse>;
 
 export type QuestionImportError = {
-  row: number; // شماره‌ی سطر تو فایل اکسل (شامل هدر) - برای نمایش مستقیم به کاربر
+  row: number;
   message: string;
 };
 
@@ -86,13 +76,12 @@ function isRowEmpty(row: unknown[]): boolean {
 }
 
 function isBinarySpreadsheet(buffer: Buffer): boolean {
-  const zip = buffer.length >= 4 && buffer.readUInt32BE(0) === 0x504b0304; // xlsx
-  const ole = buffer.length >= 4 && buffer.readUInt32BE(0) === 0xd0cf11e0; // xls
+  const zip = buffer.length >= 4 && buffer.readUInt32BE(0) === 0x504b0304;
+  const ole = buffer.length >= 4 && buffer.readUInt32BE(0) === 0xd0cf11e0;
   return zip || ole;
 }
 
-// تعداد ردیف فیزیکی یک فایل متنی (CSV)، بدون پارس. \n یا (اگه نبود) \r جداکننده‌ست.
-// اگه ردیف‌های داخل کوتیشن شامل خط جدید باشن کمی بیشتر شمرده می‌شن (محافظه‌کارانه).
+// Count physical CSV lines conservatively, including line breaks inside quoted fields.
 function countTextLines(buffer: Buffer): number {
   let breaks = 0;
   for (let i = buffer.indexOf(10); i !== -1; i = buffer.indexOf(10, i + 1)) breaks++;
@@ -111,21 +100,15 @@ function rowLimitError(): ReturnType<typeof badRequest> {
   );
 }
 
-// بافر اکسل/CSV آپلودی رو می‌خونه و به آرایه‌ای از سوال‌های معتبر (طبق همون
-// createQuestionSchema که فرم تک‌سوالی هم ازش استفاده می‌کنه) + لیست خطاهای
-// ردیف‌به‌ردیف تبدیل می‌کنه. عمداً کل فایل رو رد نمی‌کنیم اگه یه ردیف خراب
-// باشه - سوال‌های سالم ایمپورت می‌شن و خطاها جدا به مدرس نشون داده می‌شه.
+// Return valid rows and row-specific errors; do not silently truncate oversized files.
 export function parseQuestionsExcel(buffer: Buffer): QuestionImportResult {
-  // سقف ردیف فیزیکی قبل از پارس برای فایل متنی (CSV) چک می‌شه؛ برای اکسل
-  // باینری بعد از پارس (پایین) از روی محدوده‌ی واقعی شیت
   if (!isBinarySpreadsheet(buffer) && countTextLines(buffer) > MAX_SHEET_ROWS) {
     throw rowLimitError();
   }
 
   let workbook: XLSX.WorkBook;
   try {
-    // sheetRows حافظه‌ی پارس رو محدود می‌کنه. یک ردیف بیشتر از سقف می‌خونیم تا
-    // «فایل دقیقاً سقف ردیف داره» از «فایل بزرگ‌تره» جدا بشه
+    // Read one extra row to distinguish an exact-limit sheet from a truncated import.
     workbook = XLSX.read(buffer, {
       type: 'buffer',
       sheetRows: MAX_SHEET_ROWS + 1,
@@ -143,16 +126,12 @@ export function parseQuestionsExcel(buffer: Buffer): QuestionImportResult {
   const sheetRef = sheet['!ref'];
   const usedRange = sheetRef ? XLSX.utils.decode_range(sheetRef) : null;
 
-  // اگه SheetJS شیت رو به‌خاطر sheetRows بریده باشه (!fullref) یا محدوده‌ی
-  // شیت از سقف بیشتر باشه، ادامه نمی‌دیم - وگرنه ردیف‌های بعد از سقف بی‌صدا
-  // نادیده گرفته می‌شدن و فایل ناقص ایمپورت می‌شد
+  // Reject truncated sheets rather than importing only the visible prefix.
   if (sheet['!fullref'] || (usedRange && usedRange.e.r + 1 > MAX_SHEET_ROWS)) {
     throw rowLimitError();
   }
 
-  // محدوده‌ی خوندن رو صریحاً از ردیف/ستون ۱ شروع می‌کنیم. بدون این، اگه چند
-  // ردیف اول (یا ستون A) خالی باشه، sheet_to_json از اولین سلول پُر شروع می‌کنه
-  // و هم شماره‌ی ردیف خطاها جابه‌جا می‌شه هم جایگاه ستون‌ها
+  // Start at A1 so blank leading cells do not shift columns or reported row numbers.
   const rows = usedRange
     ? XLSX.utils.sheet_to_json<unknown[]>(sheet, {
         header: 1,
@@ -164,9 +143,7 @@ export function parseQuestionsExcel(buffer: Buffer): QuestionImportResult {
       })
     : [];
 
-  // rows[0] همیشه ردیف ۱ فایله، پس شماره‌ی ردیف خطاها با اکسل یکیه.
-  // ردیف اول رو به‌عنوان هدر در نظر می‌گیریم و رد می‌کنیم (چه دقیقاً با
-  // تمپلیت یکی باشه چه نباشه - فقط جایگاه ستون‌ها مهمه، نه متن هدر)
+  // The first physical row is the header; columns are positional.
   const dataRows = rows.slice(1);
 
   const filledRowCount = dataRows.filter((r) => r && !isRowEmpty(r)).length;
@@ -184,15 +161,12 @@ export function parseQuestionsExcel(buffer: Buffer): QuestionImportResult {
   const errors: QuestionImportError[] = [];
 
   dataRows.forEach((row, index) => {
-    const excelRowNumber = index + 2; // +1 برای هدر، +1 برای ۱-پایه بودن اکسل
+    const excelRowNumber = index + 2;
     if (!row || isRowEmpty(row)) return;
 
     const text = String(row[0] ?? '').trim();
 
-    // فقط گزینه‌های خالیِ انتهایی کنار گذاشته می‌شن. اگه خالی‌ها رو از کل
-    // آرایه فیلتر کنیم، با یه گزینه‌ی خالیِ وسط، اندیس بقیه جابه‌جا می‌شه و
-    // «شماره‌ی گزینه‌ی صحیح» (که بر اساس ستون اصلیه) بی‌صدا به گزینه‌ی غلط
-    // اشاره می‌کنه
+    // Trim only trailing empty options to preserve the correct-answer column index.
     const rawOptions = row
       .slice(1, 1 + OPTION_COLUMN_COUNT)
       .map((cell) => String(cell ?? '').trim());
@@ -202,7 +176,6 @@ export function parseQuestionsExcel(buffer: Buffer): QuestionImportResult {
     });
     const options = rawOptions.slice(0, lastFilledIndex + 1);
 
-    // ارقام فارسی/عربی هم قبول می‌شن (Number('۲') می‌شه NaN)
     const correctText = toLatinDigits(
       String(row[CORRECT_INDEX_COL] ?? '').trim()
     );

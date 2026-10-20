@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 import useTheme from '../../hooks/useTheme';
 
-// محدوده‌ی مجاز عرض ویجت رسمی گوگل (پیکسل)
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 400;
 
@@ -12,10 +11,7 @@ type GoogleSignInButtonProps = {
   onError?: () => void;
 };
 
-// ویجت رسمی گوگل (برخلاف بقیه‌ی دکمه‌های سایت) عرض درصدی قبول نمی‌کنه،
-// فقط یه عدد پیکسل ثابت - پس عرض کانتینر والد رو با ResizeObserver اندازه
-// می‌گیریم تا هم‌عرض بقیه‌ی دکمه‌های فرم بمونه، نه یه مقدار هاردکد که رو
-// صفحه‌های خیلی کوچیک overflow کنه یا رو صفحه‌های بزرگ باریک بمونه
+// Google requires a pixel width; measure the container to keep the widget responsive.
 function GoogleSignInButton({
   text = 'continue_with',
   onCredential,

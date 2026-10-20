@@ -1,15 +1,3 @@
-// قوانین نام‌کاربری (username):
-// - فقط حروف انگلیسی (بدون حساسیت به بزرگ/کوچیک)، عدد، نقطه و آندرلاین
-// - باید با حرف انگلیسی شروع بشه
-// - طول ۴ تا ۲۰ کاراکتر
-// - نمی‌تونه شبیه ایمیل یا شماره موبایل باشه (که با تشخیص نوع identifier
-//   تو login/register قاطی نشه)
-// - اسم‌های رزروشده (نقش‌های سیستمی و مشابه) و کلمات نامتعارف مجاز نیست
-// - یکتایی و لاگین case-insensitive انجام می‌شه (نسخه‌ی lower-case مرجعه)
-//
-// نکته: این فایل باید هم‌زمان با client/src/utils/username.ts سینک بمونه -
-// اونجا همین قوانین برای فیدبک آنی سمت کاربر (قبل از رفتن به سرور) تکرار
-// شده، ولی مرجع نهایی و تنها منبع قابل‌اعتماد برای اعتبارسنجی همین فایله.
 
 import { detectIdentifierType } from './identifier';
 import { prisma } from './prisma';
@@ -17,14 +5,10 @@ import { prisma } from './prisma';
 export const USERNAME_MIN_LENGTH = 4;
 export const USERNAME_MAX_LENGTH = 20;
 
-// حرف شروع، بعدش هر ترکیبی از حرف/عدد/نقطه/آندرلاین، ولی نه دوتا نقطه/آندرلاین
-// پشت‌سرهم و نه پایان‌یافتن با نقطه/آندرلاین
 const USERNAME_FORMAT_REGEX =
   /^[a-zA-Z](?!.*[_.]{2})[a-zA-Z0-9_.]*[a-zA-Z0-9]$/;
 
-// اسم‌های سیستمی/نقش‌ها که اگه آزاد باشن می‌تونن باعث جازدن کاربر به‌جای
-// ادمین/پشتیبانی و... بشن. با حروف کوچیک نگه‌داری می‌شه چون مقایسه روی
-// نسخه‌ی normalize شده انجام می‌گیره.
+// Reserve system identities to prevent impersonation.
 const RESERVED_USERNAMES = new Set([
   'admin',
   'administrator',
@@ -63,9 +47,7 @@ const RESERVED_USERNAMES = new Set([
   'register',
 ]);
 
-// لیست پایه‌ی زیررشته‌های نامتعارف/توهین‌آمیز که به‌عنوان username رد می‌شن.
-// این یه فیلتر کامل محتوا نیست، فقط جلوی رایج‌ترین سوءاستفاده‌ها رو می‌گیره؛
-// در صورت نیاز بعداً قابل گسترشه (مثلاً از یه فایل/جدول جدا لود بشه).
+// This denylist is a basic abuse filter, not comprehensive content moderation.
 const INAPPROPRIATE_SUBSTRINGS = [
   'fuck',
   'shit',
@@ -118,8 +100,7 @@ export function validateUsernameFormat(raw: string): UsernameValidationResult {
     };
   }
 
-  // احتیاط اضافه: نباید شبیه ایمیل یا شماره موبایل باشه، وگرنه resolveIdentifier
-  // تو auth.ts نمی‌تونه تشخیص بده کاربر می‌خواد با username وارد بشه یا identifier دیگه
+  // Do not allow usernames that can be mistaken for email or phone identifiers.
   if (detectIdentifierType(value)) {
     return {
       valid: false,
@@ -143,7 +124,6 @@ export function validateUsernameFormat(raw: string): UsernameValidationResult {
   return { valid: true };
 }
 
-// آیا این نام‌کاربری (نرمالایز شده) رو کس دیگه‌ای غیر از excludeUserId گرفته؟
 export async function isUsernameTaken(
   usernameNormalized: string,
   excludeUserId?: string
@@ -155,14 +135,11 @@ export async function isUsernameTaken(
   return existing.id !== excludeUserId;
 }
 
-// وقتی username موردنظر گرفته شده، چند جایگزین در دسترس پیشنهاد می‌ده
-// (مثلاً ali -> ali42, ali_7, ali123). صرفاً یه کمک UX ـه، اجباری نیست.
 export async function suggestUsernameAlternatives(
   rawBase: string,
   count = 3
 ): Promise<string[]> {
   const cleanedBase = normalizeUsername(rawBase).replace(/[^a-z0-9_.]/g, '');
-  // ۴ کاراکتر جا برای پسوند نگه می‌داریم تا از حداکثر طول رد نشه
   const base = cleanedBase.slice(0, Math.max(1, USERNAME_MAX_LENGTH - 4));
 
   const suggestions: string[] = [];
@@ -172,7 +149,7 @@ export async function suggestUsernameAlternatives(
     guard++;
     const suffix =
       guard % 2 === 0
-        ? String(Math.floor(10 + Math.random() * 90)) // ۲ رقمی
+        ? String(Math.floor(10 + Math.random() * 90))
         : `_${Math.floor(1 + Math.random() * 9)}`;
 
     const candidate = `${base}${suffix}`;

@@ -17,21 +17,13 @@ import {
 
 const router = Router();
 
-// ---------------------------------------------------------------------------
-// عمومی - بدون لاگین (صفحه‌ی فرود سمت کلاینت موقع render همه‌ی section ها
-// رو یه‌جا می‌گیره تا یه رفت‌وبرگشت شبکه به‌ازای هر بخش نداشته باشه)
-// ---------------------------------------------------------------------------
-
 router.get(
   '/',
   asyncHandler(async (_req, res) => {
     const rows = await prisma.siteContent.findMany();
     const bySection = new Map(rows.map((r) => [r.section, r.data]));
 
-    // section هایی که هنوز هیچ‌وقت ادمین ویرایششون نکرده، object خالی
-    // برمی‌گردونن (نه 404) - کامپوننت‌های صفحه‌ی فرود باید بتونن با یه
-    // مقدار پیش‌فرضِ خودشون این حالت رو هندل کنن، نه اینکه صفحه‌ی فرود کلاً
-    // خطا بده چون هنوز کسی از پنل ادمین محتوا نساخته
+    // Missing CMS sections return empty data so the client can use defaults.
     const sections: Record<string, unknown> = {};
     for (const section of SITE_CONTENT_SECTIONS) {
       sections[section] = bySection.get(section) ?? {};
@@ -39,10 +31,6 @@ router.get(
     res.json({ sections });
   })
 );
-
-// ---------------------------------------------------------------------------
-// ادمین - فقط SuperAdmin
-// ---------------------------------------------------------------------------
 
 router.use('/admin', requireAuth, requireRole('SuperAdmin'));
 
@@ -58,9 +46,6 @@ router.put(
     const parsed = updateSiteContentSchema.safeParse(req.body);
     if (!parsed.success) throw badRequest(parsed.error.issues[0].message);
 
-    // Zod همین الان تضمین کرده data یه object معتبره؛ فقط برای Prisma
-    // (که برای فیلد Json نوع InputJsonValue می‌خواد، نه Record<string, unknown>)
-    // به‌صراحت تایپش می‌کنیم
     const data = parsed.data.data as Prisma.InputJsonValue;
 
     const row = await prisma.siteContent.upsert({
@@ -72,9 +57,6 @@ router.put(
   })
 );
 
-// تصویر یه section (مثلاً بک‌گراند Hero) - آدرسِ برگشتی رو ادمین خودش تو
-// data همون section (مثلاً data.imageUrl) می‌ذاره؛ این endpoint فقط آپلود
-// می‌کنه، ساختارِ data رو تغییر نمی‌ده
 router.post(
   '/admin/:section/image',
   imageUpload.single('file'),

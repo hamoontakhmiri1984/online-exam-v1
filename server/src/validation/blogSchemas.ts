@@ -1,7 +1,5 @@
 import { z } from 'zod';
 
-// فقط حروف/عدد انگلیسی و خط تیره - چون slug مستقیم تو URL بلاگ استفاده
-// می‌شه (client/blog/:slug)
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export const createBlogPostSchema = z.object({
@@ -20,5 +18,4 @@ export const createBlogPostSchema = z.object({
   published: z.boolean().optional(),
 });
 
-// موقع ویرایش همه‌ی فیلدها اختیاری‌ان (فقط چیزی که عوض شده فرستاده می‌شه)
 export const updateBlogPostSchema = createBlogPostSchema.partial();

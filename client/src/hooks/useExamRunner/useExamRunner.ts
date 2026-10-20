@@ -40,8 +40,7 @@ function useExamRunner(examId: string) {
     flow.initialRevision
   );
 
-  // موعدِ پایان هم‌تراز با ساعت سرور (examClock.ts)؛ اگه سرور serverNow
-  // نداده بود، همون رفتار قبلی (expiresAt خام روی ساعت دستگاه)
+  // Fall back to expiresAt only when server clock alignment is unavailable.
   const deadlineMs =
     flow.deadlineLocalMs ??
     (flow.expiresAt ? new Date(flow.expiresAt).getTime() : null);

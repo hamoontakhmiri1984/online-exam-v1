@@ -6,26 +6,14 @@ import { durationToSeconds } from './duration';
 import { AppError } from './errors';
 
 const sessionKey = (userId: string) => `session:${userId}`;
-// hash: «sid قدیمی» -> «sid جدیدی که موقع rotate جاش اومد». نام کلید عمداً با
-// کلید string قدیمیِ `session:<id>:grace` فرق داره تا روی Redis ای که هنوز
-// کلید قدیمی توش مونده (نوع متفاوت) خطای WRONGTYPE نده
+// Use a distinct hash key for rotation mappings to avoid legacy string-key type conflicts.
 const rotatedKey = (userId: string) => `session:${userId}:rotated`;
 const REFRESH_TTL_SECONDS = durationToSeconds(env.JWT_REFRESH_EXPIRES_IN);
 
-// بعد از rotate شدن sid (موقع /auth/refresh)، sid قبلی برای این مدت کوتاه هم
-// هنوز معتبر حساب می‌شه. این فقط برای رفع رِیس بین چند تب/درخواست هم‌زمانِ
-// *همون* کاربره (مثلاً ۲ تب که هر دو access token‌شون هم‌زمان expire شده و
-// هر دو به /auth/refresh زدن) - نه برای ضعیف کردن مدل تک‌نشستی: لاگین واقعی
-// از یه دستگاه دیگه از createSession استفاده می‌کنه که این نگاشت رو هم پاک
-// می‌کنه، پس همچنان فوری و بدون مهلت نشست‌های دیگه رو باطل می‌کنه.
+// The grace window supports concurrent refreshes, not simultaneous device sessions.
 const GRACE_WINDOW_SECONDS = 10;
 
-// خطای «مخزن نشست (Redis) در دسترس نیست». عمداً AppError با ۵۰۳ ـه، نه یه
-// خطای عمومی: تا وقتی Redis قطع/کنده، «نمی‌دونیم نشست معتبره یا نه» و این با
-// «نشست باطله» (۴۰۱) فرق داره. اگه ۴۰۱ برمی‌گشت کلاینت فکر می‌کرد نشست تموم
-// شده و همه‌ی کاربرها با یه قطعیِ چند‌ثانیه‌ایِ Redis از سیستم خارج می‌شدن.
-// timeout هم لازمه چون node-redis وقتی قطعه فرمان‌ها رو تو صف نگه می‌داره و
-// تا وصل شدنِ دوباره درخواست معلق می‌مونه
+// Redis outages are 503; only an invalid session is 401.
 const SESSION_STORE_TIMEOUT_MS = 2_000;
 
 export async function withSessionStore<T>(op: () => Promise<T>): Promise<T> {
@@ -48,11 +36,7 @@ export async function withSessionStore<T>(op: () => Promise<T>): Promise<T> {
   }
 }
 
-// ساخت نشست اتمیک: «حذف نگاشتِ rotate» و «ست‌کردن sid جدید» داخل یه Lua script
-// اجرا می‌شن. قبلاً دو فرمانِ جدا بودن و یه refresh هم‌زمانِ دستگاه قبلی می‌تونست
-// وسطشون بیفته: sid جدید ست شده ولی نگاشتِ قدیمی هنوز بود، پس دستگاه قبلی
-// *sid فعلیِ* لاگین جدید رو از اسکریپت rotate می‌گرفت.
-// KEYS[1]=کلید sid فعلی  KEYS[2]=هش نگاشت rotate  ARGV[1]=sid جدید  ARGV[2]=TTL نشست
+// Create the new session and clear old rotation mappings atomically.
 export const CREATE_SESSION_SCRIPT = `
 redis.call('DEL', KEYS[2])
 redis.call('SET', KEYS[1], ARGV[1], 'EX', tonumber(ARGV[2]))
@@ -61,9 +45,7 @@ return ARGV[1]
 
 export async function createSession(userId: string): Promise<string> {
   const sessionId = crypto.randomUUID();
-  // یه لاگین واقعیِ جدید باید قاطع باشه - اگه یه نگاشتِ rotate قدیمی مونده
-  // باشه، اینجا پاکش می‌کنیم وگرنه نشستِ دستگاه قبلی می‌تونست تا پایان اون
-  // grace هنوز کار کنه
+  // A fresh login invalidates all prior refresh-rotation mappings.
   await withSessionStore(() =>
     redis.eval(CREATE_SESSION_SCRIPT, {
       keys: [sessionKey(userId), rotatedKey(userId)],
@@ -79,12 +61,7 @@ export async function getActiveSessionId(
   return withSessionStore(() => redis.get(sessionKey(userId)));
 }
 
-// بررسی اعتبار اتمیک: خوندنِ sid فعلی و نگاشتِ rotate داخل یه Lua script انجام
-// می‌شه. قبلاً GET و HGET دو فرمانِ جدا بودن، پس logout/لاگین بینشون می‌تونست
-// نتیجه‌ی ناسازگار بده (مثلاً نگاشتِ rotate هنوز مونده ولی نشست دیگه فعال نیست).
-// مثل ROTATE_SESSION_SCRIPT: sid داخل نگاشتِ rotate فقط وقتی معتبره که یه نشستِ
-// *فعال* وجود داشته باشه.
-// KEYS[1]=کلید sid فعلی  KEYS[2]=هش نگاشت rotate  ARGV[1]=sid درخواست
+// Read the current SID and rotation mapping atomically with logout/login.
 export const VALIDATE_SESSION_SCRIPT = `
 local active = redis.call('GET', KEYS[1])
 if not active then return 0 end
@@ -106,23 +83,7 @@ export async function isSessionValid(
   return Number(result) === 1;
 }
 
-// rotate اتمیک و idempotent برای /auth/refresh. کل منطق داخل یه Lua script
-// اجرا می‌شه (Redis هر script رو بدون وقفه اجرا می‌کنه)، پس بین «خوندن sid
-// فعلی» و «نوشتن sid جدید» هیچ درخواست دیگه‌ای (رفرش هم‌زمان، لاگین از
-// دستگاه دیگه، logout) نمی‌تونه وسط بیفته:
-//   ۱) اگه sid درخواست همون sid فعلیه: sid جدید ساخته و فعلی می‌شه، و
-//      نگاشتِ «قدیمی -> جدید» تا GRACE_WINDOW_SECONDS نگه داشته می‌شه
-//   ۲) اگه این sid همین چند ثانیه پیش با یه رفرشِ دیگه rotate شده: sid
-//      *فعلیِ* نشست برگردونده می‌شه (نه یه sid تازه!). قبلاً هر درخواستِ
-//      هم‌زمان یه sid جدید می‌ساخت و دومی توکنِ اولی رو باطل می‌کرد.
-//      «فعلی» و نه مقدارِ نگاشتِ خودِ اون sid: اگه بین‌راه دوباره rotate شده
-//      باشه (A→B→C)، نگاشتِ A→B هنوز هست ولی B دیگه فعال نیست و برگردوندنش
-//      کلاینت رو با یه sid مرده تنها می‌ذاشت. نگاشتِ rotate با createSession/
-//      revokeSession پاک می‌شه، پس هر sid داخلش حتماً از همین نشسته‌ی فعلیه
-//   ۳) وگرنه (نشست باطل/logout/لاگین از دستگاه دیگه): null
-//
-// KEYS[1]=کلید sid فعلی  KEYS[2]=هش نگاشت rotate
-// ARGV[1]=sid درخواست  ARGV[2]=sid جدیدِ کاندید  ARGV[3]=TTL نشست  ARGV[4]=TTL grace
+// Rotate atomically; concurrent requests using one old SID share the same replacement.
 export const ROTATE_SESSION_SCRIPT = `
 local active = redis.call('GET', KEYS[1])
 if active == ARGV[1] then
@@ -137,7 +98,6 @@ end
 return false
 `;
 
-// sid جدیدِ نشست رو برمی‌گردونه، یا null اگه sid درخواست دیگه معتبر نیست
 export async function rotateSessionWithGrace(
   userId: string,
   currentSessionId: string
@@ -159,8 +119,7 @@ export async function rotateSessionWithGrace(
   return typeof result === 'string' && result.length > 0 ? result : null;
 }
 
-// یه DEL تک‌فرمانه با هر دو کلید - Redis اون رو اتمیک اجرا می‌کنه، پس هیچ لحظه‌ای
-// نیست که نشست پاک شده ولی نگاشتِ rotate مونده باشه (یا برعکس)
+// Delete the session and its rotation mappings in one atomic command.
 export async function revokeSession(userId: string): Promise<void> {
   await withSessionStore(() =>
     redis.del([sessionKey(userId), rotatedKey(userId)])

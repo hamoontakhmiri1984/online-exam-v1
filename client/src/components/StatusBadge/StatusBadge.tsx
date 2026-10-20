@@ -25,7 +25,6 @@ const toneClass: Record<StatusTone, { chip: string; dot: string }> = {
   },
 };
 
-// برچسب وضعیت یکدست برای جدول‌ها و کارت‌ها (جایگزین chipهای دست‌ساز هر صفحه)
 export default function StatusBadge({
   tone = 'neutral',
   children,

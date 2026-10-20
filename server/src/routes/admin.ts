@@ -11,7 +11,6 @@ import reportingRoutes from './admin/reporting.routes';
 import dashboardRoutes from './admin/dashboard.routes';
 
 const router = Router();
-// فقط SuperAdmin به این route ها دسترسی داره
 router.use(requireAuth, requireRole('SuperAdmin'));
 
 router.use('/instructors', instructorsRoutes);

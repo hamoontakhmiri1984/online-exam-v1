@@ -12,13 +12,10 @@ type SessionInput = Omit<LessonSession, 'id'>;
 
 type UseLessonSessionsParams = {
   groupId: string | undefined;
-  // فقط وقتی گروه لود شده و کاربر بهش دسترسی داره جلسات رو بگیر
+
   enabled: boolean;
 };
 
-// پیام خطای سرور (مثلاً «فایل انتخاب‌شده متعلق به تو نیست» یا خطای اعتبارسنجی)
-// رو نشون می‌ده؛ قبلاً همیشه یه پیام عمومی نشون داده می‌شد و مدرس نمی‌فهمید
-// چرا ذخیره نشد
 function errorMessageOf(err: unknown, fallback: string): string {
   return err instanceof ApiError && err.message ? err.message : fallback;
 }
@@ -28,10 +25,7 @@ function useLessonSessions({ groupId, enabled }: UseLessonSessionsParams) {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // فقط id رو نگه می‌داریم، نه خودِ آبجکت جلسه. قبلاً activeSession یه کپی
-  // بود: بعد از ویرایش جلسه‌ی در حال پخش، پلیر هنوز عنوان/ویدیوی قدیمی رو
-  // نشون می‌داد، و بعد از حذفش (یا اضافه‌کردن اولین جلسه) پلیر خالی می‌موند
-  // درحالی‌که لیست پر بود.
+  // Store the selected ID so edits always display the current record.
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -58,7 +52,6 @@ function useLessonSessions({ groupId, enabled }: UseLessonSessionsParams) {
     };
   }, [groupId, enabled]);
 
-  // اگه id انتخاب‌شده دیگه تو لیست نیست (مثلاً حذف شده)، اولین جلسه‌ی لیست
   const activeSession =
     sessions.find((s) => s.id === activeSessionId) ?? sessions[0] ?? null;
 

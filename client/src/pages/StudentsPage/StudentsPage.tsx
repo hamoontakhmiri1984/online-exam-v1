@@ -36,8 +36,6 @@ function StudentsPage() {
 
   async function confirmDelete() {
     if (!deleteTarget) return;
-    // حذف واقعی + جدا شدن از تمام گروه‌ها هر دو سمت سرور تو همین یه درخواست
-    // انجام می‌شن (DELETE /students/:id - نگاه کن به server/src/routes/students.ts)
     await deleteItem(deleteTarget.id);
     setDeleteTarget(null);
   }

@@ -3,13 +3,10 @@ import Card from '../Card/Card';
 type StatCardProps = {
   label: string;
   value: number | string;
-  /** توضیح کوتاه زیر عدد (مثلاً «۳۰ روز اخیر») */
   hint?: string;
-  /** attention فقط وقتی که واقعاً کاری منتظر کاربر است */
   tone?: 'default' | 'attention';
 };
 
-// کارت آمار: یک برچسب، یک عدد درشت. بدون آیکون رنگی و بدون کادر اضافه
 export default function StatCard({
   label,
   value,

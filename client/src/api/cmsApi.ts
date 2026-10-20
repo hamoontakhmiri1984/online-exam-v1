@@ -1,7 +1,6 @@
 import { apiRequest, apiMultipartRequest } from '../lib/apiClient';
 
-// همون لیست server/src/validation/cmsSchemas.ts - اینجا هم باید عیناً
-// سینک بمونه؛ اضافه‌کردنِ section جدید یعنی هر دو طرف آپدیت بشن
+// Keep section keys aligned with server validation.
 export const SITE_CONTENT_SECTIONS = [
   'hero',
   'about',
@@ -13,8 +12,7 @@ export const SITE_CONTENT_SECTIONS = [
 
 export type SiteContentSection = (typeof SITE_CONTENT_SECTIONS)[number];
 
-// data شکل آزاد داره (هر section شکل خودشو داره) - کامپوننت مصرف‌کننده‌ی هر
-// section (مثل Hero.tsx) خودش با یه type محلی و مقدار پیش‌فرض بازش می‌کنه
+// Each section defines its own data shape; consumers supply defaults.
 export type SiteContentMap = Record<SiteContentSection, Record<string, unknown>>;
 
 export function getSiteContent(): Promise<{ sections: SiteContentMap }> {
@@ -31,8 +29,6 @@ export function updateSiteContentSection(
   });
 }
 
-// multipart، مثل uploadBlogCoverImage تو blogApi.ts - از apiMultipartRequest
-// (refresh مشترک + یک بار retry بعد از 401) استفاده می‌کنه
 export function uploadSiteContentImage(
   section: SiteContentSection,
   file: File

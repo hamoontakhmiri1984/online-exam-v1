@@ -1,4 +1,3 @@
-// server/src/routes/questions/examQuestionsRead.routes.ts
 import { Router } from 'express';
 
 import { requireAuth } from '../../middleware/requireAuth';
@@ -29,10 +28,7 @@ router.get(
       return res.json([]);
     }
 
-    // دانشجو فقط بعد از start (یعنی attempt با تایمر سمت سرور وجود داره)
-    // سوال‌ها رو می‌گیره - وگرنه بعد از scheduledAt می‌تونست بدون شروع
-    // آزمون و بدون تایمر سوال‌ها رو بخونه. تعداد سوال‌ها برای صفحه‌ی شروع
-    // از GET /count میاد
+    // Release question content only after an attempt has started.
     let canSeeAnswerKey = false;
     if (role === 'Student') {
       const attempt = await prisma.examAttempt.findUnique({
@@ -44,12 +40,7 @@ router.get(
       if (!attempt) {
         return res.json([]);
       }
-      // جواب صحیح فقط وقتی به دانشجو برمی‌گرده که:
-      //   ۱) attempt خودش تموم شده باشه (وگرنه وسط آزمون جواب‌ها رو می‌دید)
-      //   ۲) آزمون اجازه‌ی مرور داشته باشه (allowReview)
-      //   ۳) پایان *عمومی* آزمون (+ مهلت ارسال) گذشته باشه - وگرنه دانشجویی که
-      //      زودتر ثبت نهایی کرده پاسخنامه رو برمی‌داشت و برای بقیه‌ی
-      //      دانشجوهایی که هنوز وسط آزمون‌ان می‌فرستاد
+      // Expose answers only after the attempt finishes and the shared exam window closes, with review enabled.
       canSeeAnswerKey =
         attempt.finishedAt !== null && isAnswerKeyReleased(exam);
     }
@@ -74,8 +65,6 @@ router.get(
   })
 );
 
-// فقط تعداد سوال‌ها (بدون متن/گزینه) - برای صفحه‌ی شروع آزمون قبل از start.
-// مثل GET / برای دانشجو قبل از scheduledAt صفر برمی‌گردونه
 router.get(
   '/count',
   asyncHandler(async (req, res) => {

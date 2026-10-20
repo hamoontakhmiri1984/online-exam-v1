@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-// همون الگویی که useCrud برای error/clearError داره، اینجا برای فچ‌های ساده
-// (بدون add/update/delete) هم پیاده می‌شه، تا همه‌ی صفحات از یک شکل واحد
-// استفاده کنن: data / loading / error / clearError / refetch
-
 type AsyncDataState<T> = {
   data: T;
   loading: boolean;
@@ -14,8 +10,7 @@ function useAsyncData<T>(
   fetcher: () => Promise<T>,
   initialValue: T,
   errorMessage = 'دریافت اطلاعات با خطا مواجه شد',
-  // وقتی enabled=false باشه، اصلاً fetcher صدا زده نمی‌شه؛ برای موقعی که
-  // نقش کاربر اصلاً مجاز به زدن اون endpoint نیست (مثلاً Student و /students)
+  // Disable fetching when the role cannot access the endpoint.
   enabled = true
 ) {
   const [state, setState] = useState<AsyncDataState<T>>({
@@ -24,8 +19,7 @@ function useAsyncData<T>(
     error: null,
   });
 
-  // fetcher رو توی ref نگه می‌داریم که تغییرش (مثلاً چون هر رندر یه closure جدیده)
-  // باعث فچ اضافه نشه؛ فقط refetch/mount واقعی فچ می‌کنه
+  // Keep the latest fetcher without triggering requests on every render.
   const fetcherRef = useRef(fetcher);
   fetcherRef.current = fetcher;
 

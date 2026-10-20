@@ -3,9 +3,9 @@ export type PlanId = 'free' | 'gold' | 'platinum' | 'vip';
 export type Plan = {
   id: PlanId;
   name: string;
-  price: number; // تومان - صفر یعنی رایگان
-  priceLabel: string; // برای نمایش، همون فرمت لندینگ (مثلاً «۹۹,۰۰۰»)
-  durationDays: number | null; // طول یه دوره‌ی اشتراک - null یعنی همیشگی (پلن رایگان)
+  price: number; // Amounts are in toman; zero means free.
+  priceLabel: string;
+  durationDays: number | null; // Null means the subscription does not expire.
   maxQuestions: number | null;
   maxActiveExams: number | null;
   maxGroups: number | null;

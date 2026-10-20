@@ -14,8 +14,6 @@ import { serializeInstructor } from './instructors.service';
 
 const router = Router();
 
-// لیست مدرس‌ها بر اساس approvalStatus - پیش‌فرض Pending (صفِ تاییدِ اصلی)،
-// با query ?status=Approved یا ?status=Rejected هم می‌شه بقیه رو دید
 router.get(
   '/',
   asyncHandler(async (req, res) => {
@@ -43,13 +41,13 @@ router.post(
       throw notFound('مدرس پیدا نشد');
     }
 
-    // idempotent: کلیک/درخواست تکراری نباید اعلانِ تکراری بفرسته
+    // Repeated approval must not emit duplicate notifications.
     if (user.approvalStatus === 'Approved') {
       res.json(serializeInstructor(user));
       return;
     }
 
-    // تغییر وضعیت و تاریخچهٔ اقدام در یک تراکنش: یا هر دو ثبت می‌شن یا هیچ‌کدوم
+    // Commit the status change and audit record together.
     const updated = await prisma.$transaction(async (tx) => {
       const result = await tx.user.update({
         where: { id: user.id },
@@ -84,15 +82,7 @@ router.post(
       throw notFound('مدرس پیدا نشد');
     }
 
-    // باگ قبلی: وقتی approvalStatus از قبل Rejected بود، هندلر زودتر از
-    // revokeSession برمی‌گشت. یعنی اگه دفعه‌ی قبلی درست بعد از آپدیتِ ردیف
-    // (که همیشه موفق می‌شه) revokeSession به‌خاطر قطعیِ Redis خطا داده بود،
-    // approvalStatus از قبل Rejected مونده بود ولی نشستِ ردیس هنوز زنده بود
-    // - و retry بعدیِ ادمین هم چون همین شرط رو می‌دید، همون‌جا زودتر برمی‌گشت
-    // و دیگه هیچ‌وقت دوباره تلاش نمی‌کرد ابطالِ نشست رو انجام بده.
-    // الان آپدیتِ ردیف (اگه لازم بود) و ابطالِ نشست از هم جدا شدن: ابطالِ
-    // نشست همیشه اجرا می‌شه (حتی روی retry بعد از خطای قبلی) چون idempotent
-    // ـه - پاک‌کردنِ کلیدی که از قبل وجود نداره خطا نمی‌ده.
+    // Retry session revocation even when the account is already rejected.
     const alreadyRejected = user.approvalStatus === 'Rejected';
     const updated = alreadyRejected
       ? user
@@ -112,9 +102,6 @@ router.post(
           return result;
         });
 
-    // با توکن قبلی (تا وقتی خودش logout نکنه) همچنان می‌تونست گروه/آزمون
-    // بسازه، چون requireAuth فقط sessionId رو چک می‌کنه، نه approvalStatus
-    // رو از دیتابیس. با revokeSession همین الان از سیستم پرت می‌شه بیرون.
     await revokeSession(updated.id);
     forceLogoutOtherSessions(updated.id, undefined, 'account-rejected');
 

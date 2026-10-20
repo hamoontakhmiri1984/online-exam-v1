@@ -1,10 +1,5 @@
 import type { Variants } from 'framer-motion';
 
-// این فایل تنها منبعِ variant های framer-motion تو کل پروژه‌ست - جای
-// این‌که هر کامپوننت خودش یه انیمیشنِ جدا تعریف کنه، همه از همین‌ها
-// استفاده می‌کنن تا حس‌وحالِ حرکت تو کل سایت یکدست بمونه.
-
-// ورودِ ساده‌ی fade + slide-up، برای عنوانِ section ها و تکی-آیتم‌ها
 export const fadeUp: Variants = {
   hidden: { opacity: 0, y: 22 },
   visible: {
@@ -14,15 +9,11 @@ export const fadeUp: Variants = {
   },
 };
 
-// نسخه‌ی خیلی ظریف‌تر - برای چیزهایی که نباید خیلی جلبِ توجه کنن
-// (مثل بک‌گراند یا کارتِ کنارِ متنِ اصلی)
 export const fadeIn: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { duration: 0.5, ease: 'easeOut' } },
 };
 
-// کانتینرِ استگر - روی والد گذاشته می‌شه، بچه‌ها با فاصله‌ی زمانی از هم
-// وارد می‌شن (برای گریدِ کارت‌ها: Features/About/Pricing/News)
 export const staggerContainer: Variants = {
   hidden: {},
   visible: {
@@ -30,7 +21,6 @@ export const staggerContainer: Variants = {
   },
 };
 
-// آیتمِ داخلِ یه staggerContainer
 export const staggerItem: Variants = {
   hidden: { opacity: 0, y: 18, scale: 0.98 },
   visible: {
@@ -41,7 +31,6 @@ export const staggerItem: Variants = {
   },
 };
 
-// ورود/خروجِ منوهای کشویی، پنل‌های موبایل، dropdown ها
 export const collapseFade: Variants = {
   hidden: { opacity: 0, height: 0 },
   visible: {
@@ -56,8 +45,6 @@ export const collapseFade: Variants = {
   },
 };
 
-// ترانزیشنِ بینِ صفحات (AppRoutes) - محو و یه سُرشِ خیلی کم، نه چیزیِ
-// اغراق‌شده که حسِ کندی بده
 export const pageTransition: Variants = {
   initial: { opacity: 0, y: 8 },
   animate: {

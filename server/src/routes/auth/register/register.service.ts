@@ -40,9 +40,7 @@ export async function registerUser(data: RegisterData, ip: string) {
 
   const { type, value, channel } = resolved;
 
-  // ایمیل: رمز همین‌جا لازمه (کد تأیید ایمیل هم همچنان گرفته می‌شه).
-  // موبایل: فقط کد یکبارمصرف؛ رمز بعداً از تنظیمات پروفایل تعیین می‌شه.
-  // قبل از گارد ارسال چک می‌شه تا درخواست ناقص سهمیه‌ی OTP رو نسوزونه.
+  // Email registration requires a password; phone registration uses OTP.
   if (type === 'EMAIL' && !data.password) {
     throw badRequest('برای ثبت‌نام با ایمیل، رمز عبور را وارد کنید');
   }
@@ -104,7 +102,7 @@ export async function registerUser(data: RegisterData, ip: string) {
 
   let passwordHash: string | null = null;
 
-  // رمزِ ارسال‌شده برای ثبت‌نام با موبایل عمداً نادیده گرفته می‌شه
+  // Ignore supplied passwords for phone registration.
   if (type === 'EMAIL' && data.password) {
     passwordHash = await hashPassword(data.password);
   }
@@ -181,18 +179,13 @@ export async function registerUser(data: RegisterData, ip: string) {
 
           name: data.name?.trim() || candidate.name,
 
-          // این کاربر هنوز تایید نشده (alreadyVerified بالا رد شده) - رمز قبلیش
-          // رو کسی گذاشته که مالکیت شناسه رو ثابت نکرده. اگه اینجا حفظ بشه
-          // (`?? candidate.passwordHash`)، یه نفر می‌تونست ایمیل/شماره‌ی قربانی رو
-          // با رمز خودش پیش‌ثبت‌نام کنه و بعد از اینکه صاحب واقعی بدون رمز
-          // ثبت‌نام و تایید کرد، با اون رمز وارد حسابش بشه.
+          // Discard any password set by an unverified registrant.
           passwordHash,
 
           role: data.role,
 
           approvalStatus,
 
-          // کد دعوت تلاش دوم (بعد از ثبت‌نام ناتمام) قبلاً نادیده گرفته می‌شد
           groupsMember: {
             set: groupId ? [{ id: groupId }] : [],
           },

@@ -13,9 +13,7 @@ export interface AccessTokenPayload {
 export interface RefreshTokenPayload {
   sub: string;
   sid: string;
-  // باید موقع /refresh هم همین مقدار حفظ بشه، وگرنه یه کاربر که «منو به خاطر
-  // نسپار» رو زده بود، بعد از اولین refresh کوکیش persistent می‌شه و عملاً
-  // remember-me=false بی‌اثر می‌مونه
+  // Preserve the remember-me policy during token refresh.
   rememberMe: boolean;
 }
 
@@ -35,8 +33,7 @@ export function signRefreshToken(payload: RefreshTokenPayload): string {
 
 const ROLES: Role[] = ['SuperAdmin', 'Instructor', 'Student'];
 
-// reset-ticket هم با JWT_ACCESS_SECRET امضا می‌شه؛ برای اینکه هیچ‌وقت به‌جای
-// access token پذیرفته نشه، شکل payload صریحاً چک می‌شه (sub/sid/role)
+// Reject reset-ticket payloads even though they share the access-token signing secret.
 export function verifyAccessToken(token: string): AccessTokenPayload {
   const payload = jwt.verify(
     token,

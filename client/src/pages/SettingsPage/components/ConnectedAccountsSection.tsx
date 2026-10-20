@@ -7,10 +7,6 @@ import {
   unlinkGoogleAccount,
 } from '../../../api/authApi';
 
-// چون /auth/me (که وضعیت واقعی googleLinked/hasPassword رو داره) نه موقع
-// لاگین با پسورد/OTP صدا زده می‌شه نه موقع bootstrap کش می‌مونه با این
-// جزئیات، این کامپوننت خودش یه فراخوانی تازه می‌زنه - به currentUser کش‌شده
-// تو authApi.ts متکی نیست
 function ConnectedAccountsSection() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);

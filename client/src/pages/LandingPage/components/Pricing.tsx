@@ -4,8 +4,6 @@ import { Check, Crown } from 'lucide-react';
 import { PLANS, PLAN_ORDER, type PlanId } from '../../../constants/plans';
 import Reveal, { RevealGroup, RevealItem } from '../../../components/motion/Reveal';
 
-// نام، قیمت و فیچرهای هر پلن از constants/plans.ts میاد (تنها منبع)؛
-// اینجا فقط چیزهایی هست که مخصوص نمایش تو لندینگه
 interface PlanView {
   description: string;
   cta: string;
@@ -48,8 +46,6 @@ const VARIANT_STYLES: Record<PlanView['variant'], string> = {
 };
 
 type PricingProps = {
-  // خروجیِ PricingSectionForm (پنل ادمین -> /site-content) - فقط عنوان و
-  // زیرعنوانِ بالای جدول؛ خودِ کارت‌های پلن از constants/plans.ts میاد
   data?: Record<string, unknown>;
 };
 

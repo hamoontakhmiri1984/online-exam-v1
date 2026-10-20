@@ -13,8 +13,6 @@ import {
 import { loadCurrentPlans, loadInstructorStats } from '../../lib/adminStats';
 import instructorDetailRoutes from './instructorDetail.routes';
 
-// همهٔ مسیرهای این فایل زیر /admin/users هستند و requireRole('SuperAdmin')
-// در admin.ts روی کل /admin اعمال شده است
 const router = Router();
 
 function userOrder(value: unknown): Prisma.UserOrderByWithRelationInput[] {
@@ -38,7 +36,6 @@ const instructorSelect = {
   createdAt: true,
 } as const;
 
-// فهرست مدرس‌ها: ?status=Pending|Approved|Rejected (بدون آن: همه)، ?q=، ?page=
 router.get(
   '/instructors',
   asyncHandler(async (req, res) => {
@@ -64,7 +61,6 @@ router.get(
         take: paging.take,
       }),
       prisma.user.count({ where }),
-      // شمارش هر وضعیت برای نشانگر تب‌ها (مستقل از فیلتر و جست‌وجو)
       prisma.user.groupBy({
         by: ['approvalStatus'],
         where: { role: 'Instructor' },
@@ -121,7 +117,7 @@ type StudentWithGroups = {
   }[];
 };
 
-// مدرس‌های مرتبط از عضویت گروه‌ها استخراج می‌شوند (دانشجو مالک واحد ندارد)
+// Students can belong to multiple instructors through group membership.
 function groupByInstructor(student: StudentWithGroups) {
   const map = new Map<
     string,
@@ -152,7 +148,6 @@ const studentBaseSelect = {
   createdAt: true,
 } as const;
 
-// فهرست دانشجوها: ?q=، ?instructorId=، ?ungrouped=true (دانشجوهای بدون گروه)
 router.get(
   '/students',
   asyncHandler(async (req, res) => {

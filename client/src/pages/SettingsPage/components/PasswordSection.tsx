@@ -11,9 +11,7 @@ type Errors = {
   confirm?: string;
 };
 
-// حساب‌هایی که با موبایل و کد یکبارمصرف ساخته شده‌اند رمز ندارند؛ برای آن‌ها
-// «تعیین رمز» (بدون رمز فعلی) و برای بقیه «تغییر رمز» (با رمز فعلی) نمایش داده می‌شود.
-// وضعیت واقعی از /auth/me خوانده می‌شود، نه از کاربر کش‌شده‌ی ورود.
+// Read hasPassword from /auth/me; OTP-only accounts do not need a current password.
 function PasswordSection() {
   const [hasPassword, setHasPassword] = useState<boolean | null>(null);
   const [loadError, setLoadError] = useState('');

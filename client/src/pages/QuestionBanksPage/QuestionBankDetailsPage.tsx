@@ -26,8 +26,6 @@ const EMPTY_FORM: BankQuestionInput = {
 function QuestionBankDetailsPage() {
   const { bankId } = useParams();
   const navigate = useNavigate();
-  // SuperAdmin فقط مشاهده می‌کنه: بک‌اند ساخت/ویرایش/حذف سوال رو از ایشون
-  // قبول نمی‌کنه (server/src/routes/questionBanks/bankQuestions.routes.ts)
   const canManage = getCurrentUser()?.role !== 'SuperAdmin';
 
   const {
@@ -110,8 +108,6 @@ function QuestionBankDetailsPage() {
         ? await editQuestion(editing.id, input)
         : await addQuestion(input);
 
-      // موقع خطا useBankQuestions پیام رو تو error می‌ذاره و null برمی‌گردونه؛
-      // فرم پر می‌مونه تا مدرس اطلاعاتش رو از دست نده
       if (saved) resetForm();
     } finally {
       setSaving(false);

@@ -19,9 +19,7 @@ function useDashboardData() {
     error: examsError,
     clearError: clearExamsError,
   } = useAsyncData(getExams, [] as Exam[], 'دریافت آزمون‌ها با خطا مواجه شد');
-  // backend فقط SuperAdmin/Instructor رو برای GET /students قبول می‌کنه؛
-  // Student اصلاً نباید این درخواست رو بزنه (وگرنه 403 می‌گیره و studentsError
-  // بی‌خودی فعال می‌شه)
+  // Students are not authorized to fetch the student directory.
   const {
     data: allStudents,
     error: studentsError,
@@ -42,18 +40,12 @@ function useDashboardData() {
   const [attempts, setAttempts] = useState<ExamAttempt[]>([]);
   const [attemptsError, setAttemptsError] = useState<string | null>(null);
 
-  // attempts فقط بعد از مشخص شدن لیست آزمون‌های قابل‌دیدن فچ می‌شه - چون
-  // endpoint سراسری نیست، باید روی examId ها لوپ بزنیم. Student فقط تلاش
-  // خودش رو هر آزمون می‌بینه (GET .../me)، Instructor/SuperAdmin همه‌ی
-  // تلاش‌های اون آزمون رو (GET .../attempts)
   useEffect(() => {
     if (exams.length === 0) {
       setAttempts([]);
       return;
     }
 
-    // بدون cancelled، اگه لیست آزمون‌ها وسط درخواست عوض می‌شد، جوابِ قدیمی‌تر
-    // می‌تونست بعد از جدیدتر برسه و آمار غلط بمونه
     let cancelled = false;
 
     const examIds = exams.map((e) => e.id);

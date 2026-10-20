@@ -8,19 +8,16 @@ export type ParsedQuestion = {
 
 export type ParsedQuestionsResult = {
   questions: ParsedQuestion[];
-  // سطرهایی که متن سوال داشتن ولی به‌خاطر گزینه‌ی خالی/ناقص یا پاسخ صحیحِ
-  // نامعتبر ایمپورت نشدن - تا مدرس بدونه چندتا کنار گذاشته شده
+  // Report rows rejected for invalid options or correct-answer values.
   skippedRows: number;
 };
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
-// هم قالب همین صفحه ('سوال' / 'پاسخ صحیح') و هم قالب بانک سوال
-// ('متن سوال' / 'شماره گزینه‌ی صحیح') پذیرفته می‌شه
+// Accept both exam and bank question template headers.
 const QUESTION_COLUMNS = ['سوال', 'متن سوال'];
 const CORRECT_ANSWER_COLUMNS = ['پاسخ صحیح', 'شماره گزینه\u200cی صحیح'];
 
-// عنوان ستون‌هایی که توی فایل قالب نوشته می‌شن (اولین اسمِ لیست‌های بالا)
 const COLUMN_QUESTION = QUESTION_COLUMNS[0];
 const COLUMN_ANSWER_CORRECT = CORRECT_ANSWER_COLUMNS[0];
 
@@ -32,9 +29,7 @@ function findColumn(headers: string[], names: string[]): string | undefined {
   return headers.find((header) => names.includes(header.trim()));
 }
 
-// پاسخ صحیح رو به اندیس (۰-پایه) تبدیل می‌کنه: حرف A-F یا عدد ۱-۶ (لاتین،
-// فارسی یا عربی). خالی یا نامعتبر => null؛ دیگه بی‌صدا «گزینه‌ی اول» حساب
-// نمی‌شه، چون یه پاسخ اشتباه تو آزمون ثبت می‌کرد
+// Parse A-F or digits 1-6 into zero-based indices; invalid values remain null.
 function parseCorrectIndex(raw: unknown): number | null {
   const value = toLatinDigits(String(raw ?? '').trim()).toUpperCase();
   if (!value) return null;
@@ -50,8 +45,7 @@ function parseCorrectIndex(raw: unknown): number | null {
 export async function parseQuestionsFromExcel(
   file: File
 ): Promise<ParsedQuestionsResult> {
-  // xlsx حجیمه (اصلی‌ترین عامل سنگین‌بودنِ chunk این صفحه)؛ فقط همین‌جا که
-  // واقعاً لازمش داریم دانلود/اجرا می‌شه، نه با کل صفحه
+  // Load the spreadsheet parser only when importing or exporting.
   const XLSX = await import('xlsx');
   const buffer = await file.arrayBuffer();
   // CSV has no workbook encoding metadata; decode UTF-8 before SheetJS so
@@ -82,10 +76,7 @@ export async function parseQuestionsFromExcel(
     const text = String(row[questionColumn] ?? '').trim();
     if (!text) continue;
 
-    // فقط گزینه‌های خالیِ انتهایی (مثلاً سوال ۲-گزینه‌ای که گزینه‌ی ۳/۴
-    // خالی مونده) رو کنار می‌ذاریم - نه با filter رو کل آرایه، چون اون‌جوری
-    // اگه یه گزینه‌ی وسط خالی باشه، اندیس بقیه‌ی گزینه‌ها جابه‌جا می‌شه و
-    // پاسخ صحیح (که بر اساس حرف/اندیس ستون اصلیه) به گزینه‌ی غلط اشاره می‌کنه
+    // Trim only trailing empty options to preserve correct-answer indices.
     const rawOptions = optionColumns.map((col) =>
       String(row[col] ?? '').trim()
     );
@@ -99,8 +90,6 @@ export async function parseQuestionsFromExcel(
       correctColumn ? row[correctColumn] : ''
     );
 
-    // کمتر از ۲ گزینه، گزینه‌ی خالی وسط گزینه‌ها (داده‌ی ناقص)، یا پاسخ
-    // صحیحِ خالی/نامعتبر/خارج از گزینه‌ها => این سطر ایمپورت نمی‌شه
     if (
       options.length < 2 ||
       options.some((opt) => opt.length === 0) ||

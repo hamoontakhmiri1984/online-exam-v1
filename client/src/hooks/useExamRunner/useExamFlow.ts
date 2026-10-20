@@ -11,14 +11,11 @@ function useExamFlow(examId: string) {
   const [isFinished, setIsFinished] = useState<boolean>(false);
   const [endedByTimeout, setEndedByTimeout] = useState<boolean>(false);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
-  // موعدِ پایان روی ساعتِ *محلی* (هم‌تراز‌شده با سرور)؛ null یعنی سرور
-  // serverNow نداده/نامعتبر بود و تایمر به expiresAt خام برمی‌گرده
+  // Use the server-aligned local deadline; fall back to expiresAt if unavailable.
   const [deadlineLocalMs, setDeadlineLocalMs] = useState<number | null>(null);
-  // null یعنی هنوز از سرور نیومده. بعد از یه‌بار مقداردهی (حتی {} خالی برای
-  // شروع تازه)، useExamAnswers باهاش answers رو seed می‌کنه - لازم برای
-  // resume بعد از رفرش وسط آزمون
+  // Null means not loaded; an empty map is a valid initial answer set.
   const [initialAnswers, setInitialAnswers] = useState<AnswersMap | null>(null);
-  // شماره‌ی نسخه‌ی آخرین ذخیره‌ی سرور؛ autosave شمارنده‌ش رو از این ادامه می‌ده
+  // Continue from the server revision after re-entry.
   const [initialRevision, setInitialRevision] = useState<number>(0);
 
   const startExam = useCallback(async () => {
@@ -38,8 +35,7 @@ function useExamFlow(examId: string) {
           responseReceivedAtMs,
         })
       );
-      // برای resume (attempt از قبل شروع‌شده) پاسخ‌های ذخیره‌شده‌ی قبلی رو
-      // هم می‌گیریم؛ برای شروع تازه همون {} برمی‌گرده
+      // Restore saved answers before enabling the resumed attempt.
       const myAttempt = await getMyAttempt(examId);
       setInitialAnswers(myAttempt?.answers ?? {});
       setInitialRevision(myAttempt?.answersRevision ?? 0);

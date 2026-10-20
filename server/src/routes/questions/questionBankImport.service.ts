@@ -19,10 +19,7 @@ export type ImportedExamQuestion = {
   correctIndexSnapshot: number;
 };
 
-// ownerId: وقتی مقدار داره (Instructor)، فقط سوال‌های بانک‌های خودِ همین مدرس
-// قابل‌ایمپورتن؛ SuperAdmin ownerId نمی‌ده. قبلاً هر سوالی با هر id ای (حتی از
-// بانکِ مدرس دیگه، همراه با جواب صحیح) قابل کپی به آزمون خودت بود. سوالِ
-// متعلق به دیگری دقیقاً مثل سوالِ ناموجود notFound می‌ده تا وجودش لو نره.
+// Foreign and missing questions both return not found to avoid disclosing ownership.
 export async function importBankQuestionsToExam(
   examId: string,
   questionIds: string[],

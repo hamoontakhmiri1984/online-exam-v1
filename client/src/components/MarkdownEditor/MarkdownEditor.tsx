@@ -14,7 +14,6 @@ type MarkdownEditorProps = {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  /** تعداد ردیفِ اولیه‌ی textarea */
   rows?: number;
   error?: string;
 };
@@ -22,8 +21,6 @@ type MarkdownEditorProps = {
 type ToolbarAction = {
   label: string;
   icon: LucideIcon;
-  // سینتکسِ Markdown رو دورِ متنِ انتخاب‌شده می‌ذاره (یا اگه چیزی
-  // انتخاب نشده بود، یه متنِ نمونه inject می‌کنه)
   before: string;
   after: string;
   placeholder: string;
@@ -36,8 +33,6 @@ const TOOLBAR_ACTIONS: ToolbarAction[] = [
   { label: 'لینک', icon: Link2, before: '[', after: '](https://)', placeholder: 'متنِ لینک' },
 ];
 
-// روی خودِ textarea سینتکسِ Markdown رو دورِ انتخابِ فعلی می‌ذاره و همون‌جا
-// نگه می‌داره که کاربر بتونه بی‌وقفه تایپ کنه (به‌جای پاک‌کردنِ فوکوس)
 function injectSyntax(
   textarea: HTMLTextAreaElement,
   action: ToolbarAction,
@@ -69,9 +64,6 @@ function MarkdownEditor({
   error,
 }: MarkdownEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  // تو صفحه‌های کوچیک (موبایل) جا برای textarea + پیش‌نمایشِ هم‌زمان نیست؛
-  // یه تبِ ساده بینِ «نوشتن»/«پیش‌نمایش» سوییچ می‌کنه. تو دسکتاپ هردو کنارِ
-  // همدیگه دیده می‌شن
   const [mobileTab, setMobileTab] = useState<'write' | 'preview'>('write');
 
   return (

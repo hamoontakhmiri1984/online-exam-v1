@@ -1,16 +1,13 @@
 import multer from 'multer';
 import { badRequest } from './errors';
 
-// همون الگوی videoUpload.ts/attachmentUpload.ts: فایل فقط تو حافظه بافر
-// می‌شه (دیسک سرور درگیر نمی‌شه)، پردازش واقعی (خوندن ردیف‌ها) تو
-// lib/questionExcel.ts انجام می‌شه
 const ALLOWED_MIME_TYPES = new Set([
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-  'application/vnd.ms-excel', // .xls
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
   'text/csv',
 ]);
 
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB - برای چند صد سوال کافیه
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
 export const excelUpload = multer({
   storage: multer.memoryStorage(),

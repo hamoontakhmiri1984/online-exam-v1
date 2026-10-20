@@ -45,8 +45,7 @@ function useSubscription(): UseSubscriptionResult {
         setSubscription(sub);
         setUsage(usageData);
       })
-      // قبلاً catch نداشت و خطای شبکه unhandled rejection می‌شد؛ موقع خطا
-      // همون مقدارِ قبلی می‌مونه
+      // Keep the previous subscription state when refresh fails.
       .catch(() => {})
       .finally(() => {
         if (!cancelled) setLoading(false);

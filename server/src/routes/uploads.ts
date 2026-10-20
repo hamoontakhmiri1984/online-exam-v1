@@ -13,10 +13,7 @@ import { validateUploadedFile } from '../lib/uploadValidation';
 const router = Router();
 router.use(requireAuth);
 
-// multer (busboy) اسم فایل multipart رو به‌صورت latin1 می‌خونه؛ اسم فارسی
-// («جزوه.pdf») به‌شکل رشته‌ی خراب (mojibake) تو دیتابیس ذخیره می‌شد. اگه اسم
-// فقط کاراکترهای ≤ 0xFF داره و به‌عنوان UTF-8 معتبره، برش می‌گردونیم؛ اسمِ
-// انگلیسی/ASCII دست‌نخورده می‌مونه.
+// Recover UTF-8 multipart filenames decoded as Latin-1 only when the byte sequence is valid.
 function decodeUploadedFileName(name: string): string {
   if (!/[\u0080-\u00ff]/.test(name) || /[^\u0000-\u00ff]/.test(name))
     return name;
@@ -24,12 +21,7 @@ function decodeUploadedFileName(name: string): string {
   return decoded.includes('\ufffd') ? name : decoded;
 }
 
-// دیگه فایل رو دیسک سرور ذخیره نمی‌کنیم و یه URL دائمی برنمی‌گردونیم.
-// multer.diskStorage() (تو videoUpload.ts) فایل رو موقتاً رو دیسک می‌نویسه، از
-// اینجا با stream و یه اسم یکتا به MinIO/S3 آپلود می‌شه و فایل موقت پاک می‌شه، و فقط object key (نه لینک
-// قابل‌دسترس) به فرانت برمی‌گرده. فرانت این key رو ذخیره می‌کنه؛ هر بار که
-// واقعاً بخواد ویدیو رو پخش کنه، از GET /lesson-sessions/:id/video/signed-url
-// یه لینک موقت (چند دقیقه‌ای، بعد از چک دسترسی) می‌گیره.
+// Return storage keys; private downloads require authorized signed URLs.
 router.post(
   '/video',
   requireRole('Instructor', 'SuperAdmin'),
@@ -47,8 +39,6 @@ router.post(
       next();
     });
   },
-  // نوع واقعی ویدیو از روی هدر فایل موقت تشخیص داده می‌شه (نه کل فایل)؛
-  // اگه نامعتبر بود فایل موقت همین‌جا پاک می‌شه
   validateUploadedFile('video'),
   asyncHandler(async (req, res) => {
     if (!req.file) {
@@ -70,7 +60,7 @@ router.post(
         file.mimetype
       );
     } finally {
-      // چه آپلود موفق باشه چه fail بشه، فایل موقت نباید رو دیسک بمونه
+      // Remove temporary files on both upload success and failure.
       await unlink(file.path).catch(() => undefined);
     }
 
@@ -81,9 +71,6 @@ router.post(
   })
 );
 
-// همون منطق روت ویدیو، برای جزوه/PDF - فایل به bucket آپلود می‌شه و فقط
-// object key برمی‌گرده؛ دانلود بعداً از GET
-// /lesson-sessions/attachments/:attachmentId/signed-url انجام می‌شه
 router.post(
   '/attachment',
   requireRole('Instructor', 'SuperAdmin'),

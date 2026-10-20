@@ -2,7 +2,6 @@ import type { Request } from 'express';
 import type { Prisma } from '@prisma/client';
 import { badRequest } from './errors';
 
-// صفحه‌بندی و جست‌وجوی سمت سرور برای همهٔ لیست‌های مدیریتی (/admin/...)
 export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 100;
 const MAX_QUERY_LENGTH = 100;
@@ -40,7 +39,6 @@ export function parsePaging(query: Request['query']): Paging {
   return { page, pageSize, skip: (page - 1) * pageSize, take: pageSize, q: q || undefined };
 }
 
-// پارامترهای رشته‌ای اختیاری (id/status/...) - آرایه یا آبجکت در query رد می‌شود
 export function optionalString(value: unknown): string | undefined {
   if (value === undefined || value === '') return undefined;
   if (typeof value !== 'string') throw badRequest('پارامتر نامعتبره');
@@ -51,7 +49,6 @@ export function pagedResult<T>(items: T[], total: number, paging: Paging) {
   return { items, total, page: paging.page, pageSize: paging.pageSize };
 }
 
-// جست‌وجوی متنی روی کاربر (نام/ایمیل/شماره/نام‌کاربری) - سمت دیتابیس
 export function userSearchWhere(q?: string): Prisma.UserWhereInput {
   if (!q) return {};
   const contains = { contains: q, mode: 'insensitive' as const };

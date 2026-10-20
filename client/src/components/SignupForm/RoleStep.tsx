@@ -11,7 +11,6 @@ type Props = {
   nextLabel?: string;
   loadingLabel?: string;
   loading?: boolean;
-  /** مثلاً کپچا؛ بالای دکمه نمایش داده می‌شود */
   children?: ReactNode;
 };
 

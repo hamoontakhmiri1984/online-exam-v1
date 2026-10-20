@@ -15,10 +15,7 @@ export type DbHandout = {
   createdAt: Date;
 };
 
-// همون الگوی lessonSessions.ts: تو دیتابیس ستونش fileUrl ـه ولی چون از این
-// به بعد فقط object key ذخیره می‌شه (نه URL قابل‌دسترس مستقیم)، تو خروجی
-// JSON اسمش رو objectKey می‌ذاریم تا فرانت اشتباهی مستقیم به‌عنوان href
-// استفاده‌ش نکنه - برای دانلود واقعی باید GET /handouts/:id/signed-url بزنه
+// Expose stored fileUrl as objectKey; private downloads require an authorized signed URL.
 export function serializeHandout(h: DbHandout) {
   return {
     id: h.id,
@@ -34,10 +31,7 @@ export function serializeHandout(h: DbHandout) {
   };
 }
 
-// گروه‌هایی که یه دانشجو عضوشونه، با category/instructorId هرکدوم - برای
-// تشخیص این‌که جزوه‌های «کل دسته» (بدون گروه خاص) کدوم‌ها رو باید ببینه:
-// فقط دسته‌هایی که *از همون مدرسِ همون گروه* باشه، نه هر مدرسی با همون
-// اسم دسته (وگرنه محتوای یه مدرس به دانشجوهای مدرس دیگه لو می‌رفت)
+// Match both category and instructor membership to avoid leaking another instructor's handouts.
 export async function loadStudentGroupContext(studentId: string) {
   const user = await prisma.user.findUnique({
     where: { id: studentId },
@@ -54,7 +48,7 @@ export function studentVisibilityWhere(
   groups: { id: string; category: string; instructorId: string }[]
 ) {
   if (groups.length === 0) {
-    // بدون هیچ گروهی، هیچ جزوه‌ای قابل‌دیدن نیست
+
     return { id: 'never-matches' };
   }
   const groupIds = groups.map((g) => g.id);
@@ -85,8 +79,6 @@ export function studentCanSeeHandout(
   );
 }
 
-// دسترسی مالکیتی برای Instructor/SuperAdmin - دقیقاً هم‌الگوی
-// loadOwnedBank تو questionBanks.ts / loadOwnedGroup تو groups.ts
 export async function loadOwnedHandout(id: string, userId: string, role: Role) {
   const handout = await prisma.handout.findUnique({ where: { id } });
   if (!handout) return { handout: null, allowed: false };
@@ -94,7 +86,7 @@ export async function loadOwnedHandout(id: string, userId: string, role: Role) {
   return { handout, allowed: handout.instructorId === userId };
 }
 
-// اعلان به دانشجوهای مخاطب - best-effort، جلوی موفقیت خودِ ساخت جزوه رو نمی‌گیره
+// Notification delivery must not fail a successful handout creation.
 export async function notifyAudienceAboutHandout(handout: DbHandout) {
   if (handout.groupId) {
     const group = await prisma.group.findUnique({

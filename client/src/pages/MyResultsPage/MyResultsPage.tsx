@@ -44,13 +44,6 @@ function MyResultsPage() {
   const navigate = useNavigate();
   const currentUser = getCurrentUser();
 
-  // قبلاً: exams (از GET /exams، یعنی فقط آزمون‌های قابل‌دسترسِ *فعلی*) +
-  // attempts جدا از هم، و findExam(examId) واسطشون بود. مشکل: با حذف
-  // عضویتِ دانشجو از گروهِ صاحبِ یه آزمون، اون examId دیگه تو exams نمی‌اومد
-  // و attempt تمام‌شده‌ش (که تو دیتابیس دست‌نخورده مونده بود) هرگز فچ
-  // نمی‌شد. حالا همه‌چی از یه endpoint مستقل (GET /attempts/me) میاد که
-  // مستقیم رو studentId فیلتر می‌کنه و عنوان/allowReview آزمون رو هم
-  // خودش همراه می‌آره.
   const [records, setRecords] = useState<FinishedAttemptWithExam[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -86,8 +79,6 @@ function MyResultsPage() {
     };
   }, [userId]);
 
-  // سرور همین الان فقط تمام‌شده‌ها رو برمی‌گردونه، پس فیلترِ جداگونه لازم
-  // نیست؛ فقط بر اساس تاریخِ اتمام مرتب می‌کنیم (جدیدترین اول)
   const sortedAttempts = [...records].sort(
     (a, b) =>
       new Date(b.finishedAt).getTime() - new Date(a.finishedAt).getTime()
@@ -243,16 +234,7 @@ function MyResultsPage() {
                         >
                           {percent.toLocaleString('fa-IR')}٪
                         </span>
-                        {/* سرور retake رو با ۴۰۹ رد می‌کنه (یه دانشجو فقط
-                        یه‌بار می‌تونه تو هر آزمون شرکت کنه)، پس این دکمه
-                        به‌جای «شروع دوباره» به مرورِ پاسخ‌های همون تلاش
-                        می‌بره - اونم فقط وقتی exam.allowReview فعال باشه،
-                        چون سرور بدون اون جواب صحیح رو برنمی‌گردونه
-                        (ExamReviewPage خودش این حالت رو مدیریت می‌کنه).
-                        دسترسیِ خودِ GET /exams/:examId/attempts/me هم
-                        مستقل از عضویتِ فعلیِ گروهه (examAccess.ts: کافیه
-                        قبلاً attempt داشته باشه) پس این دکمه حتی بعد از
-                        حذف عضویت هم کار می‌کنه */}
+
                         {attempt.exam.allowReview && (
                           <button
                             type="button"

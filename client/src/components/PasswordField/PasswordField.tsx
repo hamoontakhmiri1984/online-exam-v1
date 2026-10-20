@@ -15,20 +15,15 @@ type PasswordFieldProps = {
   name?: string;
   autoComplete?: string;
   autoFocus?: boolean;
-  /** نمایش نوار قدرت رمز - برای فیلد «رمز عبور» توی ثبت‌نام true، برای «تکرار رمز» یا فرم لاگین false */
   showStrength?: boolean;
-  /** نمایش چک‌لیست شرط‌های رمز - فقط برای فیلد «رمز عبور» در ثبت‌نام/تنظیم رمز جدید */
   showRequirements?: boolean;
-  /** رزرو جای پیام خطا تا فرم با ظاهرشدن خطا نپره */
   reserveErrorSpace?: boolean;
   onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
   disabled?: boolean;
-  /** برای فوکوس‌کردن روی این فیلد وقتی خطا داره */
   ref?: Ref<HTMLInputElement>;
 };
 
-// همون قانون سرور (PASSWORD_REGEX): حداقل ۶ کاراکتر + حداقل یک حرف و یک عدد
-// (حرف فقط لاتین، چون regex سرور [A-Za-z] رو چک می‌کنه)؛ اگه اون عوض شد اینجا هم باید عوض بشه
+// Keep these rules aligned with the server password policy.
 const PASSWORD_REQUIREMENTS = [
   { id: 'length', label: 'حداقل ۶ کاراکتر', test: (v: string) => v.length >= 6 },
   { id: 'letter', label: 'یک حرف انگلیسی', test: (v: string) => /[A-Za-z]/.test(v) },
@@ -81,7 +76,6 @@ function PasswordField({
         <div className="flex items-center gap-2 pt-0.5">
           <div className="flex gap-1 flex-1">
             {(() => {
-              // حداقل ۱ نوار همیشه پر می‌شه (تا وقتی چیزی تایپ شده، فیدبک بصری صفر نباشه)
               const filledBars = Math.max(strength.level, 1);
               return [0, 1, 2, 3].map((bar) => (
                 <span

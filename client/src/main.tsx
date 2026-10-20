@@ -7,9 +7,6 @@ import './index.css';
 import App from './App.tsx';
 import { ExamGuardProvider } from './context/ExamGuardContext.tsx';
 
-// اگه VITE_GOOGLE_CLIENT_ID ست نشده باشه (مثلاً تو محیط dev که هنوز .env
-// پر نشده)، GoogleOAuthProvider با clientId خالی خطا نمی‌ده - فقط دکمه‌ی
-// گوگل هر وقت کلیک بخوره fail می‌شه؛ بقیه‌ی اپ عادی کار می‌کنه
 const googleClientId =
   (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined) ?? '';
 

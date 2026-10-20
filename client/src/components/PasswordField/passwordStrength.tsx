@@ -22,10 +22,7 @@ const COLORS: Record<PasswordStrengthLevel, string> = {
   4: 'bg-emerald-500',
 };
 
-/**
- * تخمین ساده و سبک از قدرت رمز عبور، بدون وابستگی به کتابخونه‌ی خارجی.
- * فقط برای راهنمایی بصری کاربره؛ اعتبارسنجی نهایی رمز همیشه سمت سرور انجام می‌شه.
- */
+// Strength is a visual estimate; server validation is authoritative.
 export function getPasswordStrength(password: string): PasswordStrengthResult {
   if (!password) {
     return { level: 0, label: LABELS[0], colorClass: COLORS[0] };

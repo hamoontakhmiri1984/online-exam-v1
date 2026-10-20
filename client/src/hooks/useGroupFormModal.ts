@@ -69,8 +69,7 @@ function useGroupFormModal({
       ? await updateItem(editingId, groupData)
       : await addItem(groupData);
 
-    // useCrud/هوک صفحه موقع خطا پیام رو تو Toast نشون می‌ده و undefined برمی‌گردونه؛
-    // تو اون حالت مودال باز می‌مونه تا اطلاعات واردشده از بین نره
+    // Keep the form open when the mutation fails.
     if (saved) {
       setIsOpen(false);
     }

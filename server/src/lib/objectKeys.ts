@@ -4,9 +4,7 @@ import { z } from 'zod';
 
 export type ObjectKeyKind = 'lesson-videos' | 'lesson-attachments';
 
-// کلید جدید شامل id آپلودکننده‌ست: <kind>/<userId>/<uuid><ext>
-// تا بعداً بشه بدون جدول اضافه مطمئن شد کلیدی که تو بدنه‌ی درخواست میاد
-// واقعاً مال همین کاربره (isOwnedObjectKey).
+// Object keys include the uploader ID so ownership can be validated.
 export function buildObjectKey(
   kind: ObjectKeyKind,
   userId: string,
@@ -17,8 +15,7 @@ export function buildObjectKey(
   return `${kind}/${userId}/${crypto.randomUUID()}${ext}`;
 }
 
-// چک شکل کلی (نه مالکیت): پیشوند درست، بدون path traversal. عمداً سخت‌گیرانه‌تر
-// از این نیست چون کلیدهای قدیمی (بدون userId) هم باید همچنان قابل‌قبول بمونن.
+// Allow legacy key shapes while rejecting traversal and invalid prefixes.
 function hasValidKeyShape(kind: ObjectKeyKind, key: string): boolean {
   return (
     key.startsWith(`${kind}/`) &&
@@ -45,8 +42,7 @@ function isOwnedObjectKey(
   return hasValidKeyShape(kind, key) && key.startsWith(`${kind}/${userId}/`);
 }
 
-// هر کلید یا باید مال خودِ کاربر باشه، یا از قبل روی همون رکورد ذخیره شده
-// باشه (ویرایش بدون تعویض فایل؛ شامل کلیدهای قدیمی بدون userId)
+// Accept owned uploads or the unchanged key already attached to this record.
 export function canUseObjectKeys(
   kind: ObjectKeyKind,
   userId: string,

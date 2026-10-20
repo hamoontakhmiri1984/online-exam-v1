@@ -13,7 +13,6 @@ import {
   type UploadKind,
 } from './fileSignature';
 
-// فایل آپلودشده‌ی multer (حافظه‌ای یا دیسکی)، فقط فیلدهای موردنیاز
 export type UploadedFileLike = {
   mimetype: string;
   size: number;
@@ -27,8 +26,7 @@ const INVALID_CONTENT_MESSAGE: Record<Exclude<UploadKind, 'spreadsheet'>, string
   video: 'محتوای فایل یک ویدیوی معتبر (mp4, webm, ogg, mov, mkv) نیست',
 };
 
-// فقط ابتدای فایل خونده می‌شه: ویدیوی ۵۰۰ مگابایتی روی دیسکه و برای تشخیص
-// نوع هرگز کامل وارد RAM نمی‌شه
+// Inspect only a bounded header in Node; large videos remain on disk.
 async function readHeader(file: UploadedFileLike): Promise<Buffer> {
   if (file.buffer) return file.buffer.subarray(0, HEADER_BYTES);
   if (!file.path) throw badRequest('فایل آپلودشده قابل‌خواندن نیست');
@@ -42,7 +40,6 @@ async function readHeader(file: UploadedFileLike): Promise<Buffer> {
   }
 }
 
-// MIME واقعی فایل (از روی محتوا) یا throw با خطای 400 مشخص
 export async function detectUploadedMime(
   kind: UploadKind,
   file: UploadedFileLike
@@ -50,7 +47,6 @@ export async function detectUploadedMime(
   if (file.size === 0) throw badRequest('فایل خالیه');
 
   if (kind === 'spreadsheet') {
-    // اکسل/CSV فقط تو حافظه بافر می‌شه (سقف ۱۰ مگابایت)
     if (!file.buffer) throw badRequest('فایل آپلودشده قابل‌خواندن نیست');
     const result = detectSpreadsheet(file.buffer);
     if ('error' in result) throw badRequest(result.error);
@@ -80,11 +76,7 @@ async function removeTempFile(file: UploadedFileLike): Promise<void> {
   if (file.path) await fs.promises.unlink(file.path).catch(() => undefined);
 }
 
-// بعد از multer و قبل از ذخیره‌ی نهایی (آپلود به bucket/پارس) قرار می‌گیره.
-//   موفق: req.file.mimetype با MIME «تشخیص‌داده‌شده از محتوا» جایگزین می‌شه
-//         (همین مقدار به storage می‌ره و پسوند کلید هم از روی آن ساخته می‌شه)
-//   ناموفق: فایل موقت دیسک (ویدیو) پاک می‌شه و خطای 400 مشخص برمی‌گرده
-// فایل نبودن اینجا خطا نیست؛ هندلر خودش «فایلی ارسال نشده» رو گزارش می‌کنه.
+// Validate before storage or parsing, then replace the claimed MIME type with the detected type.
 export function validateUploadedFile(kind: UploadKind) {
   return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     const file = req.file;

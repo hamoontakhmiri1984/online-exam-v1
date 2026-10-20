@@ -42,9 +42,6 @@ type MeUser = Parameters<typeof serializeMe>[0] & {
   avatarKey: string | null;
 };
 
-// URL تصویر پروفایل از روی کلید ذخیره‌شده ساخته می‌شه؛ تو دیتابیس فقط کلید
-// می‌مونه (مثل coverImageKey بلاگ). اگه آدرس عمومی bucket تنظیم نشده باشه
-// URL ناقص نمی‌سازیم و تصویر نشون داده نمی‌شه.
 function meResponse(user: MeUser) {
   const avatarUrl =
     user.avatarKey && env.S3_PUBLIC_BASE_URL
@@ -54,7 +51,6 @@ function meResponse(user: MeUser) {
   return serializeMe(user, avatarUrl);
 }
 
-// خطای multer (حجم زیاد، فیلد اضافه) رو به پیام فارسیِ ۴۰۰ تبدیل می‌کنه
 function avatarUpload(req: Request, res: Response, next: NextFunction) {
   imageUpload.single('file')(req, res, (err: unknown) => {
     if (err instanceof multer.MulterError) {
@@ -154,8 +150,7 @@ router.post(
       },
     });
 
-    // تصویر قبلی بعد از موفقیت آپلود و ذخیره‌ی کلید جدید پاک می‌شه؛ اگه
-    // آپلود یا آپدیت fail می‌شد، کاربر بدون عکس نمی‌موند
+    // Delete the old image only after the replacement is uploaded and saved.
     if (existing.avatarKey) {
       await deletePublicObject(existing.avatarKey).catch((error) =>
         logEvent('error', 'deletePublicObject failed:', error)
@@ -203,8 +198,7 @@ router.delete(
   })
 );
 
-// تعیین/تغییر رمز از تنظیمات. رمز اشتباهِ فعلی ۴۰۰ برمی‌گردونه نه ۴۰۱: کلاینت
-// هر ۴۰۱ رو «نشست تموم شده» می‌دونه و کاربر رو از سیستم بیرون می‌اندازه.
+// An incorrect current password is 400, not a session-expiring 401.
 router.post(
   '/me/password',
   requireAuth,

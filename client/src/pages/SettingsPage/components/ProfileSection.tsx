@@ -9,18 +9,14 @@ import {
 import { useAuth } from '../../../context/AuthContext';
 import Avatar from '../../../components/Avatar/Avatar';
 
-// همان سقف و فرمت‌های سرور (imageUpload.ts)؛ سرور دوباره محتوای واقعی را بررسی می‌کند
 const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
 
 function ProfileSection({ currentUser }: { currentUser: UserType | null }) {
-  // کاربر واکنش‌گرا: بعد از آپلود/حذف تصویر همین‌جا و در سایدبار بلافاصله عوض می‌شود
   const { user } = useAuth();
   const initialName = currentUser?.name ?? '';
   const [name, setName] = useState<string>(initialName);
-  // آخرین نامِ ذخیره‌شده تو سرور - نه prop ـِ currentUser که بعد از ذخیره
-  // تا رندر بعدیِ والد قدیمی می‌مونه؛ وگرنه برگردوندنِ نام به مقدار
-  // اولیه «بدون تغییر» حساب می‌شد و هیچ‌وقت ذخیره نمی‌شد
+  // Compare against the last saved name, not the parent prop that may still be stale.
   const [savedName, setSavedName] = useState<string>(initialName);
   const [justSaved, setJustSaved] = useState(false);
   const [error, setError] = useState('');
@@ -55,7 +51,6 @@ function ProfileSection({ currentUser }: { currentUser: UserType | null }) {
 
   async function handleAvatarChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-    // بدون پاک‌کردن مقدار، انتخاب دوباره‌ی همان فایل رویداد change نمی‌دهد
     event.target.value = '';
     if (!file) return;
 

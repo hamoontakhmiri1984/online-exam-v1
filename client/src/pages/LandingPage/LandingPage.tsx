@@ -10,13 +10,9 @@ import Footer from './components/Footer';
 import useSiteContent from '../../hooks/useSiteContent';
 
 function LandingPage() {
-  // یه فچِ واحد برای هر ۶ section، نه اینکه هرکدوم از کامپوننت‌های زیر
-  // خودشون جدا GET /cms بزنن
   const sections = useSiteContent();
   const location = useLocation();
 
-  // وقتی از یه صفحه‌ی دیگه (مثلاً /blog) با Navbar.handleNavLinkClick
-  // به اینجا اومدیم و قرار بود بعدِ لود به یه section اسکرول کنیم
   useEffect(() => {
     const scrollTo = (location.state as { scrollTo?: string } | null)?.scrollTo;
     if (!scrollTo) return;

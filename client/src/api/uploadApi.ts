@@ -1,9 +1,6 @@
 import { apiMultipartRequest } from '../lib/apiClient';
 
-// دیگه سرور یه URL دائمی قابل‌دسترس برنمی‌گردونه (فایل تو bucket خصوصیه) -
-// فقط object key رو برمی‌گردونه که باید بعداً موقع نمایش، با
-// getSessionVideoSignedUrl/getAttachmentSignedUrl (تو lessonApi.ts) به یه
-// لینک موقت (signed URL) تبدیل بشه.
+// Uploads return private object keys; playback requires a signed URL.
 export type UploadedVideo = { fileName: string; objectKey: string };
 export type UploadedAttachment = {
   fileName: string;
@@ -11,16 +8,13 @@ export type UploadedAttachment = {
   fileSize: number;
 };
 
-// آپلودها multipart هستن و از apiMultipartRequest (apiClient.ts) رد می‌شن:
-// همون refresh مشترک و «یک بار retry بعد از 401»، و Content-Type (با boundary
-// درست) رو خود مرورگر می‌سازه.
+// Multipart requests share session refresh and retry at most once.
 export function uploadLessonVideo(file: File): Promise<UploadedVideo> {
   const formData = new FormData();
   formData.append('video', file);
   return apiMultipartRequest<UploadedVideo>('/uploads/video', formData);
 }
 
-// همون منطق uploadLessonVideo، برای جزوه/PDF - endpoint و فیلد فرم فرق می‌کنن
 export function uploadLessonAttachment(file: File): Promise<UploadedAttachment> {
   const formData = new FormData();
   formData.append('attachment', file);

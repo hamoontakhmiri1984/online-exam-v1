@@ -1,15 +1,6 @@
 import { isStructuredWorkbook } from './spreadsheetStructure';
 
-// تشخیص «نوع واقعی» فایل از روی محتوا (نه از روی file.mimetype که کلاینت
-// می‌فرسته و قابل جعله). هر فرمت روش مناسب خودش رو داره:
-//   تصویر/PDF/ویدیو  -> امضای باینری (magic bytes) در ابتدای فایل
-//   xlsx             -> ساختار ZIP، صحت محتوا و حجم بازشده + workbook قابل‌خواندن
-//   xls              -> محفظهٔ OLE2 با stream واقعی workbook
-//   CSV              -> امضا ندارد؛ اعتبارسنجی متن (UTF-8، بدون کاراکتر کنترلی/
-//                       باینری) و ساختار (جداکننده، کوتیشن متوازن)
-// همه‌ی توابع خالص‌اند (فقط Buffer می‌گیرن) تا بدون دیتابیس/شبکه تست بشن.
-
-// برای ویدیوی بزرگ فقط همین‌قدر از ابتدای فایل خونده می‌شه (نه کل فایل)
+// MIME claims are untrusted; inspect content before accepting uploads.
 export const HEADER_BYTES = 4096;
 
 export type UploadKind = 'image' | 'pdf' | 'video' | 'spreadsheet';
@@ -39,14 +30,14 @@ export function detectImage(header: Buffer): string | null {
   return null;
 }
 
-// طبق مشخصات PDF، «%PDF-» باید تو ۱۰۲۴ بایت اول باشه (نه لزوماً بایت صفر)
+// The PDF header may appear within the first 1024 bytes.
 export function detectPdf(header: Buffer): string | null {
   return header.subarray(0, 1024).includes('%PDF-', 0, 'latin1')
     ? 'application/pdf'
     : null;
 }
 
-// برندهای ftyp که واقعاً ویدیو هستن (نه HEIC/AVIF یا صوتی M4A)
+// Exclude image and audio-only ISO media brands.
 const MP4_VIDEO_BRANDS = new Set([
   'isom', 'iso2', 'iso3', 'iso4', 'iso5', 'iso6', 'iso7', 'iso8', 'iso9',
   'mp41', 'mp42', 'mp71', 'avc1', 'dash', 'msnv', 'mmp4', 'f4v ',
@@ -54,7 +45,6 @@ const MP4_VIDEO_BRANDS = new Set([
 ]);
 
 export function detectVideo(header: Buffer): string | null {
-  // MP4 / MOV: جعبه‌ی ftyp از بایت ۴
   if (ascii(header, 4, 8) === 'ftyp') {
     const declared = header.readUInt32BE(0);
     const boxEnd = Math.min(
@@ -68,7 +58,6 @@ export function detectVideo(header: Buffer): string | null {
     return null;
   }
 
-  // WebM / Matroska: امضای EBML، سپس DocType
   if (startsWith(header, [0x1a, 0x45, 0xdf, 0xa3])) {
     const head = header.subarray(0, 128).toString('latin1');
     if (head.includes('webm')) return 'video/webm';
@@ -76,7 +65,7 @@ export function detectVideo(header: Buffer): string | null {
     return null;
   }
 
-  // Ogg: فقط اگه جریان ویدیویی (Theora) باشه، نه صوت‌ِ Vorbis/Opus
+  // Ogg must contain a Theora video stream, not only audio.
   if (ascii(header, 0, 4) === 'OggS') {
     return header.subarray(0, 512).includes('theora', 0, 'latin1')
       ? 'video/ogg'
@@ -91,7 +80,6 @@ const OLE_MAGIC = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
 
 export type SpreadsheetCheck = { mime: string } | { error: string };
 
-// اعتبارسنجی متن/ساختار CSV (برای CSV امضای باینری وجود ندارد)
 export function checkCsv(buffer: Buffer): SpreadsheetCheck {
   if (buffer.length === 0) return { error: 'فایل خالیه' };
   const body =
@@ -109,7 +97,6 @@ export function checkCsv(buffer: Buffer): SpreadsheetCheck {
     };
   }
 
-  // NUL و کاراکترهای کنترلی (به‌جز tab/CR/LF) نشونه‌ی فایل باینری‌ان
   if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(text)) {
     return { error: 'محتوای فایل متنی CSV معتبر نیست (کاراکتر باینری دارد)' };
   }
@@ -128,7 +115,6 @@ export function checkCsv(buffer: Buffer): SpreadsheetCheck {
   return { mime: MIME_CSV };
 }
 
-// xlsx/xls با امضای باینری؛ در غیر این‌صورت به‌عنوان CSV متنی بررسی می‌شه
 export function detectSpreadsheet(buffer: Buffer): SpreadsheetCheck {
   if (startsWith(buffer, ZIP_MAGIC)) {
     return isStructuredWorkbook(buffer, 'xlsx')

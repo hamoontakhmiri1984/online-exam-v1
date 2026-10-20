@@ -6,10 +6,7 @@ export type Question = {
   questionId?: string | null;
   text: string;
   options: string[];
-  // نکته: سرور این فیلد رو برای نقش Student اصلاً برنمی‌گردونه (امنیت
-  // نمره‌دهی، سمت questions.ts). این تایپ برای مصرف instructor/superadmin
-  // دقیقه؛ صفحه‌ی دانشجو نباید بهش تکیه کنه - همون مشکل #۲ که تو فاز
-  // ExamAttempt/useExamAnswers جدا حلش می‌کنیم.
+  // Student responses omit the correct answer.
   correctOptionIndex: number;
 };
 
@@ -17,8 +14,6 @@ export function getQuestionsByExamId(examId: string): Promise<Question[]> {
   return apiRequest<Question[]>(`/exams/${examId}/questions`);
 }
 
-// فقط تعداد سوال‌ها - برای صفحه‌ی شروع آزمون؛ خودِ سوال‌ها (برای دانشجو) فقط
-// بعد از start از getQuestionsByExamId میان
 export function getQuestionCountByExamId(examId: string): Promise<number> {
   return apiRequest<{ count: number }>(`/exams/${examId}/questions/count`).then(
     (res) => res.count
@@ -36,8 +31,7 @@ export function addQuestion(question: Omit<Question, 'id'>): Promise<Question> {
   });
 }
 
-// همه‌ی سوال‌های bulk باید متعلق به یه examId باشن (call site فعلی هم
-// همینه) - examId رو از اولین آیتم می‌گیریم
+// All questions in a bulk request must belong to the same exam.
 export function addQuestionsBulk(
   newQuestions: Omit<Question, 'id'>[]
 ): Promise<Question[]> {
@@ -67,8 +61,6 @@ export function updateQuestion(
   });
 }
 
-// برخلاف نسخه‌ی mock، حذف هم زیرمجموعه‌ی examId ـه - پس امضا عوض شد
-// (call siteـش تو useQuestionBank.ts هم باید عوض بشه، پایین‌تر)
 export function deleteQuestion(examId: string, id: string): Promise<void> {
   return apiRequest<void>(`/exams/${examId}/questions/${id}`, {
     method: 'DELETE',

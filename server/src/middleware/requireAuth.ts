@@ -28,8 +28,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return res.status(401).json({ error: 'توکن نامعتبر یا منقضی‌شده' });
   }
 
-  // requireAuth تحت asyncHandler نیست (Express 4 رد شدنِ promise رو نمی‌گیره)،
-  // پس خطای مخزن نشست (AppError ۵۰۳) رو صریح به errorHandler می‌دیم
+  // Forward dependency failures explicitly; Express 4 does not catch this async middleware.
   let valid: boolean;
   try {
     valid = await isSessionValid(payload.sub, payload.sid);
@@ -40,7 +39,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return res.status(401).json({ error: 'نشست شما پایان یافته است. لطفاً دوباره وارد شوید.' });
   }
 
-  // ردشدن حساب باید حتی پس از شکست ابطال نشست Redis اعمال شود.
+  // Recheck account validity even when session revocation has failed.
   try {
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },

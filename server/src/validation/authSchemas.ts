@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { detectIdentifierType } from '../lib/identifier';
 import { PASSWORD_REGEX } from '../lib/password';
 
-// bcrypt فقط ۷۲ بایتِ اول رمز رو می‌خونه؛ سقف بالاتر فقط توهم امنیته
+// bcrypt processes only the first 72 password bytes.
 const PASSWORD_MAX = 72;
 const passwordMaxMessage = 'رمز نباید بیشتر از ۷۲ کاراکتر باشه';
 
@@ -103,8 +103,7 @@ export const onboardingSchema = z.object({
   organizationName: z.string().trim().min(1).max(120).optional(),
 });
 
-// currentPassword فقط وقتی لازمه که حساب از قبل رمز داره (حساب‌هایی که با
-// موبایل و کد یکبارمصرف ساخته شدن اول‌بار رمز رو بدون رمز قبلی تعیین می‌کنن)
+// Require the current password only if the account already has one.
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1).max(200).optional(),
 

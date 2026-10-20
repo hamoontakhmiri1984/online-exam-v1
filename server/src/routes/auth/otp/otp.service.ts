@@ -63,8 +63,6 @@ export async function requestOtp(data: RequestOtpData, ip: string) {
 
   const { value, channel, type } = resolved;
 
-  // قبل از هر lookup/ارسالی؛ روی همه‌ی purpose ها یکسان اعمال می‌شه تا
-  // پاسخ‌ش وجود/عدم وجود حساب رو لو نده
   await assertOtpSendAllowed({
     ip,
     identifier: value,
@@ -86,9 +84,7 @@ export async function requestOtp(data: RequestOtpData, ip: string) {
       where,
     });
 
-    // پاسخ باید برای حساب موجود/ناموجود از نظر محتوا و زمان یکسان باشه:
-    // ارسال کد (ایمیل/پیامک) منتظر نمی‌مونه - وگرنه هم تاخیرش و هم خطای 502
-    // ارسال، وجود حساب رو لو می‌داد. خطای ارسال فقط لاگ می‌شه.
+    // Use the same response and comparable work for existing and absent accounts.
     if (user) {
       const { code } = await createOtp({
         identifier: value,
@@ -133,7 +129,7 @@ export async function verifyOtpCode(data: VerifyOtpData, ip: string) {
 
   const { value, type } = resolved;
 
-  // قبل از verifyOtp: کپچای غلط نباید یکی از تلاش‌های مجاز کد رو بسوزونه
+  // A bad captcha must not consume an OTP verification attempt.
   if (data.purpose === 'LOGIN') {
     await assertOtpVerifyCaptcha({
       ip,
@@ -169,10 +165,7 @@ export async function verifyOtpCode(data: VerifyOtpData, ip: string) {
     throw notFound('کاربر پیدا نشد');
   }
 
-  // اگه حساب تا الان هیچ‌وقت تایید نشده، رمزش رو کسی موقع «ثبت‌نام ناتمام»
-  // گذاشته (ممکنه شخص دیگه‌ای غیر از صاحب ایمیل/موبایل باشه). وقتی صاحب واقعی
-  // از مسیر دیگه‌ای (ورود با کد یا ...) حساب رو تایید می‌کنه، اون رمز باید پاک
-  // بشه تا کسی که ثبت‌نام رو شروع کرده نتونه با اون رمز وارد بشه.
+  // Discard passwords set before the identifier owner completed verification.
   const wasNeverVerified = !user.emailVerifiedAt && !user.phoneVerifiedAt;
 
   if (type === 'EMAIL') {

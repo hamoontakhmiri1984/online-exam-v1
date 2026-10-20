@@ -9,9 +9,6 @@ import { resolveScheduledAt, toMinute } from '../../lib/examTiming';
 import type { updateExamSchema } from '../../validation/examSchemas';
 import type { z } from 'zod';
 
-// شکل خروجی دقیقاً همون Exam ـه که client/src/api/examApi.ts انتظارش رو
-// داره - status/participants هم اینجا محاسبه می‌شن (طبق تصمیم معماریِ
-// schema.prisma: این دو تا ذخیره نمی‌شن، derived ان)
 export function serializeExam(exam: AccessibleExam) {
   const now = Date.now();
   const status: 'draft' | 'completed' | 'upcoming' =
@@ -34,9 +31,6 @@ export function serializeExam(exam: AccessibleExam) {
   };
 }
 
-// یه Instructor نباید بتونه آزمون رو به گروهی که مال خودش نیست وصل کنه
-// (نه موقع ساخت، نه موقع ویرایش) - SuperAdmin از این چک معافه. اگه
-// groupIds خالی باشه، چیزی برای چک کردن نیست
 export async function assertOwnsAllGroups(
   groupIds: string[],
   role: Role,
@@ -52,7 +46,6 @@ export async function assertOwnsAllGroups(
   }
 }
 
-// کمی تلورانس برای اختلاف ساعتِ مرورگر و سرور، تا «همین الان» رد نشه
 export const PAST_SCHEDULE_TOLERANCE_MS = 5 * 60_000;
 
 export function assertNotInPast(scheduledAt: Date) {
@@ -63,10 +56,6 @@ export function assertNotInPast(scheduledAt: Date) {
 
 type UpdateExamData = z.infer<typeof updateExamSchema>;
 
-// آیا فیلدهای «قفل‌شونده بعد از شروع» (زمان/مدت/گروه‌ها) نسبت به current
-// عوض شدن؟ مقایسه‌ی زمان تا دقیقه‌ست تا ثانیه/میلی‌ثانیه‌ی فرم ویرایش باعث
-// رد شدنِ الکی نشه. ورودیِ newScheduledAt باید از resolveScheduledAt رد شده
-// باشه تا زمانِ هم‌دقیقه‌ی «تغییرنکرده» مقدارِ دقیقِ فعلی رو نگه داره
 function computeChangesLockedFields(
   current: { scheduledAt: Date; durationMinutes: number; groups: { id: string }[] },
   newScheduledAt: Date,
@@ -84,9 +73,7 @@ function computeChangesLockedFields(
   );
 }
 
-// بعد از اینکه حتی یه دانشجو شروع کرده، زمان/مدت/گروه‌ها قفل‌ان - وگرنه
-// expiresAt‌ـهای قبلاً ثبت‌شده با آزمون نمی‌خونن و دسترسیِ دانشجوها (عضویت
-// گروه) وسط آزمون عوض می‌شد
+// Once started, timing and groups are immutable to preserve deadlines and access.
 function assertScheduleEditable(
   attemptCount: number,
   changesLockedFields: boolean
@@ -98,13 +85,6 @@ function assertScheduleEditable(
   }
 }
 
-// همه‌ی قواعدِ ویرایشِ آزمون (مالکیتِ گروه، زمانِ گذشته، قفلِ فیلدها بعد از
-// شروع، سهمیه‌ی activeExams) این‌جان - route فقط ورودی رو پارس و صدا می‌زنه.
-//
-// existing باید *قبل از* قفل خونده شده باشه (fail-fast سریع، بدون باز کردنِ
-// تراکنش). چکِ قطعی با مقدارهای *بعد از قفل* دوباره داخل withExamWriteLock
-// انجام می‌شه - چون existing می‌تونه بین این فراخوانی و گرفتنِ قفل، با یه
-// ویرایش/شروعِ هم‌زمانِ دیگه کهنه شده باشه
 export async function updateExam(
   examId: string,
   role: Role,
@@ -112,13 +92,9 @@ export async function updateExam(
   existing: AccessibleExam,
   data: UpdateExamData
 ): Promise<AccessibleExam> {
-  // چک مالکیت هم برای گروه‌های *جدیدی* که داره جایگزین می‌شن لازمه - وگرنه
-  // یه Instructor که خودش مالک آزمونه می‌تونست بعداً یه گروهِ Instructor
-  // دیگه رو به همون آزمون وصل کنه
   await assertOwnsAllGroups(data.groupIds, role, sub);
 
-  // اگه زمانِ درخواستی هم‌دقیقه با زمانِ فعلی باشه، همون مقدارِ دقیقِ فعلی
-  // (با ثانیه/میلی‌ثانیه) می‌مونه - نه مقدارِ جدیدِ فرم
+  // Preserve exact timestamps when the minute-precision form has not changed them.
   const requestedScheduledAt = new Date(data.scheduledAt);
   const newScheduledAt = resolveScheduledAt(
     existing.scheduledAt,
@@ -126,8 +102,7 @@ export async function updateExam(
   );
   const newGroupIds = new Set(data.groupIds);
 
-  // زمان گذشته فقط وقتی رد می‌شه که زمانِ آزمون واقعاً تغییر کرده باشه؛
-  // ویرایشِ بقیه‌ی فیلدهای آزمونِ قدیمی با همون زمان مجازه
+  // Validate past dates only when the schedule actually changes.
   if (toMinute(newScheduledAt) !== toMinute(existing.scheduledAt)) {
     assertNotInPast(newScheduledAt);
   }
@@ -142,9 +117,7 @@ export async function updateExam(
     )
   );
 
-  // سقف activeExams فقط موقع ساخت چک می‌شد؛ اینجا هم وقتی آزمونِ تمام‌شده
-  // (غیرفعال) با ویرایش دوباره فعال می‌شه همون چک اعمال می‌شه. خودِ چک
-  // داخل همون تراکنشِ update و پشت قفل مدرس انجام می‌شه (beforeExamLock)
+  // Reactivating an expired exam must also satisfy the active-exam quota.
   let quotaGuard: Awaited<ReturnType<typeof prepareQuotaGuard>> | undefined;
   if (role === 'Instructor') {
     const now = Date.now();
@@ -158,13 +131,11 @@ export async function updateExam(
     }
   }
 
-  // قفل مشترک با start (lib/examLock.ts): اگه دانشجویی بین چک‌های بالا و
-  // این update شروع کرده باشه، اینجا (بعد از قفل) دیده می‌شه و تغییر رد می‌شه
+  // Recheck edit eligibility under the same lock used by start.
   return withExamWriteLock(
     examId,
     async (tx, { attemptCount }) => {
-      // مقدارهای فعلیِ آزمون رو *بعد از گرفتنِ قفل* دوباره می‌خونیم - نه
-      // existing بالا (که قبل از قفل و شاید کهنه‌ست)
+      // Read current state after taking the lock.
       const current = await tx.exam.findUniqueOrThrow({
         where: { id: examId },
         select: {
@@ -173,7 +144,6 @@ export async function updateExam(
           groups: { select: { id: true } },
         },
       });
-      // دوباره با scheduledAtِ *بعد از قفل* حل می‌شه (existing ممکنه کهنه باشه)
       const scheduledAt = resolveScheduledAt(
         current.scheduledAt,
         requestedScheduledAt

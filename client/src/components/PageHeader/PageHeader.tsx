@@ -3,12 +3,9 @@ import type { ReactNode } from 'react';
 type PageHeaderProps = {
   title: string;
   description?: string;
-  /** دکمه‌ها یا کنترل‌های سمت چپ عنوان (مثلاً «افزودن») */
   actions?: ReactNode;
 };
 
-// عنوان استاندارد همه‌ی صفحه‌های پنل: یک تیتر، یک توضیح کوتاه، و حداکثر
-// یک گروه کنترل. فاصله‌ی ۳۲ پیکسل تا محتوای صفحه
 export default function PageHeader({
   title,
   description,

@@ -2,11 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 
 type CrudApi<T, TInput> = {
   getAll: () => Promise<T[]>;
-  // add/update اختیاری شدن: بعضی موجودیت‌ها (مثل Student) اصلاً endpoint
-  // ساخت/ویرایش مستقیم روی backend ندارن، پس صفحه‌ای مثل StudentsPage نباید
-  // مجبور باشه یه تابع Promise.reject(...) الکی بسازه فقط برای این‌که تایپ
-  // پر بشه. اگه صفحه‌ای add/update نداشت، دکمه‌ی متناظرش هم اصلاً نباید
-  // رندر بشه.
   add?: (item: TInput) => Promise<T>;
   update?: (id: string, item: TInput) => Promise<T>;
   remove: (id: string) => Promise<void>;
@@ -20,8 +15,6 @@ type CrudMessages = {
   unsupported: string;
 };
 
-// پیام‌های پیش‌فرض یک‌جا تعریف شدن؛ هر صفحه در صورت نیاز می‌تونه فقط همونی که
-// می‌خواد رو override کنه (مثلاً «دریافت دانشجویان با خطا مواجه شد» به‌جای پیام عمومی)
 const DEFAULT_MESSAGES: CrudMessages = {
   fetch: 'دریافت اطلاعات با خطا مواجه شد',
   add: 'افزودن مورد جدید با خطا مواجه شد',
@@ -38,10 +31,7 @@ function useCrud<T extends { id: string }, TInput>(
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // api و messages رو توی ref نگه می‌داریم تا effect زیر همیشه به آخرین نسخه
-  // دسترسی داشته باشه، بدون اینکه لازم باشه (و بدون اینکه اشتباهاً فراموش بشه)
-  // در dependency array بیان - چون این دو تا شیء هر رندر می‌تونن رفرنس جدید
-  // بگیرن حتی اگه محتواشون عوض نشده باشه
+  // Refs provide current callbacks without retriggering fetch effects on every render.
   const apiRef = useRef(api);
   apiRef.current = api;
   const messagesRef = useRef({ ...DEFAULT_MESSAGES, ...messages });
@@ -85,8 +75,7 @@ function useCrud<T extends { id: string }, TInput>(
     }
   }
 
-  // true یعنی حذف موفق بود؛ صفحه‌هایی که بعد از حذف کار اضافه دارن (مثلاً
-  // بستن فرمِ ویرایش) باید به همین تکیه کنن، نه اینکه بی‌قید فرض کنن حذف شده
+  // Close dependent forms only after deletion succeeds.
   async function deleteItem(id: string): Promise<boolean> {
     try {
       await apiRef.current.remove(id);
@@ -109,8 +98,7 @@ function useCrud<T extends { id: string }, TInput>(
     loading,
     error,
     clearError: () => setError(null),
-    // نمایان می‌کنیم که آیا add/update اصلاً روی این api پیاده‌سازی شدن یا نه؛
-    // صفحه می‌تونه ازش استفاده کنه تا دکمه‌ی «افزودن»/«ویرایش» رو اصلاً رندر نکنه
+
     canAdd: !!api.add,
     canUpdate: !!api.update,
     addItem,

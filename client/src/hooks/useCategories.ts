@@ -5,10 +5,7 @@ import {
   type CategoryOption,
 } from '../api/categoryApi';
 
-// برای مصرف تو فرم‌های ساختِ گروه/آزمون: لیستِ دسته‌بندی‌های قابل‌انتخاب +
-// امکانِ پیشنهادِ یه دسته‌ی جدید (که idempotent‌ـه و بلافاصله تو همین
-// لیست ظاهر می‌شه، حتی قبل از تاییدِ ادمین - چون سرور Pendingِ خودِ همین
-// کاربر رو هم برمی‌گردونه)
+// Include the user's own pending category proposals in selectable categories.
 function useCategories() {
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [loading, setLoading] = useState(true);

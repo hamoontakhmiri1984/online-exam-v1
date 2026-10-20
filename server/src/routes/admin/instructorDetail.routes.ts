@@ -13,9 +13,6 @@ import {
 } from '../../lib/adminPaging';
 import { loadCurrentPlans, loadInstructorStats } from '../../lib/adminStats';
 
-// mount: /admin/users/instructors/:instructorId  (فقط SuperAdmin - admin.ts)
-// هر زیرمسیر فقط دادهٔ همین مدرس را برمی‌گرداند؛ فیلتر مالکیت در where همهٔ
-// کوئری‌ها اعمال می‌شود (نه در UI)
 const router = Router({ mergeParams: true });
 
 function contains(q: string) {
@@ -36,7 +33,6 @@ router.use(
 
 router.use('/', instructorContentRoutes);
 
-// پروفایل و تایید: مشخصات، اشتراک فعلی، آمار و تاریخچهٔ اقدامات مدیر
 router.get(
   '/',
   asyncHandler(async (req, res) => {
@@ -114,7 +110,6 @@ router.get(
   })
 );
 
-// دانشجوهای یکتای این مدرس با گروه‌هایی از همین مدرس که در آن‌ها عضوند
 router.get(
   '/students',
   asyncHandler(async (req, res) => {
@@ -220,7 +215,7 @@ router.get(
     const [items, total] = await Promise.all([
       prisma.handout.findMany({
         where,
-        // fileUrl عمداً برنمی‌گردد (کلید storage است، نه لینک قابل‌استفاده)
+        // Do not expose storage keys as usable download URLs.
         select: {
           id: true,
           title: true,
@@ -315,7 +310,6 @@ router.get(
   })
 );
 
-// نتایج همهٔ آزمون‌های این مدرس در یک کوئری (بدون درخواست جدا برای هر آزمون)
 router.get(
   '/results',
   asyncHandler(async (req, res) => {
@@ -354,7 +348,6 @@ router.get(
   })
 );
 
-// اشتراک و پرداخت‌ها: تاریخچهٔ اشتراک (سقف ۵۰ ردیف) + پرداخت‌های صفحه‌بندی‌شده
 router.get(
   '/billing',
   asyncHandler(async (req, res) => {
@@ -371,7 +364,7 @@ router.get(
       }),
       prisma.payment.findMany({
         where,
-        // authority/refId داخلی درگاه‌اند و به UI مدیریتی نمی‌روند
+        // Internal payment authority/reference values are omitted from the admin response.
         select: {
           id: true,
           planId: true,

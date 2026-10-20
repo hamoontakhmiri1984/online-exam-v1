@@ -11,21 +11,13 @@ type CategorySelectProps = {
 const inputClassName =
   'border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-400 focus:ring-4 focus:ring-brand-50 dark:focus:ring-brand-900 transition';
 
-// جایگزینِ دراپ‌داونِ ثابتِ CATEGORIES قبلی. دسته‌بندی‌ها رو دینامیک از
-// سرور می‌گیره (GET /categories) و یه گزینه‌ی «افزودنِ دسته‌بندی جدید» هم
-// داره که inline یه اینپوت باز می‌کنه - دسته‌ی تازه‌پیشنهادی بلافاصله بعدِ
-// ثبت انتخاب می‌شه، حتی قبل از تاییدِ SuperAdmin (چون فقط خودِ همین مدرس
-// می‌بینتش، طبقِ منطقِ سرور)
 function CategorySelect({ value, onChange, label }: CategorySelectProps) {
   const { categories, loading, isProposing, addCategory, error, clearError } =
     useCategories();
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
 
-  // نکته: این کامپوننت داخل <form> فرم‌های ساخت بانک/گروه/آزمون رندر می‌شه؛
-  // <form> تو <form> تو HTML مجاز نیست (دکمه‌ی «افزودن» فرم بیرونی رو submit
-  // می‌کرد و صفحه رفرش می‌شد). برای همین اینجا form نداریم: دکمه type="button"
-  // ـه و Enter هم دستی مدیریت می‌شه
+  // This control lives inside a form; do not introduce a nested form.
   async function handleAdd() {
     if (isProposing || !newName.trim()) return;
     const created = await addCategory(newName);

@@ -60,8 +60,6 @@ router.post(
     const parsed = createQuestionSchema.safeParse(req.body);
     if (!parsed.success) throw badRequest(parsed.error.issues[0].message);
 
-    // محدودیت پلن فقط برای Instructor معنا داره - SuperAdmin معافه. چک و
-    // ساخت اتمیک‌ان (تراکنش پشت قفل مدرس - lib/quota.ts)
     const question = await withQuotaForRole(role, sub, 'questions', 1, (db) =>
       db.question.create({ data: { ...parsed.data, bankId: bank.id } })
     );
@@ -70,9 +68,6 @@ router.post(
   })
 );
 
-// ایمپورت دسته‌ای (اکسل) - همه‌ی سوال‌های بدنه یه‌جا به همین بانک اضافه
-// می‌شن. چک محدودیت پلن اینجا با count واقعی انجام می‌شه (نه count=1)،
-// چون ممکنه فایل بزرگ‌تر از ظرفیت باقی‌مونده باشه
 router.post(
   '/:bankId/questions/bulk',
   requireRole('Instructor'),
@@ -85,8 +80,7 @@ router.post(
     const parsed = bulkQuestionsSchema.safeParse(req.body);
     if (!parsed.success) throw badRequest(parsed.error.issues[0].message);
 
-    // ایمپورت دسته‌ای: کل دسته یا ساخته می‌شه یا هیچ‌کدوم (همون تراکنشِ
-    // چکِ سهمیه)؛ تایم‌اوت بلندتر چون فایل‌های بزرگ چند صد insert دارن
+    // Create the entire import batch in the quota-check transaction.
     const created = await withQuotaForRole(
       role,
       sub,
@@ -105,10 +99,6 @@ router.post(
   })
 );
 
-// ایمپورت از فایل اکسل/CSV - همون منطق bulk بالا رو مصرف می‌کنه، فقط ورودی
-// به‌جای JSON یه فایل multipart ـه که سمت سرور پارس می‌شه (lib/questionExcel).
-// ردیف‌های خراب کل فایل رو باطل نمی‌کنن: سوال‌های سالم ساخته می‌شن و لیست
-// خطاهای ردیف‌به‌ردیف هم تو پاسخ برمی‌گرده تا مدرس بفهمه کدوم سطر مشکل داشت.
 router.post(
   '/:bankId/questions/import-excel',
   requireRole('Instructor'),
@@ -124,7 +114,6 @@ router.post(
       next();
     });
   },
-  // xlsx/xls با امضای باینری، CSV با اعتبارسنجی متن و ساختار (بدون magic bytes)
   validateUploadedFile('spreadsheet'),
   asyncHandler(async (req, res) => {
     const { role, sub } = req.user!;
@@ -138,8 +127,6 @@ router.post(
 
     const { questions, errors } = parseQuestionsExcel(req.file.buffer);
 
-    // اگه هیچ ردیف سالمی نمونده (همه خطا داشتن)، چیزی ساخته نمی‌شه - فقط
-    // لیست خطاها برمی‌گرده تا مدرس فایل رو تصحیح کنه
     if (questions.length === 0) {
       return res.status(400).json({
         error: 'هیچ سوال معتبری تو فایل پیدا نشد',

@@ -1,28 +1,21 @@
-// منطقِ بدون‌وابستگی‌به‌React ذخیره‌ی خودکارِ پاسخ‌ها (تا جدا از UI قابل‌تست
-// باشه). useExamAutosave فقط یه لایه‌ی نازک دورشه.
-//
-// قرارداد:
-//  - حداکثر یک درخواست هم‌زمان؛ تغییرهای بین‌راهی جمع می‌شن و بعد از برگشتنِ
-//    درخواست، *آخرین* وضعیت فرستاده می‌شه
-//  - هر ذخیره یه revision صعودی داره؛ سرور قدیمی‌تر رو رد می‌کنه (saved=false)
-//  - خطای شبکه/سرور: dirty می‌مونه، وضعیت error می‌شه و با backoff تکرار می‌شه
-//  - خطای تعارض (۴۰۹: آزمون ثبت شده/زمان تموم شده): دیگه ذخیره نمی‌کنیم
+// Serialize writes and coalesce pending changes into the latest snapshot.
+// Revisions increase monotonically; retry failures with backoff and stop on 409.
 
 export type AutosaveStatus = 'idle' | 'unsaved' | 'saving' | 'saved' | 'error';
 
 export type AnswersMap = Record<string, number>;
 
 export type AutosaveController = {
-  // شروع/توقف: بعد از stop هیچ درخواستی نمی‌ره و نتیجه‌ی درخواست‌های در راه نادیده‌ست
+  // After stop, send no new writes and ignore in-flight responses.
   start(): void;
   stop(): void;
-  // آخرین پاسخ‌ها رو ثبت می‌کنه بدون این‌که ذخیره‌ای رو زمان‌بندی کنه (مثلاً seed اولیه)
+  // Seed answers without scheduling a write.
   setLatest(answers: AnswersMap): void;
-  // کاربر چیزی رو عوض کرده: dirty می‌شه و بعد از debounce ذخیره می‌شه
+
   markChanged(answers: AnswersMap): void;
-  // بی‌انتظار برای debounce همین الان بفرست (تب مخفی شد / اینترنت برگشت)
+
   flushNow(): void;
-  // دکمه‌ی «تلاش دوباره»
+
   retry(): void;
   raiseRevision(revision: number): void;
   getRevision(): number;
@@ -104,8 +97,7 @@ export function createAutosaveController(opts: Options): AutosaveController {
             revision = nextRevision;
             staleStreak = 0;
           } else {
-            // سرور نسخه‌ی جدیدتر/هم‌شماره داره؛ شمارنده رو جلو می‌بریم و آخرین
-            // وضعیت همین کلاینت رو دوباره می‌فرستیم
+            // Advance past the server revision before resending the latest local answers.
             revision = Math.max(revision, result.revision);
             dirty = true;
             staleStreak += 1;
@@ -155,7 +147,7 @@ export function createAutosaveController(opts: Options): AutosaveController {
       latest = answers;
       if (stopped) return;
       dirty = true;
-      // اگه خطا داریم، وضعیت خطا می‌مونه تا ذخیره‌ی موفق
+      // Keep the error visible until a save succeeds.
       if (status !== 'error') setStatus('unsaved');
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {

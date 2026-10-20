@@ -129,13 +129,6 @@ export function deleteBankQuestion(
   });
 }
 
-// ---------------------------------------------------------------------------
-// ایمپورت از اکسل - سرور خودش فایل رو پارس می‌کنه (lib/questionExcel.ts سمت
-// سرور)، پس اینجا فقط فایل رو multipart می‌فرستیم (apiMultipartRequest).
-// دانلود باینری تمپلیت با apiRequest (که JSON فرض می‌کنه) جور در نمیاد و
-// مستقیم fetch می‌زنه.
-// ---------------------------------------------------------------------------
-
 export type BankQuestionImportError = {
   row: number;
   message: string;
@@ -152,7 +145,6 @@ export function importBankQuestionsFromExcel(
 ): Promise<BankQuestionImportResult> {
   const formData = new FormData();
   formData.append('file', file);
-  // multipart: از apiMultipartRequest (refresh مشترک + یک بار retry بعد از 401)
   return apiMultipartRequest<BankQuestionImportResult>(
     `/banks/${bankId}/questions/import-excel`,
     formData,
@@ -160,8 +152,7 @@ export function importBankQuestionsFromExcel(
   );
 }
 
-// فایل رو مستقیم دانلود می‌کنه (به‌جای برگردوندنِ URL) چون این مسیر نیاز به
-// هدرِ Authorization داره - یه <a href> ساده نمی‌تونه هدر بفرسته
+// Download with Authorization rather than navigating to an unauthenticated URL.
 export async function downloadBankQuestionTemplate(): Promise<void> {
   const token = getAuthToken();
   const headers: Record<string, string> = {};

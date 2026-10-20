@@ -10,13 +10,12 @@ export function getCurrentUser(): User | null { return currentUser; }
 export function subscribeToAuth(listener: AuthListener): () => void { authListeners.add(listener); return () => { authListeners.delete(listener); }; }
 function notifyAuthListeners(): void { authListeners.forEach((listener) => listener(currentUser)); }
 export function setCurrentUser(user: User | null): void { currentUser = user; notifyAuthListeners(); }
-// پاسخ ورود فقط فیلدهای پایه را دارد؛ جزئیات پروفایل (مثل تصویر) را یک‌بار از /auth/me می‌گیریم.
-// bootstrapSession خودش همین /me را گرفته و hydrate:false می‌دهد.
+// Use /auth/me for profile details; retain the login response if hydration fails.
 async function hydrateCurrentUser(): Promise<void> {
   try {
     const me = await apiRequest<MeResponse>('/auth/me');
     if (currentUser?.id === me.id) setCurrentUser(userFromMe(me));
-  } catch { /* همان اطلاعات پاسخ ورود می‌ماند */ }
+  } catch {  }
 }
 export function applySession(user: User, accessToken: string, options: { hydrate?: boolean } = {}): void {
   setCurrentUser(user); setAuthToken(accessToken); connectSocket(getAuthToken, reason => { clearSession(); window.location.href = sessionLogoutUrl(reason); });
@@ -29,8 +28,7 @@ export type BootstrapResult =
   | { status: 'anonymous' }
   | { status: 'unavailable' };
 
-// فقط وقتی سرور صریحاً بگوید نشست معتبر نیست (۴۰۱/۴۰۳) کاربر مهمان حساب می‌شود.
-// قطعی شبکه، ۵xx، ۴۲۹ و ... یعنی «نامعلوم» و نباید به لاگین هدایت کند.
+// Only an explicit auth rejection ends the session; transport failures remain retryable.
 export async function bootstrapSession(): Promise<BootstrapResult> {
   const outcome = await refreshSession();
   if (outcome.status === 'expired') { clearSession(); return { status: 'anonymous' }; }

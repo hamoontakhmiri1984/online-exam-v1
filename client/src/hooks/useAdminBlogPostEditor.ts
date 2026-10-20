@@ -8,13 +8,10 @@ import {
 } from '../api/blogApi';
 import { ApiError } from '../lib/apiClient';
 
-// همون قاعده‌ی سمت سرور (server/src/validation/blogSchemas.ts) - فقط
-// حروف/عدد انگلیسیِ کوچک و خط‌تیره
+// Keep slug rules aligned with server validation.
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-// «عنوان فارسی/انگلیسی» -> یه اسلاگِ پیشنهادی؛ کاربر می‌تونه بعداً خودش
-// دستی ویرایشش کنه (برای همین auto-slug فقط وقتی فعاله که کاربر هنوز
-// دستی چیزی تو فیلدِ اسلاگ ننوشته)
+// Suggest a slug only until the user edits it manually.
 function slugify(title: string): string {
   return title
     .trim()
@@ -43,10 +40,7 @@ function useAdminBlogPostEditor(postId: string | undefined) {
 
   useEffect(() => {
     if (!postId) return;
-    // اگه همین الان پستی که تو state داریم خودِ همون id ـه (مثلاً
-    // بلافاصله بعدِ ساختِ پستِ جدید، وقتی ریدایرکت به /blog-posts/:id
-    // این افکت رو دوباره اجرا می‌کنه) نیازی به fetch دوباره و
-    // نمایشِ Spinner نیست - داده از قبل موجوده
+    // Reuse the newly saved post after navigation instead of fetching it again.
     if (post && post.id === postId) return;
     setLoading(true);
     getBlogPostById(postId)
@@ -83,7 +77,6 @@ function useAdminBlogPostEditor(postId: string | undefined) {
     return null;
   }
 
-  // برمی‌گردونه: پستِ ذخیره‌شده (موفق) یا null (خطا/نامعتبر)
   async function handleSave(
     nextPublished?: boolean
   ): Promise<BlogPostAdmin | null> {

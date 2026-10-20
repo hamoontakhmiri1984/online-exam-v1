@@ -43,7 +43,6 @@ export default function usePracticeAnswer(
     try {
       sessionStorage.setItem(key, JSON.stringify(request.current));
     } catch {
-      /* memory still protects retries */
     }
     try {
       const result = await answerPractice(
@@ -58,7 +57,6 @@ export default function usePracticeAnswer(
       try {
         sessionStorage.removeItem(key);
       } catch {
-        /* harmless replay returns the same result */
       }
     } catch (e) {
       const rejected =
@@ -68,7 +66,6 @@ export default function usePracticeAnswer(
         try {
           sessionStorage.removeItem(key);
         } catch {
-          /* storage disabled */
         }
       }
       setUncertain(!rejected);

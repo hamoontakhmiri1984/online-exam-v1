@@ -1,4 +1,3 @@
-// server/src/lib/otp.ts
 import bcrypt from 'bcrypt';
 import { randomInt } from 'node:crypto';
 
@@ -158,9 +157,7 @@ export async function verifyOtp({
   };
 }
 
-// برای مسیرهایی که نباید وجود/عدم وجود حساب رو از روی زمان پاسخ لو بدن:
-// وقتی حسابی نیست، هزینه‌ی ساخت کد (hash) رو بی‌اثر خرج می‌کنه تا زمان پاسخ
-// با حالت «حساب هست» هم‌اندازه بمونه
+// Perform equivalent hash work when the account is absent to reduce timing leakage.
 export async function simulateOtpCreationCost(): Promise<void> {
   await bcrypt.hash(generateNumericCode(OTP_LENGTH), SALT_ROUNDS);
 }

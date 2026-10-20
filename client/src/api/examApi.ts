@@ -6,20 +6,13 @@ export type Exam = {
   id: string;
   title: string;
   category: Category;
-  groupIds: string[]; // این آزمون به کدوم گروه(ها) تعلق داره - همینا تعیین می‌کنن کی می‌بینتش
-  date: string; // ISO date string
+  groupIds: string[];
+  date: string;
   participants: number;
   status: 'draft' | 'completed' | 'upcoming';
   durationMinutes: number;
   allowReview: boolean;
 };
-
-// شکل خروجی سرور (server/src/routes/exams.ts -> serializeExam) عمداً دقیقاً
-// همین Exam ـه، برای همین توابع خوندن فقط wrapper نازک دور apiRequest ـن.
-// تنها نکته: سمت نوشتن (create/update)، سرور اسم فیلد تاریخ رو
-// `scheduledAt` می‌خواد نه `date` (server/src/validation/examSchemas.ts) -
-// برای همین قبل از ارسال map می‌کنیم. فیلدهای participants/status هم
-// سمت سرور محاسبه‌شدنی‌ان (نه قابل نوشتن)، پس لازم نیست بفرستیمشون.
 
 type ExamWriteBody = {
   title: string;
@@ -77,12 +70,12 @@ export function deleteExam(id: string): Promise<void> {
   return apiRequest<void>(`/exams/${id}`, { method: 'DELETE' });
 }
 
-// Draft → Published. سرور اگه آزمون هنوز سوال نداشته باشه 400 برمی‌گردونه
+// Publishing requires at least one question.
 export function publishExam(id: string): Promise<Exam> {
   return apiRequest<Exam>(`/exams/${id}/publish`, { method: 'POST' });
 }
 
-// Published → Draft. سرور اگه دانشجویی از قبل شروع کرده باشه 400 برمی‌گردونه
+// Unpublishing is forbidden once an attempt starts.
 export function unpublishExam(id: string): Promise<Exam> {
   return apiRequest<Exam>(`/exams/${id}/unpublish`, { method: 'POST' });
 }

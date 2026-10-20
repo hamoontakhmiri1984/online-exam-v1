@@ -14,7 +14,6 @@ type Props = {
   busy?: boolean;
   identifier: string;
   onIdentifierChange: (value: string) => void;
-  /** شناسه‌ی معتبر و نرمال‌شده رو تحویل می‌ده */
   onContinue: (normalizedIdentifier: string) => void;
   onSuccess: (completed: boolean) => void;
 };
@@ -34,14 +33,12 @@ function IdentifierStep({
   function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
     onIdentifierChange(event.target.value);
 
-    // با شروع اصلاح، خطای قبلی پاک می‌شه
     if (error) {
       setError('');
     }
   }
 
   function handleBlur() {
-    // قبل از اولین ارسال، روی فیلد خالی خطا نشون نمی‌دیم
     if (!identifier.trim() && !submitted) {
       return;
     }

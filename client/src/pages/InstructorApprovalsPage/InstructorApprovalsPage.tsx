@@ -32,7 +32,6 @@ function InstructorApprovalsPage() {
     handleReject,
   } = useInstructorApprovals();
 
-  // تو تب «ردشده» هم دکمه‌ی تایید هست تا ردِ اشتباهی قابل‌برگشت باشه
   const showActions = status !== 'Approved';
 
   return (

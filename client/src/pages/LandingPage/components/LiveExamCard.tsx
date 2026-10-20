@@ -54,8 +54,7 @@ function LiveExamCard() {
 
   return (
     <div className="relative w-full max-w-sm rounded-3xl border border-gray-100 bg-white shadow-2xl shadow-brand-600/10 dark:border-gray-800 dark:bg-gray-900">
-      {/* نوار بالای کارت به سبک پنجره‌ی مرورگر - کارت رو از یه div ساده به
-          یه «اسکرین‌شات زنده‌ی محصول» تبدیل می‌کنه */}
+
       <div className="flex items-center justify-between rounded-t-3xl border-b border-gray-100 px-5 py-3 dark:border-gray-800">
         <div className="flex gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full bg-gray-200 dark:bg-gray-700" />

@@ -5,13 +5,10 @@ import { prisma } from './prisma';
 import { notifyUser } from './notifications';
 import { FINISH_GRACE_MS } from './examTiming';
 
-// ثابتِ مهلت ارسال حالا تو examTiming.ts تعریف می‌شه (تا بدون کشیدنِ prisma
-// قابل import و تست باشه)؛ اینجا re-export می‌شه که importهای قبلی نشکنن
 export { FINISH_GRACE_MS };
 
 export type AnswersMap = Record<string, number>;
 
-// answers تو دیتابیس Json ـه؛ قبل از نمره‌دادن به یه map سالم تبدیلش می‌کنیم
 export function sanitizeAnswers(raw: unknown): AnswersMap {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
   const out: AnswersMap = {};
@@ -23,9 +20,7 @@ export function sanitizeAnswers(raw: unknown): AnswersMap {
   return out;
 }
 
-// finalize اتمیک: فقط اولین کسی که finishedAt رو از null عوض کنه برنده‌ست
-// (won: true). درخواست/sweep دوم فقط نتیجه‌ی ثبت‌شده رو می‌بینه (won: false)
-// و نباید اعلان دوباره بفرسته
+// Only the winning atomic finalizer may emit notifications.
 export async function finalizeAttempt(input: {
   attemptId: string;
   examId: string;
@@ -89,8 +84,7 @@ export async function notifyInstructorsAboutFinish(attempt: {
   );
 }
 
-// attempt‌هایی که وقتشون تموم شده (+ مهلت) ولی هیچ‌وقت finish نشدن (قطعی
-// نت/بستن مرورگر) با جواب‌های autosave‌شده بسته می‌شن
+// Finalize abandoned attempts using saved answers after the grace period.
 export async function finalizeExpiredAttempts(
   opts: { examId?: string; studentId?: string; limit?: number } = {}
 ): Promise<number> {
@@ -122,8 +116,6 @@ export async function finalizeExpiredAttempts(
   return finalized;
 }
 
-// sweep دوره‌ای برای attempt‌های رهاشده - چند instance هم‌زمان اجرا بشن مشکلی
-// نیست چون finalizeAttempt اتمیکه
 export function startAttemptSweeper(intervalMs = 60_000) {
   return periodicTask(finalizeExpiredAttempts, intervalMs, error => logEvent('error', 'attempt_sweep_failed', error));
 }

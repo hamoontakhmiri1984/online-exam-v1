@@ -7,15 +7,11 @@ import Reveal, { RevealGroup, RevealItem } from '../../../components/motion/Reve
 import { motion } from 'framer-motion';
 
 type NewsProps = {
-  // خروجیِ NewsSectionForm (پنل ادمین -> /site-content) - فقط عنوان و
-  // زیرعنوان؛ خودِ کارت‌ها از جدیدترین پست‌های منتشرشده‌ی بلاگ میان
   data?: Record<string, unknown>;
 };
 
 type NewsCard = { key: string; slug: string | null; date: string; title: string; excerpt: string };
 
-// وقتی هنوز هیچ پستی تو بلاگ منتشر نشده، به‌جای بخشِ خالی همینا نشون داده
-// می‌شن (slug=null یعنی کارت کلیک‌پذیر نیست - پستِ واقعی‌ای پشتش نیست)
 const FALLBACK_ITEMS: NewsCard[] = [
   {
     key: 'fallback-1',
@@ -64,7 +60,6 @@ function News({ data }: NewsProps) {
         if (!cancelled) setPosts(res);
       })
       .catch(() => {
-        // silent - همون FALLBACK_ITEMS نشون داده می‌شه
       });
     return () => {
       cancelled = true;

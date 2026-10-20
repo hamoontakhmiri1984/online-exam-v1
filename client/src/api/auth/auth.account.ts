@@ -9,7 +9,6 @@ export async function getConnectedAccountsStatus(): Promise<ConnectedAccountsRes
 export async function linkGoogleAccount(idToken: string): Promise<ConnectedAccountsResult> { try { const data = await apiRequest<MeResponse & ConnectedAccountsStatus>('/auth/google/link', { method: 'POST', body: { idToken } }); return { status: 'success', googleLinked: data.googleLinked, hasPassword: data.hasPassword }; } catch (err) { return { status: 'error', message: messageOf(err) }; } }
 export async function unlinkGoogleAccount(): Promise<ConnectedAccountsResult> { try { const data = await apiRequest<MeResponse & ConnectedAccountsStatus>('/auth/google/unlink', { method: 'POST' }); return { status: 'success', googleLinked: data.googleLinked, hasPassword: data.hasPassword }; } catch (err) { return { status: 'error', message: messageOf(err) }; } }
 
-// تصویر پروفایل: سرور تصویر را اعتبارسنجی می‌کند (نوع واقعی، حجم ≤ ۵MB) و کاربر به‌روزشده را برمی‌گرداند
 export async function uploadAvatar(file: File): Promise<UpdateAvatarResult> {
   try {
     const formData = new FormData();
@@ -34,7 +33,7 @@ export async function removeAvatar(): Promise<UpdateAvatarResult> {
   }
 }
 
-// currentPassword فقط وقتی فرستاده می‌شود که حساب از قبل رمز دارد
+// Send currentPassword only for accounts that already have a password.
 export async function changePassword(currentPassword: string | undefined, newPassword: string): Promise<ChangePasswordResult> {
   try {
     await apiRequest<MeResponse>('/auth/me/password', { method: 'POST', body: { currentPassword, newPassword } });

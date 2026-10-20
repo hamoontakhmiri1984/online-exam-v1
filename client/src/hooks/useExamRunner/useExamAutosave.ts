@@ -11,17 +11,7 @@ import {
 
 export type { AutosaveStatus };
 
-// هر بار answers عوض می‌شه، بعد از یه مکث کوتاه (debounce) سمت سرور ذخیره
-// می‌شه - جلوی از دست رفتن پاسخ‌ها با رفرش/قطعی صفحه رو می‌گیره.
-//
-// چرا قبلاً پاسخ قدیمی می‌تونست جای جدید بشینه: هر تغییر یه درخواست مستقل
-// می‌فرستاد و ترتیب رسیدنشون به سرور تضمین نبود. الان (autosaveController.ts):
-//  ۱) همیشه حداکثر *یک* درخواست در راهه؛ آخرین وضعیت یک‌جا فرستاده می‌شه
-//  ۲) هر ذخیره یه revision صعودی داره و سرور ذخیره‌ی قدیمی‌تر رو رد می‌کنه
-//  ۳) اگه ذخیره شکست بخوره، با backoff دوباره تلاش می‌شه و وضعیت به کاربر
-//     نشون داده می‌شه (نه بی‌صدا نادیده گرفته بشه)
-//
-// قبل از شروع یا بعد از پایان آزمون autosave نمی‌شه
+// The controller serializes writes and retries failures; autosave runs only during an active attempt.
 function useExamAutosave(
   examId: string,
   exam: Exam | null,
@@ -44,20 +34,18 @@ function useExamAutosave(
       initialRevision,
       save: (payload, revision) =>
         autosaveAnswers(examIdRef.current, payload, revision),
-      // ۴۰۹: آزمون قبلاً ثبت شده یا زمانش تموم شده - مسیر اصلیِ ثبت نمره
-      // finish ـه، نه autosave
+      // A 409 stops autosave; final grading belongs to finish.
       isConflict: (err) => err instanceof ApiError && err.status === 409,
       onStatus: setStatus,
     });
   }
   const controller = controllerRef.current;
 
-  // شمارنده از آخرین revision سرور ادامه پیدا می‌کنه (بعد از رفرش صفر نمی‌شه)
+  // Continue from the server revision after re-entry.
   useEffect(() => {
     controller.raiseRevision(initialRevision);
   }, [controller, initialRevision]);
 
-  // بعد از finish (یا قبل از start) هیچ ذخیره‌ای نباید بره
   useEffect(() => {
     if (hasStarted && !isFinished) controller.start();
     else controller.stop();
@@ -68,8 +56,7 @@ function useExamAutosave(
     controller.setLatest(answers);
     if (!hasStarted || isFinished || !exam) return;
 
-    // اولین باری که answers ست می‌شه (شروع تازه {} یا seed شده از resume)
-    // نیازی به ذخیره‌ی فوری نیست - چیزی تغییر نکرده
+    // Restoring the initial answer set does not require a write.
     if (isFirstRunRef.current) {
       isFirstRunRef.current = false;
       return;
@@ -78,8 +65,7 @@ function useExamAutosave(
     controller.markChanged(answers);
   }, [controller, answers, exam, hasStarted, isFinished]);
 
-  // تب مخفی شد (عوض کردن تب/قفل شدن گوشی) یا اینترنت برگشت: منتظر debounce
-  // نمی‌مونیم و همین الان ذخیره می‌کنیم
+  // Flush on page hide or network recovery without waiting for debounce.
   useEffect(() => {
     if (!hasStarted || isFinished) return;
 
@@ -98,7 +84,6 @@ function useExamAutosave(
     };
   }, [controller, hasStarted, isFinished]);
 
-  // دکمه‌ی «تلاش دوباره» - بدون انتظار برای backoff
   const retry = useCallback(() => controller.retry(), [controller]);
 
   return { status, retry };

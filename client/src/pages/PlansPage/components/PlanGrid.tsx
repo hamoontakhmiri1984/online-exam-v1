@@ -30,7 +30,6 @@ function PlanGrid({
   const currentIndex = subscription
     ? PLAN_ORDER.indexOf(subscription.planId)
     : -1;
-  // تا پایان دوره‌ی پلن پولیِ فعلی، رفتن به پلن پایین‌تر بسته‌ست (سرور هم رد می‌کنه)
   const hasActivePaidPlan =
     !!subscription && !isExpired && PLANS[subscription.planId].price > 0;
 

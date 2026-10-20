@@ -58,8 +58,6 @@ function GroupsPage() {
       .catch(() => setAllStudents([]));
   }, []);
 
-  // GET /students already returns all students available to this instructor;
-  // eligibility must not depend on the current groups page or search.
   const students = allStudents;
 
   const [deleteTarget, setDeleteTarget] = useState<Group | null>(null);

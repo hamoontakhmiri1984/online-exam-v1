@@ -1,7 +1,6 @@
 type ToggleSwitchProps = {
   checked: boolean;
   onChange: () => void;
-  /** نام دسترس‌پذیر (screen reader) - چون خودِ دکمه متنی نداره */
   label: string;
 };
 

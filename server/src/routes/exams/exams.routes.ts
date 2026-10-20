@@ -21,10 +21,6 @@ import {
 const router = Router();
 router.use(requireAuth);
 
-// لیست آزمون‌ها بسته به نقش: SuperAdmin همه، Instructor فقط آزمون‌هایی که
-// روی حداقل یکی از گروه‌های خودشه، Student فقط آزمون‌هایی که عضو حداقل
-// یکی از گروه‌هاشه - دقیقاً هم‌خانواده‌ی همون منطقی که groups.ts برای
-// لیست گروه‌ها داره
 router.get(
   '/',
   asyncHandler(async (req, res) => {
@@ -81,8 +77,6 @@ router.post(
 
     await assertOwnsAllGroups(parsed.data.groupIds, role, sub);
 
-    // محدودیت پلن فقط برای Instructor معنا داره؛ چک و ساخت اتمیک‌ان (یه
-    // تراکنش پشت قفل مدرس - lib/quota.ts)
     const exam = await withQuotaForRole(role, sub, 'activeExams', 1, (db) =>
       db.exam.create({
         data: {
@@ -119,8 +113,6 @@ router.put(
     const parsed = updateExamSchema.safeParse(req.body);
     if (!parsed.success) throw badRequest(parsed.error.issues[0].message);
 
-    // قواعد ویرایش (مالکیت گروه، زمان گذشته، قفل فیلدها بعد از شروع،
-    // سهمیه‌ی activeExams) داخل exams.service.ts هستن
     const exam = await updateExam(
       req.params.id,
       role,
@@ -133,10 +125,6 @@ router.put(
   })
 );
 
-// Draft → Published: بعد از این دیگه دانشجوهای گروه‌های وصل‌شده می‌تونن
-// ببینینش (البته هنوز تابع timing-gate رو scheduledAt هم سرجاشه). قبل از
-// publish حداقل باید یه سوال داشته باشه - یه آزمون خالیِ published معنایی
-// نداره و دانشجو رو وسط اجرا با صفحه‌ی خالی روبه‌رو می‌کنه
 router.post(
   '/:id/publish',
   requireRole('Instructor'),
@@ -170,11 +158,6 @@ router.post(
   })
 );
 
-// Published → Draft: برعکسِ publish. اگه حتی یه دانشجو هم آزمون رو شروع
-// کرده باشه (چه هنوز در حالِ انجام چه تمام‌شده)، اجازه نمی‌دیم - چون
-// loadAccessibleExam دسترسیِ دانشجو رو منوطِ به Published بودنه؛ اگه وسطِ
-// آزمونِ یه دانشجو status رو Draft کنیم، همون درخواستِ finish بعدیش با
-// forbidden رد می‌شه و جوابش برای همیشه گم می‌شه
 router.post(
   '/:id/unpublish',
   requireRole('Instructor'),
@@ -198,8 +181,7 @@ router.post(
       );
     }
 
-    // قفل مشترک با start: اگه دانشجویی بین چک بالا و این update شروع کرده
-    // باشه، اینجا (بعد از قفل) دیده می‌شه و لغو انتشار رد می‌شه
+    // Check attempts under the same exam lock used by start.
     const updated = await withExamWriteLock(
       exam.id,
       async (tx, { attemptCount }) => {

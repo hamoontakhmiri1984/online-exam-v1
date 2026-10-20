@@ -4,13 +4,9 @@ import Reveal, { RevealGroup, RevealItem } from '../../../components/motion/Reve
 type Pillar = { icon: string; title: string; description: string };
 
 type AboutProps = {
-  // خروجیِ AboutSectionForm (پنل ادمین -> /site-content)
   data?: Record<string, unknown>;
 };
 
-// همون سه ستونِ پیش‌فرضِ قبلی - وقتی ادمین هنوز چیزی ذخیره نکرده همینا
-// دیده می‌شن (آیکون‌هاشون از همون iconRegistry ـه که فرم ادمین استفاده
-// می‌کنه: Zap/ShieldCheck/Headphones)
 const DEFAULT_PILLARS: Pillar[] = [
   {
     icon: 'Zap',

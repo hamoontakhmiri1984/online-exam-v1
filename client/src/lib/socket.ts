@@ -1,7 +1,4 @@
-// اتصال سوکت به بک‌اند - فعلاً فقط برای شنیدن رویداد force-logout (وقتی یه
-// نشست دیگه با همین حساب باز می‌شه، سرور همین سوکت رو قطع می‌کنه). اتصال
-// realtime نوتیفیکیشن‌های واقعی (notificationApi.ts) هنوز فاز جدایی داره
-// و به این فایل ربطی نداره.
+
 import { io, type Socket } from 'socket.io-client';
 
 const SOCKET_URL: string =
@@ -10,10 +7,7 @@ const SOCKET_URL: string =
 
 let socket: Socket | null = null;
 
-// وقتی سرور نتونه نشست رو چک کنه (مخزن نشست موقتاً قطعه) handshake رو با
-// 'unavailable' رد می‌کنه. socket.io تو رد شدنِ handshake توسط middleware
-// خودکار reconnect نمی‌کنه، پس اینجا با backoff دستی دوباره وصل می‌شیم.
-// بقیه‌ی خطاها ('unauthorized'، 'session-expired') قطعی‌ان و تلاش مجدد ندارن
+// Retry unavailable session checks without treating them as logout.
 const RETRY_BASE_MS = 2_000;
 const RETRY_MAX_MS = 30_000;
 let retryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -25,9 +19,7 @@ function clearRetry(): void {
   retryAttempt = 0;
 }
 
-// getToken رو به‌عنوان تابع می‌گیریم نه یه مقدار ثابت - چون اگه سوکت قطع و
-// دوباره وصل بشه (مثلاً بعد از قطعی موقت شبکه)، باید همیشه آخرین
-// accessToken معتبر رو بفرسته، نه اونی که موقع اولین اتصال گرفته بود
+// Read the current token on each reconnect.
 export function connectSocket(
   getToken: () => string | null,
   onForceLogout: (reason?: string) => void
@@ -52,7 +44,7 @@ export function connectSocket(
     retryAttempt += 1;
     retryTimer = setTimeout(() => {
       retryTimer = null;
-      // فقط اگه هنوز همین سوکت فعاله (وسط راه disconnect/جایگزین نشده)
+      // Ignore events from a disconnected or replaced socket.
       if (socket === current) current.connect();
     }, delay);
   });

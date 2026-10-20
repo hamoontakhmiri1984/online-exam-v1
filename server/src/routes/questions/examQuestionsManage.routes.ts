@@ -1,4 +1,3 @@
-// server/src/routes/questions/examQuestionsManage.routes.ts
 import { Router } from 'express';
 
 import { requireAuth, requireRole } from '../../middleware/requireAuth';
@@ -43,8 +42,7 @@ router.post(
       throw badRequest(parsed.error.issues[0].message);
     }
 
-    // چک سهمیه داخل همون تراکنشِ ساخت (پشت قفل مدرس) انجام می‌شه، نه جدا
-    // قبلش - وگرنه درخواست‌های موازی همه از سقف رد می‌شدن (lib/quota.ts)
+    // Quota checks and creation must share the instructor-locked transaction.
     const quotaGuard =
       role === 'Instructor'
         ? await prepareQuotaGuard(sub, 'questions')

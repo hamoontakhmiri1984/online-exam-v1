@@ -35,10 +35,7 @@ import { env } from '../config/env';
 
 const router = Router();
 
-// این روت باید قبل از requireAuth بیاد: زرین‌پال بعد از پرداخت خود مرورگرِ
-// کاربر رو (بدون هدر Authorization) به این آدرس ریدایرکت می‌کنه، پس نمی‌تونیم
-// بهش نیاز به لاگین‌بودن تحمیل کنیم. امنیتش از طریق authority (که فقط ما و
-// زرین‌پال می‌دونیم) + verify سمت سرور تامین می‌شه، نه از session کاربر.
+// Provider callbacks have no auth header; verify the payment with the provider instead.
 router.get(
   '/callback',
   asyncHandler(async (req, res) => {
@@ -55,7 +52,6 @@ router.get(
 
 router.use(requireAuth);
 
-// اشتراک فعلی خودِ مدرس - اگه ردیفی نداشته باشه، خودکار «رایگان» ساخته می‌شه
 router.get(
   '/me',
   requireRole('Instructor'),
@@ -65,8 +61,6 @@ router.get(
   })
 );
 
-// لیست اشتراک فعلیِ همه‌ی مدرس‌ها - فقط SuperAdmin (صفحه‌ی گزارش‌ها،
-// InstructorSubscriptionsTable)
 router.get(
   '/',
   requireRole('SuperAdmin'),
@@ -76,7 +70,6 @@ router.get(
   })
 );
 
-// مصرف فعلی مدرس (تعداد گروه/آزمون فعال/سوال) - برای نوار پیشرفت تو UI
 router.get(
   '/usage',
   requireRole('Instructor'),
@@ -86,7 +79,6 @@ router.get(
   })
 );
 
-// باقی‌مونده‌ی سهمیه‌ی هر بخش - قبل از ساخت گروه/آزمون/سوال ازش استفاده می‌شه
 router.get(
   '/limits/:type',
   requireRole('Instructor'),
@@ -105,9 +97,7 @@ router.get(
   })
 );
 
-// مدرس فقط می‌تونه با این روت مستقیم پلن رایگان رو انتخاب کنه (بدون درگاه
-// نیازی نیست). برای هر پلن پولی باید از /checkout بره - وگرنه هرکسی می‌تونست
-// بدون پرداخت واقعی، خودش رو مستقیم VIP کنه.
+// Direct plan selection is free-only; paid plans require verified checkout.
 router.post(
   '/select',
   requireRole('Instructor'),
@@ -128,9 +118,6 @@ router.post(
   })
 );
 
-// شروع فرآیند پرداخت. پلن رایگان همین‌جا مستقیم اعمال می‌شه (سازگار با
-// رفتار قبلی select)؛ پلن پولی یه لینک درگاه زرین‌پال برمی‌گردونه که کلاینت
-// باید کاربر رو بهش ریدایرکت کنه.
 router.post(
   '/checkout',
   requireRole('Instructor'),
@@ -153,10 +140,7 @@ router.post(
   })
 );
 
-// تمدید همون پلن فعلی مدرس - فقط برای پلن رایگان مستقیمه (اونم عملاً
-// بی‌اثره چون پلن رایگان endDate نداره). تمدید پلن پولی باید از /checkout
-// با همون planId انجام بشه، وگرنه یه مدرس می‌تونست پلن پولی‌ای که یه بار
-// (حتی به هر طریقی) گرفته رو تا ابد بدون پرداخت مجدد تمدید کنه.
+// Paid renewals must use checkout rather than extending access directly.
 router.post(
   '/renew',
   requireRole('Instructor'),
@@ -173,8 +157,6 @@ router.post(
   })
 );
 
-// تاریخچه‌ی کاملِ اشتراک‌های خودِ مدرس (نه فقط پلنِ فعلی) - هر ارتقا/تمدید
-// یه ردیفه
 router.get(
   '/me/history',
   requireRole('Instructor'),
@@ -184,7 +166,6 @@ router.get(
   })
 );
 
-// تاریخچه‌ی کاملِ پرداخت‌های خودِ مدرس - برای صفحه‌ی صورت‌حساب/رسید
 router.get(
   '/me/payments',
   requireRole('Instructor'),
@@ -194,9 +175,7 @@ router.get(
   })
 );
 
-// استرداد یه پرداخت - فقط SuperAdmin (بعد از هماهنگیِ دستی با مدرس برای
-// برگردوندنِ واقعیِ پول). دسترسیِ مدرس از همون لحظه قطع می‌شه (نه از پلنِ
-// قبلی، چون تاریخچه‌ی append-only معنیِ «قبلی» رو مبهم می‌کنه)
+// Record a manual refund and revoke associated access; the actual money transfer is external.
 router.post(
   '/:paymentId/refund',
   requireRole('SuperAdmin'),
@@ -206,8 +185,6 @@ router.post(
   })
 );
 
-// SuperAdmin یه پلن رو دستی به یه مدرس خاص اختصاص می‌ده (مثلاً بعد از
-// پرداخت آفلاین/کارت‌به‌کارت)
 router.post(
   '/assign',
   requireRole('SuperAdmin'),

@@ -1,6 +1,4 @@
-// فرصت اضافه بعد از پایان زمان برای ارسال جواب‌ها (تأخیر شبکه). بعد از این
-// مدت، جواب‌های ارسالی کلاینت نادیده گرفته می‌شن و فقط جواب‌های autosave‌شده
-// (تا همین مهلت) حساب می‌شن
+// After the submission grace period, grade only previously saved answers.
 export const FINISH_GRACE_MS = 30_000;
 
 type ExamWindow = {
@@ -8,31 +6,19 @@ type ExamWindow = {
   durationMinutes: number;
 };
 
-// شماره‌ی دقیقه‌ی یه زمان (کف‌شده) - برای مقایسه‌ی «هم‌دقیقه بودن»
 export const toMinute = (d: Date): number => Math.floor(d.getTime() / 60_000);
 
-// فرمِ ویرایش زمان رو تا دقیقه می‌فرسته، ولی scheduledAt ذخیره‌شده ممکنه ثانیه/
-// میلی‌ثانیه داشته باشه. اگه زمانِ درخواستی هم‌دقیقه با زمانِ فعلی باشه یعنی
-// «زمان عوض نشده» و همون مقدارِ دقیقِ فعلی حفظ می‌شه؛ وگرنه با ذخیره‌ی مقدارِ
-// جدیدِ هم‌دقیقه، پایانِ عمومیِ آزمون (getExamWindowEndMs) با expiresAt
-// attempt های قبلاً ثبت‌شده ناسازگار می‌شد
+// Preserve exact timestamps when the minute-precision form has not changed the schedule.
 export function resolveScheduledAt(current: Date, requested: Date): Date {
   return toMinute(requested) === toMinute(current) ? current : requested;
 }
 
-// پایان «عمومی» آزمون: آخرین لحظه‌ای که هر دانشجویی می‌تونه توش attempt جدید
-// بسازه. expiresAt همه‌ی attempt‌ها (بدون استثنا) از این لحظه دیرتر نمی‌شه،
-// چون POST /attempts/start اون رو min(now + duration, windowEnd) می‌ذاره
+// Every attempt deadline is capped by the shared exam window end.
 export function getExamWindowEndMs(exam: ExamWindow): number {
   return exam.scheduledAt.getTime() + exam.durationMinutes * 60_000;
 }
 
-// پاسخنامه (جواب صحیح سوال‌ها) فقط وقتی به دانشجو داده می‌شه که:
-//   ۱) آزمون اجازه‌ی مرور داشته باشه (allowReview)
-//   ۲) پایان عمومیِ آزمون + مهلت ارسال گذشته باشه
-// وگرنه دانشجویی که زودتر ثبت نهایی کرده می‌تونست پاسخنامه رو برداره و برای
-// دانشجوهایی که هنوز وسط آزمون‌ان بفرسته. شرطِ «attempt خودِ دانشجو تموم
-// شده» جداگونه (تو route) چک می‌شه
+// Release answers only after the shared exam window and grace period, with review enabled.
 export function isAnswerKeyReleased(
   exam: ExamWindow & { allowReview: boolean },
   nowMs: number = Date.now()
@@ -40,4 +26,3 @@ export function isAnswerKeyReleased(
   if (!exam.allowReview) return false;
   return nowMs >= getExamWindowEndMs(exam) + FINISH_GRACE_MS;
 }
-

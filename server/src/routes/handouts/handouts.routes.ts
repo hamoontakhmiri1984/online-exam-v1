@@ -71,7 +71,6 @@ router.get(
   })
 );
 
-// فقط مدرس جزوه می‌سازه (برای خودش) - همون تصمیم بانک سوال/گروه
 router.post(
   '/',
   requireRole('Instructor'),
@@ -86,15 +85,12 @@ router.post(
       throw forbidden('فایل انتخاب‌شده متعلق به تو نیست');
     }
 
-    // اگه به یه گروه خاص وصل می‌شه، باید گروه خودِ همین مدرس باشه - وگرنه
-    // یه مدرس می‌تونست با حدس‌زدن groupId جزوه رو به گروه یه مدرس دیگه بده
     if (groupId) {
       const group = await prisma.group.findUnique({ where: { id: groupId } });
       if (!group) throw notFound('گروه یافت نشد');
       if (group.instructorId !== sub) throw forbidden();
     }
 
-    // چک سهمیه و ساخت اتمیک (lib/quota.ts)
     const handout = await withQuotaLock(sub, 'handouts', 1, (db) =>
       db.handout.create({
         data: {
@@ -110,7 +106,7 @@ router.post(
       })
     );
 
-    // اعلان به دانشجوهای مخاطب - best-effort، جلوی موفقیت خودِ ساخت جزوه رو نمی‌گیره
+    // Notification delivery must not roll back a successful handout creation.
     notifyAudienceAboutHandout(handout).catch((err) =>
       logEvent('error', 'notifyAudienceAboutHandout failed:', err)
     );
@@ -158,8 +154,7 @@ router.put(
       }
     }
 
-    // فقط وقتی فایل واقعاً عوض شده (objectKey جدید اومده) فایل قدیمی رو از
-    // bucket پاک می‌کنیم - وگرنه فایل فعلی دست‌نخورده می‌مونه
+    // Delete the old object only when the stored object key changes.
     const replacingFile =
       Boolean(parsed.data.objectKey) &&
       parsed.data.objectKey !== handout.fileUrl;
@@ -181,9 +176,7 @@ router.put(
       },
     });
 
-    // deleteUnreferencedObjects فقط وقتی پاک می‌کنه که هیچ جزوه/پیوست/جلسه‌ی
-    // دیگه‌ای هنوز به همین کلید اشاره نکنه (قبلاً deleteObject مستقیم صدا
-    // زده می‌شد و ممکن بود فایلِ مشترک از زیر پای رکورد دیگه پاک بشه)
+    // Delete storage objects only after all database references are gone.
     if (replacingFile) {
       await deleteUnreferencedObjects([handout.fileUrl]);
     }
@@ -212,7 +205,6 @@ router.delete(
   })
 );
 
-// لینک موقت دانلود - بعد از چک دسترسی (مالک/SuperAdmin یا دانشجوی مجاز)
 router.get(
   '/:id/signed-url',
   asyncHandler(async (req, res) => {

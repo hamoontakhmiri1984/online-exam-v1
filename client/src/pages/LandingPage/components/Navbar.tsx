@@ -19,12 +19,8 @@ function Navbar() {
   const { isDark, toggleTheme } = useTheme();
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
 
-  // این لینک‌ها section هایی تو خودِ صفحه‌ی فرود ("/") ان. اگه از یه
-  // صفحه‌ی دیگه (مثلاً /blog) کلیک بشن، اول باید بریم "/" و بعد اسکرول
-  // کنیم - یه <a href="#features"> ساده رو صفحه‌ی فعلی هیچ #features ای
-  // نداره
   function handleNavLinkClick(event: React.MouseEvent, hash: string) {
-    if (location.pathname === '/') return; // اسکرولِ خودکارِ مرورگر کافیه
+    if (location.pathname === '/') return;
     event.preventDefault();
     navigate('/', { state: { scrollTo: hash } });
   }
@@ -36,7 +32,7 @@ function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/80 backdrop-blur-md dark:border-gray-800 dark:bg-surface-dark/80">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
-        {/* Logo */}
+
         <button
           type="button"
           onClick={() => navigate('/')}
@@ -46,7 +42,6 @@ function Navbar() {
           <Logo />
         </button>
 
-        {/* Desktop nav links */}
         <nav className="hidden items-center gap-8 md:flex">
           {NAV_LINKS.map((link) => (
             <a
@@ -61,7 +56,6 @@ function Navbar() {
           ))}
         </nav>
 
-        {/* Desktop actions */}
         <div className="hidden items-center gap-3 md:flex">
           <button
             type="button"
@@ -89,7 +83,6 @@ function Navbar() {
           </button>
         </div>
 
-        {/* Mobile toggle */}
         <button
           type="button"
           onClick={() => setIsMenuOpen((prev) => !prev)}
@@ -101,7 +94,6 @@ function Navbar() {
         </button>
       </div>
 
-      {/* Mobile menu */}
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div

@@ -19,9 +19,7 @@ export async function verifyPassword(
   return bcrypt.compare(plain, hash);
 }
 
-// وقتی شناسه‌ی واردشده اصلاً حسابی (یا رمزی) نداره، یه مقایسه‌ی bcrypt بی‌اثر
-// انجام می‌شه تا زمان پاسخ با حالت «حساب هست، رمز غلطه» یکی باشه و از روی
-// سرعتِ خطا نشه وجود حساب رو حدس زد
+// Perform a dummy bcrypt comparison for absent accounts or passwords.
 let dummyHash: Promise<string> | null = null;
 
 export async function verifyAgainstDummy(plain: string): Promise<void> {

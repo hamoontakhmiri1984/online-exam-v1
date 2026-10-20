@@ -8,9 +8,6 @@ const DEFAULT_TRUST_POINTS = [
 ];
 
 type HeroProps = {
-  // خروجیِ HeroSectionForm (پنل ادمین -> /site-content). تا وقتی ادمین
-  // چیزی ذخیره نکرده یا هنوز از سرور نرسیده (undefined) از مقادیرِ
-  // پیش‌فرضِ هاردکدِ زیر استفاده می‌کنیم
   data?: Record<string, unknown>;
 };
 
@@ -38,12 +35,12 @@ function Hero({ data }: HeroProps) {
 
   return (
     <section className="relative overflow-hidden">
-      {/* شکل تزئینی محو در پس‌زمینه، خیلی کم‌رنگ */}
+
       <div className="pointer-events-none absolute -top-24 -left-24 h-96 w-96 rounded-full bg-brand-600/10 blur-3xl dark:bg-brand-600/20 animate-drift" />
       <div className="pointer-events-none absolute top-32 right-0 h-72 w-72 rounded-full bg-accent-500/10 blur-3xl dark:bg-accent-500/10 animate-drift-slow" />
 
       <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-14 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-24">
-        {/* متن و دکمه‌ها */}
+
         <div>
           {title ? (
             <h1 className="animate-fade-slide-up text-4xl font-extrabold leading-[1.3] text-gray-900 dark:text-white sm:text-5xl">
@@ -91,7 +88,6 @@ function Hero({ data }: HeroProps) {
           </div>
         </div>
 
-        {/* کارت زنده‌ی آزمون */}
         <div className="stagger-2 animate-fade-slide-up flex justify-center md:justify-end">
           <LiveExamCard />
         </div>

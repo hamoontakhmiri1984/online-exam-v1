@@ -13,8 +13,7 @@ function useAdminSiteContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  // فقط section ای که همین الان داره ذخیره/آپلود می‌شه غیرفعال می‌مونه، نه
-  // کل صفحه - هم‌الگو با actioningId تو useAdminCategories
+
   const [savingSection, setSavingSection] = useState<SiteContentSection | null>(
     null
   );

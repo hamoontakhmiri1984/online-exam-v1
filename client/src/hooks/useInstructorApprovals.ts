@@ -12,11 +12,9 @@ function useInstructorApprovals() {
   const [instructors, setInstructors] = useState<AdminInstructor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // چون تایید/رد هرکدوم روی یه ردیف مشخص عمل می‌کنه، به‌جای یه لودینگ
-  // سراسری فقط همون دکمه‌ی همون ردیف غیرفعال می‌شه
+
   const [actioningId, setActioningId] = useState<string | null>(null);
-  // شماره‌ی آخرین درخواستِ لیست: جوابِ دیررسیده‌ی تبِ قبلی نباید لیستِ تبِ
-  // فعلی رو بازنویسی کنه (وگرنه دکمه‌ی «تایید» رو ردیفِ تبِ اشتباه می‌افته)
+  // Ignore responses from superseded tabs or requests.
   const requestIdRef = useRef(0);
 
   const load = useCallback(() => {
@@ -39,8 +37,6 @@ function useInstructorApprovals() {
     load();
   }, [load]);
 
-  // بعد از تایید/رد، ردیف از همون تب حذف می‌شه (چون وضعیتش دیگه با تب فعلی
-  // یکی نیست) - به‌جای رفرش کامل لیست از سرور
   async function handleApprove(id: string) {
     setActioningId(id);
     try {

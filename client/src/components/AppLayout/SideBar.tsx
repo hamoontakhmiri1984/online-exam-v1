@@ -64,7 +64,7 @@ function Sidebar({
   return (
     <>
       <LogoutDialog open={confirmLogout} onCancel={() => setConfirmLogout(false)} onConfirm={handleLogout} />
-      {/* پس‌زمینه‌ی تیره‌ی موبایل، فقط وقتی سایدبار بازه */}
+
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -83,7 +83,7 @@ function Sidebar({
           isCollapsed ? 'md:w-20' : 'md:w-64'
         } ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
-        {/* دکمه‌ی گرد جمع/باز کردن سایدبار — فقط دسکتاپ */}
+
         <button
           onClick={onToggleCollapse}
           title={isCollapsed ? 'باز کردن منو' : 'جمع کردن منو'}
@@ -96,7 +96,6 @@ function Sidebar({
           )}
         </button>
 
-        {/* اسکرول فقط همینجا محدود می‌شه، نه کل سایدبار */}
         <div className="flex h-full flex-col justify-between overflow-y-auto">
           <div>
             <div className="flex items-center justify-between px-5 pb-3 pt-6">

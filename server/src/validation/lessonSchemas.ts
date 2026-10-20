@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { objectKeySchema } from '../lib/objectKeys';
 
-// دقیقاً معادل VideoSource تو client/src/api/lessonApi.ts - objectKey همون
-// چیزیه که POST /uploads/video برمی‌گردونه (نه یه URL قابل‌دسترس مستقیم)
-// فقط لینک http/https پذیرفته می‌شه (جلوی javascript:/data: و ...). لینک بدون
-// scheme (مثل aparat.com/v/xxx که فرانت باهاش کار می‌کنه) با https:// کامل می‌شه.
+// Accept only HTTP(S) links; uploaded videos use private object keys.
 export const videoLinkSchema = z
   .string()
   .trim()
@@ -36,9 +33,6 @@ export const videoSourceSchema = z.discriminatedUnion('type', [
   }),
 ]);
 
-// جزوه/PDF - id اختیاریه چون موقع ساخت یه پیوست جدید (که هنوز تو دیتابیس
-// ردیف نداره) فقط از سرور آپلود، fileName/objectKey/fileSize میاد؛ id فقط
-// وقتی یه جلسه‌ی موجود رو serialize می‌کنیم برمی‌گرده (برای React key)
 export const attachmentSchema = z.object({
   id: z.string().optional(),
   fileName: z.string().min(1),
@@ -50,8 +44,6 @@ export const createSessionSchema = z.object({
   category: z.string().min(1),
   groupIds: z.array(z.string()).default([]),
   title: z.string().min(2),
-  // فرم کلاینت توضیحات رو اجباری نمی‌کنه (فقط عنوان و ویدیو)؛ قبلاً اینجا
-  // min(1) بود و ثبتِ جلسه‌ی بدون توضیح با 400 رد می‌شد
   description: z.string().trim().default(''),
   video: videoSourceSchema,
   attachments: z.array(attachmentSchema).default([]),

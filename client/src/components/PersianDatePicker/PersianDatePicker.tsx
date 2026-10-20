@@ -3,9 +3,7 @@ import { CalendarDays, ChevronRight, ChevronLeft } from 'lucide-react';
 import jalaali from 'jalaali-js';
 
 type PersianDatePickerProps = {
-  // مقدارِ ورودی/خروجی همیشه میلادیِ 'YYYY-MM-DD' ـه (همون چیزی که بقیه‌ی
-  // اپ - useExamFormModal، examApi و سرور - باهاش کار می‌کنن)؛ فقط نمایشش
-  // شمسیه. این‌جوری هیچ فایل دیگه‌ای (سرور، دیتابیس) لازم نیست عوض بشه.
+  // Values use Gregorian YYYY-MM-DD; only the display is Jalali.
   value: string;
   onChange: (value: string) => void;
   label?: string;
@@ -26,7 +24,6 @@ const MONTH_NAMES = [
   'اسفند',
 ];
 
-// هفته‌ی شمسی از شنبه شروع می‌شه
 const WEEKDAY_LABELS = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
 
 function pad2(n: number): string {
@@ -57,9 +54,7 @@ function todayJalali() {
   return jalaali.toJalaali(now.getFullYear(), now.getMonth() + 1, now.getDate());
 }
 
-// روزِ هفته‌ی روزِ اولِ یه ماهِ شمسیِ خاص، به شکلِ اندیسِ ستونِ تقویمِ ما
-// (۰=شنبه ... ۶=جمعه). new Date().getDay() جاوااسکریپتی ۰=یکشنبه می‌ده،
-// برای همین با (jsDay + 1) % 7 می‌چرخونیمش به مبنای «شنبه = ۰»
+// Rotate JavaScript weekday indices so Saturday is column zero.
 function firstWeekdayOfJalaliMonth(jy: number, jm: number): number {
   const { gy, gm, gd } = jalaali.toGregorian(jy, jm, 1);
   const jsDay = new Date(gy, gm - 1, gd).getDay();
@@ -76,8 +71,6 @@ function PersianDatePicker({ value, onChange, label }: PersianDatePickerProps) {
   const [viewMonth, setViewMonth] = useState(() => (selected ?? todayJalali()).jm);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // اگه مقدار از بیرون عوض شد (مثلاً موقع باز کردنِ فرمِ ویرایشِ یه آزمونِ
-  // موجود)، ماهِ نمایش‌داده‌شده رو هم باهاش هماهنگ کن
   useEffect(() => {
     const jalaliValue = gregorianStringToJalali(value);
     if (jalaliValue) {
@@ -86,9 +79,6 @@ function PersianDatePicker({ value, onChange, label }: PersianDatePickerProps) {
     }
   }, [value]);
 
-  // بستنِ پیکر با کلیکِ بیرون یا Escape - برخلافِ input[type=date] بومیِ
-  // مرورگر (که رفتارِ باز/بسته‌شدنش دستِ خودمون نبود و همینم شکایتِ اصلی
-  // بود)، این‌جا کاملاً خودمون کنترلش می‌کنیم
   useEffect(() => {
     if (!isOpen) return;
 

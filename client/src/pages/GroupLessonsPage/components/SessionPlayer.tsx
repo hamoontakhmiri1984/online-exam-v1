@@ -12,30 +12,20 @@ type SessionPlayerProps = {
   session: LessonSession | null;
 };
 
-// برای نمایش حجم فایل کنار اسمش (مثلاً «۲.۴ مگابایت») به‌جای عدد خام بایت
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} بایت`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} کیلوبایت`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} مگابایت`;
 }
 
-// ویدیوی آپلودی و جزوه/PDF دیگه یه URL دائمی قابل‌دسترس نیستن (فایل تو
-// bucket خصوصیه) - این کامپوننت هر بار که واقعاً می‌خواد نشونشون بده،
-// از سرور یه signed URL موقت (چند دقیقه‌ای) می‌گیره.
 function SessionPlayer({ session }: SessionPlayerProps) {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [videoLoading, setVideoLoading] = useState(false);
 
-  // پیوستی که الان داره براش signed URL گرفته می‌شه (برای غیرفعال کردن
-  // بقیه‌ی دکمه‌ها موقع دانلود و نشون دادن اسپینر روی همون یکی)
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
 
-  // وابستگی به خودِ آبجکت session نیست، چون با هر تغییرِ لیست (مثلاً ویرایشِ
-  // یه جلسه‌ی دیگه) رفرنسش عوض می‌شد و signed URL دوباره گرفته می‌شد و
-  // ویدیوی در حال پخش از اول لود می‌شد. فقط وقتی جلسه یا فایلِ ویدیوش عوض
-  // بشه لینک جدید لازمه.
   const sessionId = session?.id;
   const uploadedVideoKey =
     session?.video.type === 'upload' ? session.video.objectKey : null;
@@ -82,8 +72,6 @@ function SessionPlayer({ session }: SessionPlayerProps) {
     setDownloadingId(attachmentId);
     try {
       const { url } = await getAttachmentSignedUrl(attachmentId);
-      // signed URL خودش موقتیه، پس نمی‌ذاریمش تو href استاتیک - همینجا که
-      // تازه گرفتیمش یه لینک موقت می‌سازیم و کلیکش می‌زنیم تا دانلود شروع بشه
       const link = document.createElement('a');
       link.href = url;
       link.download = fileName;

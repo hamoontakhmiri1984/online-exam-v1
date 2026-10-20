@@ -3,20 +3,10 @@ import { verifyCaptcha } from './captcha';
 import { AppError } from './errors';
 import { durationToSeconds } from './duration';
 
-// محافظت از «ارسال OTP» (که هزینه‌ی واقعی/پیامکی داره) در برابر SMS pumping
-// و بمباران یک شماره/ایمیل.
-//
-// otpSendLimiter (تو rateLimiters.ts) فقط کلید `ip:identifier` رو محدود
-// می‌کنه؛ یعنی یه اسکریپت از یه IP می‌تونه با identifier های مختلف نامحدود
-// OTP بفرسته. این گارد سه لایه‌ی مکمل اضافه می‌کنه:
-//   ۱) سقف سخت per-IP (بالا، چون تو مدرسه/کلاس چندین دانشجو پشت یه IP ان)
-//   ۲) کپچای تطبیقی: بعد از چند درخواست از یه IP، کپچا اجباری می‌شه
-//   ۳) سقف per-identifier مستقل از IP (جلوی بمباران یه شماره از IP های مختلف)
-
 const WINDOW = '1h';
-const IP_CAPTCHA_AFTER = 5; // از درخواست ششم به بعد در هر ساعت، کپچا لازمه
-const IP_HARD_LIMIT = 60; // سقف مطلق درخواست OTP در ساعت برای یه IP
-const IDENTIFIER_HARD_LIMIT = 8; // سقف OTP در ساعت برای یه ایمیل/شماره
+const IP_CAPTCHA_AFTER = 5;
+const IP_HARD_LIMIT = 60;
+const IDENTIFIER_HARD_LIMIT = 8;
 
 const TOO_MANY_MESSAGE =
   'تعداد درخواست کد بیش از حد مجازه. بعداً دوباره تلاش کن.';
@@ -35,7 +25,6 @@ async function bump(key: string): Promise<number> {
 
 export type OtpSendGuardInput = {
   ip: string;
-  // شناسه‌ی نرمال‌شده (خروجی resolveIdentifier)، نه ورودی خام کاربر
   identifier: string;
   captchaId?: string;
   captchaAnswer?: string;
@@ -73,8 +62,7 @@ export async function assertOtpSendAllowed(
     }
   }
 
-  // عمداً بعد از چک کپچا: درخواستی که کپچاش غلطه نباید سهمیه‌ی
-  // identifier قربانی رو مصرف کنه (وگرنه می‌شه حساب کسی رو قفل کرد)
+  // Validate captcha before spending the target identifier's OTP allowance.
   const identifierCount = await bump(
     identifierKey(input.identifier),
   );
@@ -84,10 +72,7 @@ export async function assertOtpSendAllowed(
   }
 }
 
-// تأیید «کد ورود» (LOGIN): وقتی ارسال کد برای این IP کپچا می‌خواد، تأیید کد هم
-// باید با کپچای درست همراه باشه. بدون این، کپچای مرحله‌ی ارسال با یه بار
-// حل‌شدن بی‌اثر می‌شد و کد ۶رقمی بدون هیچ کپچایی قابل امتحان بود.
-// شمارنده فقط خونده می‌شه (نه افزایش)، پس خودِ تأیید سهمیه‌ی ارسال رو نمی‌سوزونه.
+// Apply the same captcha requirement to OTP verification as to issuance.
 export async function assertOtpVerifyCaptcha(input: {
   ip: string;
   captchaId?: string;

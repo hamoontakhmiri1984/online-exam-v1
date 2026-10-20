@@ -198,7 +198,7 @@ function RecentExams({ exams }: { exams: AdminDashboardData['recentExams'] }) {
         </p>
       ) : (
         <>
-          {/* موبایل: هر آزمون یک ردیف عمودی */}
+
           <ul className="divide-y divide-gray-100 md:hidden dark:divide-gray-800">
             {exams.map((e) => (
               <li key={e.id} className="space-y-3 px-5 py-4">
@@ -217,7 +217,6 @@ function RecentExams({ exams }: { exams: AdminDashboardData['recentExams'] }) {
             ))}
           </ul>
 
-          {/* دسکتاپ: جدول */}
           <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-right text-sm">
               <thead className="bg-gray-50 text-xs text-gray-500 dark:bg-gray-800/40 dark:text-gray-400">
@@ -324,8 +323,6 @@ function Content({ data }: { data: AdminDashboardData }) {
   );
 }
 
-// داشبورد مدیر ارشد: یک درخواستِ فقط‌خواندنی؛ مدرس/دانشجو هرگز این کامپوننت
-// (و در نتیجه این درخواست) را اجرا نمی‌کنند
 export default function AdminDashboard() {
   const user = getCurrentUser();
   const reduceMotion = useReducedMotion();

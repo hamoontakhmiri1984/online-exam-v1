@@ -35,7 +35,6 @@
   --color-surface-light: #f6f7fb;
   --color-surface-dark: #0b0e17;
 
-  /* سایه‌های نرم پنل: خیلی کم‌رنگ و پخش‌شده؛ جایگزین کادرهای پررنگ */
   --shadow-soft: 0 1px 2px rgb(16 24 40 / 0.04), 0 2px 10px rgb(16 24 40 / 0.04);
   --shadow-soft-lg: 0 4px 12px rgb(16 24 40 / 0.05), 0 16px 40px rgb(16 24 40 / 0.07);
 }
@@ -75,8 +74,6 @@ html {
   animation: fade-slide-in 0.45s ease forwards;
 }
 
-/* --- ورود هماهنگ‌شده‌ی هوم‌پیج/لاگین: عناصر با تاخیر پشت‌سرهم fade+slide-up
-   می‌شن (به‌جای این‌که همه هم‌زمان یا اصلاً بدون انیمیشن ظاهر بشن) --- */
 @keyframes fade-slide-up {
   from {
     opacity: 0;
@@ -105,8 +102,6 @@ html {
   animation-delay: 0.32s;
 }
 
-/* حباب‌های تزئینی پس‌زمینه (هوم‌پیج و پنل برندینگ لاگین) یه drift خیلی
-   آروم و ظریف می‌گیرن تا صفحه کاملاً ثابت به‌نظر نرسه */
 @keyframes drift {
   0%,
   100% {
@@ -133,10 +128,7 @@ html {
   }
 }
 
-/* --- autofill مرورگر: رنگ زرد/آبی پیش‌فرض را حذف می‌کند و با تم هماهنگ می‌ماند.
-   تأخیر طولانی transition باعث می‌شود پس‌زمینه‌ی خود فیلد (کلاس‌های Tailwind)
-   دست‌نخورده بماند؛ فقط رنگ متن را صریح تنظیم می‌کنیم. دو قاعده‌ی جدا لازم
-   است چون اگر مرورگری یکی از سلکتورها را نشناسد کل لیست نادیده گرفته می‌شود. --- */
+/* Delay autofill background changes to preserve the theme. Keep vendor selectors separate. */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,

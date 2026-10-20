@@ -12,9 +12,6 @@ import { buildQuestionImportTemplate } from '../../lib/questionExcel';
 
 import { serializeBank, loadOwnedBank } from './questionBanks.service';
 
-// این کل فایل فقط برای Instructor/SuperAdmin معناداره - Student هیچ‌وقت
-// مستقیم به بانک سوال دسترسی نداره (نه موقع اجرای آزمون - اونجا از
-// ExamQuestion.snapshot می‌خونه، جای دیگه‌ای که فاز آزمون‌ساز/اجرا بهش می‌رسه)
 const router = Router();
 router.use(requireAuth, requireRole('Instructor', 'SuperAdmin'));
 
@@ -40,9 +37,7 @@ router.get(
   })
 );
 
-// تمپلیت اکسل آماده برای ایمپورت - عمداً *قبل از* GET /:bankId تعریف شده
-// چون اگه بعدش می‌بود، اکسپرس رشته‌ی «import-template» رو به‌عنوان بانک‌آیدی
-// می‌گرفت (تطبیق روت‌ها به ترتیب تعریفه، نه به specificity)
+// Register the template route before the dynamic bank-ID matcher.
 router.get(
   '/import-template',
   asyncHandler(async (_req, res) => {
@@ -75,8 +70,6 @@ router.get(
   })
 );
 
-// فقط Instructor بانک می‌سازه (برای خودش) - SuperAdmin پنل محتوا نیست،
-// پنل تننت/پلتفرمه (همون تصمیم قبلی پروژه)
 router.post(
   '/',
   requireRole('Instructor'),
@@ -97,9 +90,6 @@ router.post(
   })
 );
 
-// هم‌راستا با POST بالا: SuperAdmin پنل محتوا نیست - فقط مالکِ بانک
-// (Instructor) حق ویرایش داره؛ loadOwnedBank برای GET هنوز به SuperAdmin
-// اجازه‌ی دیدن می‌ده، ولی این‌جا دیگه استفاده نمی‌شه
 router.put(
   '/:bankId',
   requireRole('Instructor'),
@@ -122,10 +112,7 @@ router.put(
   })
 );
 
-// حذف بانک، سوال‌هاش رو هم cascade می‌کنه (schema.prisma: Question.bank
-// onDelete Cascade). آزمون‌هایی که قبلاً از این سوال‌ها استفاده کرده بودن
-// آسیب نمی‌بینن چون ExamQuestion یه snapshot مستقل نگه می‌داره - فقط لینک
-// questionId ـشون null می‌شه (onDelete SetNull)
+// Bank deletion removes source questions; imported exam snapshots remain valid.
 router.delete(
   '/:bankId',
   requireRole('Instructor'),

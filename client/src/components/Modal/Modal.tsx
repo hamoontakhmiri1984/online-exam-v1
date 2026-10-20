@@ -6,11 +6,7 @@ type ModalProps = {
   children: React.ReactNode;
 };
 
-// قبلاً کلیک رو پس‌زمینه (بیرونِ کادرِ مودال) هم بسته می‌شد - یعنی اگه وسطِ
-// پر کردنِ یه فرم (مثلاً فرمِ گروه/آزمون) دستت به یه گوشه‌ی بیرونِ مودال
-// می‌خورد، کل فرم بی‌هیچ تاییدی بسته می‌شد و هرچی تایپ کرده بودی از بین
-// می‌رفت. الان فقط دو راه برای بستن هست: دکمه‌ی ✕ یا کلید Escape - کلیکِ
-// روی پس‌زمینه دیگه هیچ اثری نداره.
+// Backdrop clicks must not discard an unfinished form.
 function Modal({ isOpen, onClose, children }: ModalProps) {
   useEffect(() => {
     if (!isOpen) return;

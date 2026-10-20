@@ -28,7 +28,7 @@ function Logo({ size = 'md', showText = true, className = '' }: LogoProps) {
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          {/* برگه‌ی آزمون با گوشه‌ی تاشده */}
+
           <path
             d="M6.5 4H14L18.5 8.5V20H6.5V4Z"
             stroke="white"
@@ -41,7 +41,7 @@ function Logo({ size = 'md', showText = true, className = '' }: LogoProps) {
             strokeWidth="1.7"
             strokeLinejoin="round"
           />
-          {/* علامت تیک قبولی */}
+
           <path
             d="M9 13.4L11.1 15.5L15.5 10.7"
             stroke="white"

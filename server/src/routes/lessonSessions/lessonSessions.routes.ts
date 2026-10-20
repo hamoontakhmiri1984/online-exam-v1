@@ -25,9 +25,6 @@ import {
 const router = Router();
 router.use(requireAuth);
 
-// لیست جلسات - اگه ?groupId بیاد فقط جلسات همون گروه، وگرنه همه‌ی جلساتی
-// که کاربر بهشون دسترسی داره (SuperAdmin: همه، Instructor: جلسات گروه‌های
-// خودش، Student: جلسات گروه‌هایی که عضوشونه)
 router.get(
   '/',
   asyncHandler(async (req, res) => {
@@ -36,13 +33,6 @@ router.get(
       typeof req.query.groupId === 'string' ? req.query.groupId : undefined;
 
     if (groupId) {
-      // باگ: اینجا از withGroups استفاده شده بود که include: { groups: ... }ـه
-      // - ولی این یه include روی مدل Group ـه، نه LessonSession! مدل Group
-      // اصلاً فیلد/رابطه‌ای به اسم "groups" نداره (خودش "groups" هست، نه
-      // چیزی که "groups" داشته باشه)، برای همین Prisma این کوئری رو رد
-      // می‌کرد و 500 برمی‌گردوند - دقیقاً همون خطایی که موقع باز کردن
-      // لیست جلسات یه گروه می‌گرفتی. اینجا فقط به group.instructorId نیاز
-      // داریم، پس اصلاً include لازم نیست.
       const group = await prisma.group.findUnique({
         where: { id: groupId },
       });
@@ -83,9 +73,7 @@ router.get(
   })
 );
 
-// فقط Instructor/SuperAdmin جلسه می‌سازن. برای Instructor حداقل یه گروه
-// اجباریه و باید همه‌ش گروه‌های خودش باشن - جلسه‌ی کاملاً بدون‌گروه (content
-// library آزاد) فعلاً فقط از SuperAdmin پذیرفته می‌شه
+// Instructor lessons require owned groups; only SuperAdmin may create ungrouped lessons.
 router.post(
   '/',
   requireRole('Instructor', 'SuperAdmin'),
@@ -172,9 +160,7 @@ router.put(
         description: parsed.data.description,
         ...videoToDbFields(parsed.data.video),
         groups: { set: parsed.data.groupIds.map((id) => ({ id })) },
-        // لیست پیوست‌ها رو کامل جایگزین می‌کنیم به‌جای diff زدن؛ چون فایل‌ها
-        // sessionId خودشون رو ندارن که بخوایم با matching نگه‌داریم، پاک
-        // کردن همه و ساختن دوباره از روی لیست ارسالی ساده‌تر و کافیه
+        // Replace the complete attachment list; incoming attachments have no stable persisted IDs.
         attachments: {
           deleteMany: {},
           create: parsed.data.attachments.map((a) => ({
@@ -187,7 +173,6 @@ router.put(
       include: withGroups,
     });
 
-    // فایل‌هایی که با این ویرایش از جلسه کنار رفتن (ویدیوی قبلی/پیوست حذف‌شده)
     await deleteUnreferencedObjects([
       existing.videoObjectUrl,
       ...existing.attachments.map((a) => a.fileUrl),
@@ -197,10 +182,7 @@ router.put(
   })
 );
 
-// ویدیوی آپلودی دیگه با یه URL دائمی سرو نمی‌شه (اون تو bucket خصوصیه) -
-// هر بار که فرانت واقعاً بخواد پخشش کنه، بعد از چک همون دسترسیِ
-// loadAccessibleSession، یه لینک موقت (چند دقیقه‌ای) می‌گیره. اگه جلسه از
-// نوع لینک (یوتیوب/آپارات) باشه، اصلاً چیزی برای امضا کردن نیست.
+// Authorize access before issuing a fresh signed URL for private uploads.
 router.get(
   '/:id/video/signed-url',
   asyncHandler(async (req, res) => {
@@ -222,8 +204,7 @@ router.get(
   })
 );
 
-// همون منطق، برای دانلود جزوه/PDF یه پیوست - دسترسی از روی جلسه‌ای که
-// پیوست بهش وصله چک می‌شه (خود پیوست گروه/مالک نداره)
+// Authorize attachment downloads through their parent lesson.
 router.get(
   '/attachments/:attachmentId/signed-url',
   asyncHandler(async (req, res) => {

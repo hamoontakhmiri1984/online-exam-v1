@@ -26,10 +26,6 @@ import {
 
 const router = Router();
 
-// ---------------------------------------------------------------------------
-// عمومی - بدون لاگین (صفحه‌ی /blog و /blog/:slug سمت کلاینت)
-// ---------------------------------------------------------------------------
-
 router.get(
   '/',
   asyncHandler(async (_req, res) => {
@@ -41,11 +37,6 @@ router.get(
     res.json(posts.map(serializeSummary));
   })
 );
-
-// ---------------------------------------------------------------------------
-// ادمین - فقط SuperAdmin (فعلاً بلاگ یه محتوای سراسریِ سایته، نه چیزی که
-// هر مدرس مالِ خودش رو داشته باشه - برخلاف Handout/QuestionBank)
-// ---------------------------------------------------------------------------
 
 router.use('/admin', requireAuth, requireRole('SuperAdmin'));
 
@@ -119,9 +110,7 @@ router.put(
       if (slugTaken) throw conflict('این اسلاگ قبلاً استفاده شده');
     }
 
-    // published: false -> true یعنی همین الان منتشر شد (publishedAt جدید)؛
-    // true -> false یعنی برگشت به draft (publishedAt پاک می‌شه)؛ اگه فیلد
-    // published اصلاً تو درخواست نباشه، وضعیت انتشار فعلی دست‌نخورده می‌مونه
+    // Publishing assigns publishedAt; returning to draft clears it.
     let publishedAt = existing.publishedAt;
     if (parsed.data.published === true && !existing.published) {
       publishedAt = new Date();
@@ -175,8 +164,7 @@ router.post(
     const key = `blog/${existing.id}/${randomUUID()}.${extension}`;
     await uploadPublicObject(key, req.file.buffer, req.file.mimetype);
 
-    // تصویرِ قبلی (اگه بود) رو بعد از موفقیتِ آپلودِ جدید پاک می‌کنیم - نه
-    // قبلش - وگرنه اگه آپلودِ جدید fail می‌شد، پست بدون هیچ تصویری می‌موند
+    // Delete the previous cover only after the new upload succeeds.
     if (existing.coverImageKey) {
       await deletePublicObject(existing.coverImageKey).catch((err) =>
         logEvent('error', 'deletePublicObject failed:', err)

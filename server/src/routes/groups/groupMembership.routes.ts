@@ -11,8 +11,6 @@ import { serializeGroup, withStudents } from './groups.service';
 
 const router = Router();
 
-// دانشجو با کد عضویت، خودش رو به گروه اضافه می‌کنه - idempotent (اگه از
-// قبل عضو بود، خطا نمی‌ده و همون گروه رو برمی‌گردونه)
 router.post(
   '/join',
   requireRole('Student'),
@@ -37,20 +35,13 @@ router.post(
         where: { id: group.id },
         data: { students: { connect: { id: req.user!.sub } } },
       });
-      // عضویت همین‌جا commit شده؛ اعلان‌ها فقط best-effort هستن. اگه ارسالِ
-      // اعلان fail بشه (دیتابیس/سوکت) نباید به کلاینت خطا بدیم، چون دانشجو
-      // واقعاً عضو شده و با retry هم فقط alreadyMember می‌گیره. هر اعلان هم
-      // جدا مهار می‌شه تا شکستِ یکی جلوی دیگری رو نگیره
+      // Membership is already committed; notification failures must not report the join as failed.
       const notifyAll = [
-        // اعلان برای خودِ دانشجو - دقیقاً معادل notifyStudentAddedToGroup تو mock
-        // (client/src/api/notificationApi.ts) که از addStudentToGroup صدا زده می‌شد
         notifyUser(
           req.user!.sub,
           `به گروه «${group.name}» اضافه شدی`,
           'people'
         ),
-        // به‌علاوه: به مدرس هم خبر بده که یه دانشجوی جدید پیوست (چیزی که mock
-        // نداشت ولی برای مدرس مفیده)
         notifyUser(
           group.instructorId,
           `یه دانشجوی جدید به گروه «${group.name}» پیوست`,
@@ -73,7 +64,6 @@ router.post(
   })
 );
 
-// کد قدیمی رو باطل و یه کد جدید می‌سازه - فقط مالک گروه یا SuperAdmin
 router.post(
   '/:id/regenerate-join-code',
   requireRole('Instructor', 'SuperAdmin'),

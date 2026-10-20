@@ -6,8 +6,7 @@ export const selectPlanSchema = z.object({
   planId: planIdSchema,
 });
 
-// همون planId رو می‌خواد - amount رو کلاینت نمی‌فرسته، سرور خودش از
-// server/src/lib/plans.ts می‌خونه (تا کسی نتونه amount رو دستکاری کنه)
+// Read payment amounts from server-side plans, never the request body.
 export const checkoutSchema = z.object({
   planId: planIdSchema,
 });

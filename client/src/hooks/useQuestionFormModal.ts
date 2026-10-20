@@ -69,8 +69,7 @@ function useQuestionFormModal({
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
-    // جلوگیری از ثبت دوباره با دوبار کلیک / Enter پشت‌سرهم (وگرنه دوتا سوالِ
-    // یکسان ساخته می‌شد)
+    // Block duplicate submissions until the pending request settles.
     if (pending.current) return;
 
     const trimmedOptions = options.map((opt) => opt.trim());
@@ -101,8 +100,7 @@ function useQuestionFormModal({
       setIsSubmitting(false);
     }
 
-    // useCrud/هوک صفحه موقع خطا پیام رو تو Toast نشون می‌ده و undefined برمی‌گردونه؛
-    // تو اون حالت مودال باز می‌مونه تا اطلاعات واردشده از بین نره
+    // Preserve the form contents after a failed save.
     if (saved) {
       setIsOpen(false);
     }
