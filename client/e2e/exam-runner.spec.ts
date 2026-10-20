@@ -36,11 +36,14 @@ for (const temporaryFailure of [false, true]) test(`student answers survive relo
   });
   await page.goto('/exams/exam/take');
   await page.getByRole('button', { name: 'شروع آزمون', exact: true }).click();
+  await page.getByRole('button', { name: 'بله، شروع کن', exact: true }).click();
   await page.getByRole('button', { name: /چهار/ }).click();
   await expect.poll(() => answers).toEqual({ question: 1 });
+  page.once('dialog', dialog => dialog.accept());
   await page.reload();
   // Re-enter the existing attempt: the server retains its original deadline.
   await page.getByRole('button', { name: 'شروع آزمون', exact: true }).click();
+  await page.getByRole('button', { name: 'بله، شروع کن', exact: true }).click();
   await expect(page.getByText('حاصل دو به اضافه دو؟')).toBeVisible();
   await expect(page.getByRole('button', { name: 'شروع آزمون', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /چهار/ })).toHaveAttribute('aria-pressed', 'true');
