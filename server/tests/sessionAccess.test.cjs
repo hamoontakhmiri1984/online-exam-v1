@@ -287,6 +287,7 @@ function setupSocket() {
       },
     },
     {
+      URL,
       setInterval(fn) {
         sweep = fn;
         return { unref() {} };
