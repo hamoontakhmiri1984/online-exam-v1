@@ -100,6 +100,22 @@ function ExamRunnerPage() {
   useEffect(() => {
     if (!hasStarted || isFinished || !currentExamId) return;
 
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden') {
+        void recordAttemptEvent(currentExamId, 'TAB_HIDDEN').catch(
+          () => undefined,
+        );
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () =>
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [currentExamId, hasStarted, isFinished]);
+
+  useEffect(() => {
+    if (!hasStarted || isFinished || !currentExamId) return;
+
     function handleWindowBlur() {
       void recordAttemptEvent(currentExamId, 'WINDOW_BLUR').catch(
         () => undefined,

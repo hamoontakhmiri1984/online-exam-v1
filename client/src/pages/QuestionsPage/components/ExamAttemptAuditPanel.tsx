@@ -18,7 +18,7 @@ export default function ExamAttemptAuditPanel({ examId }: { examId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const load = useCallback(async (requestedPage = page) => {
+  const load = useCallback(async (requestedPage: number) => {
     setLoading(true);
     setError('');
     try {
@@ -32,7 +32,7 @@ export default function ExamAttemptAuditPanel({ examId }: { examId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [examId, page]);
+  }, [examId]);
 
   useEffect(() => {
     void load(1);
@@ -49,7 +49,7 @@ export default function ExamAttemptAuditPanel({ examId }: { examId: string }) {
         </div>
         <button
           type="button"
-          onClick={() => void load()}
+          onClick={() => void load(page)}
           disabled={loading}
           className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
         >
@@ -62,7 +62,7 @@ export default function ExamAttemptAuditPanel({ examId }: { examId: string }) {
       ) : error ? (
         <div role="alert" className="py-3 text-sm text-danger-600">
           <p>{error}</p>
-          <button type="button" onClick={() => void load()} className="mt-2 font-medium text-brand-600">
+          <button type="button" onClick={() => void load(page)} className="mt-2 font-medium text-brand-600">
             تلاش دوباره
           </button>
         </div>
