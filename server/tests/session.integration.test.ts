@@ -76,7 +76,8 @@ test(
     } finally {
       await revokeSession(userId);
     }
-});
+  },
+);
 
 test('sid ناشناخته/باطل rotate نمی‌شه', async (t) => {
   if (!redisAvailable) return unavailable(t, 'Redis در دسترس نیست');
