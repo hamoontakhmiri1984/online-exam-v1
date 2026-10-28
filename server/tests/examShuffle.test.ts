@@ -7,7 +7,9 @@ const questions = ['q-1', 'q-2', 'q-3', 'q-4', 'q-5', 'q-6'].map((id) => ({
   id,
 }));
 
-test('question order is stable for an attempt and preserves every question', () => {
+test(
+  'question order is stable for an attempt and preserves every question',
+  () => {
   const first = shuffleExamQuestions(questions, 'attempt-seed-a');
   assert.deepEqual(first, shuffleExamQuestions(questions, 'attempt-seed-a'));
   assert.deepEqual(
@@ -20,7 +22,9 @@ test('question order is stable for an attempt and preserves every question', () 
   );
 });
 
-test('option order is a stable complete permutation per attempt and question', () => {
+test(
+  'option order is a stable complete permutation per attempt and question',
+  () => {
   const first = getOptionOrder(5, 'attempt-seed-a', 'q-1');
   assert.deepEqual(first, getOptionOrder(5, 'attempt-seed-a', 'q-1'));
   assert.deepEqual([...first].sort((a, b) => a - b), [0, 1, 2, 3, 4]);
