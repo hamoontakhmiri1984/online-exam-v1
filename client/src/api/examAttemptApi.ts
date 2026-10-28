@@ -79,6 +79,16 @@ export function getAttemptsByExam(examId: string): Promise<ExamAttempt[]> {
   return apiRequest<ExamAttempt[]>(`/exams/${examId}/attempts`);
 }
 
+export type ExamAttemptAudit = ExamAttempt & {
+  student: { id: string; name: string | null; username: string | null };
+  tabSwitchCount: number;
+  tabSwitches: string[];
+};
+
+export function getExamAttemptAudit(examId: string): Promise<ExamAttemptAudit[]> {
+  return apiRequest<ExamAttemptAudit[]>(`/exams/${examId}/attempts/audit`);
+}
+
 // Ignore inaccessible exams, but propagate infrastructure errors.
 export async function getAttemptsForExams(
   examIds: string[]
