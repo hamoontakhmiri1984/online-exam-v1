@@ -1,5 +1,6 @@
-import { logEvent } from '../../lib/logger';
+import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
+import { logEvent } from '../../lib/logger';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import {
@@ -17,6 +18,13 @@ import {
 } from '../../lib/attemptFinalize';
 import { requireAuth, requireRole } from '../../middleware/requireAuth';
 import {
+  examAttemptAnswersLimiter,
+  examAttemptEventLimiter,
+  examAttemptFinishLimiter,
+  examAttemptStartLimiter,
+} from '../../middleware/rateLimiters';
+import {
+  attemptEventSchema,
   finishAttemptSchema,
   autosaveAnswersSchema,
 } from '../../validation/attemptSchemas';
@@ -29,8 +37,43 @@ const router = Router({ mergeParams: true });
 router.use(requireAuth);
 
 router.post(
+  '/events',
+  requireRole('Student'),
+  examAttemptEventLimiter,
+  asyncHandler(async (req, res) => {
+    const { sub } = req.user!;
+    const { exam, allowed } = await loadAccessibleExam(
+      req.params.examId,
+      sub,
+      'Student',
+    );
+    if (!exam) throw notFound('آزمون یافت نشد');
+    if (!allowed) throw forbidden();
+
+    const parsed = attemptEventSchema.safeParse(req.body);
+    if (!parsed.success) throw badRequest(parsed.error.issues[0].message);
+
+    const attempt = await prisma.examAttempt.findUnique({
+      where: { examId_studentId: { examId: exam.id, studentId: sub } },
+      select: { id: true, finishedAt: true, expiresAt: true },
+    });
+    if (!attempt) throw notFound('هنوز این آزمون رو شروع نکردی');
+    if (attempt.finishedAt) throw conflict('این آزمون قبلاً ثبت شده');
+    if (Date.now() > attempt.expiresAt.getTime() + FINISH_GRACE_MS) {
+      throw conflict('زمان این آزمون تموم شده');
+    }
+
+    await prisma.examAttemptEvent.create({
+      data: { attemptId: attempt.id, type: parsed.data.type },
+    });
+    res.status(201).json({ recorded: true });
+  }),
+);
+
+router.post(
   '/start',
   requireRole('Student'),
+  examAttemptStartLimiter,
   asyncHandler(async (req, res) => {
     const { sub } = req.user!;
     const { exam, allowed } = await loadAccessibleExam(
@@ -102,6 +145,7 @@ router.post(
           data: {
             examId: exam.id,
             studentId: sub,
+            shuffleSeed: randomUUID(),
             answers: {},
             correctCount: 0,
             totalQuestions: 0,
@@ -143,6 +187,7 @@ router.post(
 router.post(
   '/finish',
   requireRole('Student'),
+  examAttemptFinishLimiter,
   asyncHandler(async (req, res) => {
     const { sub } = req.user!;
     const { exam, allowed } = await loadAccessibleExam(
@@ -180,6 +225,7 @@ router.post(
     const { won, attempt } = await finalizeAttempt({
       attemptId: existing.id,
       examId: exam.id,
+      shuffleSeed: existing.shuffleSeed,
       answers,
       finishedAt,
       endedByTimeout,
@@ -198,6 +244,7 @@ router.post(
 router.patch(
   '/answers',
   requireRole('Student'),
+  examAttemptAnswersLimiter,
   asyncHandler(async (req, res) => {
     const { sub } = req.user!;
     const { exam, allowed } = await loadAccessibleExam(
