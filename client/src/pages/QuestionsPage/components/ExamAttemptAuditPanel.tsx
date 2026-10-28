@@ -63,13 +63,14 @@ export default function ExamAttemptAuditPanel({ examId }: { examId: string }) {
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[620px] text-right text-sm">
+          <table className="w-full min-w-[760px] text-right text-sm">
             <thead>
               <tr className="border-b border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400">
                 <th className="px-3 py-3 font-medium">دانشجو</th>
                 <th className="px-3 py-3 font-medium">وضعیت</th>
                 <th className="px-3 py-3 font-medium">نمره</th>
                 <th className="px-3 py-3 font-medium">خروج از تب</th>
+                <th className="px-3 py-3 font-medium">خروج از تمام‌صفحه</th>
                 <th className="px-3 py-3 font-medium">شروع</th>
               </tr>
             </thead>
@@ -96,6 +97,18 @@ export default function ExamAttemptAuditPanel({ examId }: { examId: string }) {
                     {attempt.tabSwitchCount > 0 && attempt.tabSwitches.length > 0 && (
                       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                         آخرین مورد: {formatDate(attempt.tabSwitches[attempt.tabSwitches.length - 1])}
+                      </p>
+                    )}
+                  </td>
+                  <td className="px-3 py-3">
+                    <span className={attempt.fullscreenExitCount > 0
+                      ? 'font-semibold text-amber-700 dark:text-amber-400'
+                      : 'text-gray-500 dark:text-gray-400'}>
+                      {attempt.fullscreenExitCount.toLocaleString('fa-IR')} بار
+                    </span>
+                    {attempt.fullscreenExitCount > 0 && attempt.fullscreenExits.length > 0 && (
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        آخرین مورد: {formatDate(attempt.fullscreenExits[attempt.fullscreenExits.length - 1])}
                       </p>
                     )}
                   </td>
