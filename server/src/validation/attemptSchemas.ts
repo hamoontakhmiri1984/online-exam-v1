@@ -11,5 +11,5 @@ export const autosaveAnswersSchema = z.object({
 });
 
 export const attemptEventSchema = z.object({
-  type: z.enum(['TAB_HIDDEN', 'FULLSCREEN_EXIT']),
+  type: z.enum(['TAB_HIDDEN', 'FULLSCREEN_EXIT', 'WINDOW_BLUR']),
 });

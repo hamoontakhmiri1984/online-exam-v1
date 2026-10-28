@@ -98,6 +98,19 @@ function ExamRunnerPage() {
   }, [currentExamId, hasStarted, isFinished]);
 
   useEffect(() => {
+    if (!hasStarted || isFinished || !currentExamId) return;
+
+    function handleWindowBlur() {
+      void recordAttemptEvent(currentExamId, 'WINDOW_BLUR').catch(
+        () => undefined,
+      );
+    }
+
+    window.addEventListener('blur', handleWindowBlur);
+    return () => window.removeEventListener('blur', handleWindowBlur);
+  }, [currentExamId, hasStarted, isFinished]);
+
+  useEffect(() => {
     if (!hasStarted || isFinished) return;
 
     function blockClipboard(event: ClipboardEvent) {
