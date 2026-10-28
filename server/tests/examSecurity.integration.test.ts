@@ -186,9 +186,7 @@ test('HTTP permissions and answer key: guest, unrelated users, owner, admin, act
   const displayedQuestion = (
     await request(f.exam.id, 'questions', f.student.accessToken)
   ).body[0];
-  const answers = {
-    [f.question.id]: displayedQuestion.options.indexOf('B'),
-  };
+  const answers = { [f.question.id]: displayedQuestion.options.indexOf('B') };
   assert.equal(
     (
       await request(
@@ -255,9 +253,7 @@ test('HTTP autosave/submit races preserve final answers, ignore stale revisions 
     ).body[0];
     const correctDisplayedIndex = displayedQuestion.options.indexOf('B');
     const finalAnswers = { [f.question.id]: correctDisplayedIndex };
-    const staleAnswers = {
-      [f.question.id]: correctDisplayedIndex === 0 ? 1 : 0,
-    };
+    const staleAnswers = { [f.question.id]: correctDisplayedIndex === 0 ? 1 : 0 };
     assert.equal(
       (
         await request(f.exam.id, 'attempts/answers', token, 'PATCH', {
