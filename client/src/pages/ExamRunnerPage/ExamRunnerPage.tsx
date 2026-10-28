@@ -74,6 +74,8 @@ function ExamRunnerPage() {
   useEffect(() => {
     if (!hasStarted || isFinished || !currentExamId) return;
 
+    const activeExamId = currentExamId;
+
     function handleFullscreenChange() {
       if (document.fullscreenElement) {
         wasFullscreenRef.current = true;
@@ -82,7 +84,7 @@ function ExamRunnerPage() {
 
       if (wasFullscreenRef.current && currentExamId) {
         wasFullscreenRef.current = false;
-        void recordAttemptEvent(currentExamId, 'FULLSCREEN_EXIT').catch(
+        void recordAttemptEvent(activeExamId, 'FULLSCREEN_EXIT').catch(
           () => undefined,
         );
       }
@@ -116,6 +118,7 @@ function ExamRunnerPage() {
 
   useEffect(() => {
     if (!hasStarted || isFinished || !currentExamId) return;
+    const activeExamId = currentExamId;
 
     function handleWindowBlur() {
       void recordAttemptEvent(activeExamId, 'WINDOW_BLUR').catch(

@@ -7,6 +7,7 @@ import { asyncHandler } from '../../lib/asyncHandler';
 import { notFound, forbidden } from '../../lib/errors';
 
 import { serializeAttempt } from './examAttempts.service';
+import { parsePagination } from '../../lib/pagination';
 
 const router = Router({ mergeParams: true });
 router.use(requireAuth);
@@ -26,16 +27,10 @@ router.get(
 
     await finalizeExpiredAttempts({ examId: exam.id });
 
-    const parsedPage = Number.parseInt(String(req.query.page ?? '1'), 10);
-    const parsedPageSize = Number.parseInt(
-      String(req.query.pageSize ?? '25'),
-      10,
+    const { page, pageSize } = parsePagination(
+      req.query.page,
+      req.query.pageSize,
     );
-    const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
-    const pageSize =
-      Number.isFinite(parsedPageSize) && parsedPageSize > 0
-        ? Math.min(parsedPageSize, 100)
-        : 25;
     const where = { examId: exam.id };
 
     const [total, attempts] = await Promise.all([
