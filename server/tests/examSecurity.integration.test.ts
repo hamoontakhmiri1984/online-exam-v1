@@ -370,7 +370,9 @@ test('Password reset ticket is single-use under concurrency and revokes the exis
 });
 
 
-test('HTTP grading uses each student\'s shuffled option order and seed', async (t) => {
+test(
+  'HTTP grading gives full marks for the displayed correct option under different seeds',
+  async (t) => {
   if (!ready) return unavailable(t, 'PostgreSQL/Redis unavailable');
 
   const f = await fixture();
@@ -462,7 +464,8 @@ test('HTTP grading uses each student\'s shuffled option order and seed', async (
   } finally {
     // The suite's shared teardown removes both students and their attempts.
   }
-});
+  },
+);
 
 test('HTTP audit endpoint returns paginated attempts and recorded browser events', async (t) => {
   if (!ready) return unavailable(t, 'PostgreSQL/Redis unavailable');
