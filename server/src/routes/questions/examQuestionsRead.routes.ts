@@ -63,7 +63,9 @@ router.get(
             id: question.id,
             examId: question.examId,
             text: question.textSnapshot,
-            options: optionOrder.map((index) => question.optionsSnapshot[index]),
+            options: optionOrder.map(
+              (index) => question.optionsSnapshot[index],
+            ),
             ...(canSeeAnswerKey
               ? {
                   correctOptionIndex: optionOrder.indexOf(
