@@ -138,7 +138,9 @@ test('بعد از logout هیچ sid ای معتبر یا قابل rotate نیس�
   assert.equal(await rotateSessionWithGrace(userId, s1!), null);
 });
 
-test('rotate زنجیره‌ای A→B→C: sid قدیمی A همون sid *فعلی* (C) رو می‌گیره، نه B ی مرده', async (t) => {
+test(
+  'rotate زنجیره‌ای A→B→C: sid قدیمی A همون sid *فعلی* (C) رو می‌گیره، نه B ی مرده',
+  async (t) => {
   if (!redisAvailable) return unavailable(t, 'Redis در دسترس نیست');
   const userId = newUserId();
   try {
