@@ -59,7 +59,9 @@ async function migrateLegacySession(userId: string): Promise<void> {
   const now = Date.now() / 1000;
   if (legacySid) {
     const ttl = sessionTtl > 0 ? sessionTtl : REFRESH_TTL_SECONDS;
-    await redis.zAdd(sessionsKey(userId), [{ score: now + ttl, value: legacySid }]);
+    await redis.zAdd(sessionsKey(userId), [
+      { score: now + ttl, value: legacySid },
+    ]);
   }
 
   const migratedAliases: Record<string, string> = {};
