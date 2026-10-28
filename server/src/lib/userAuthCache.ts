@@ -1,3 +1,5 @@
+import { logEvent } from './logger';
+
 async function loadRedis() {
   const redisModule = await import('./redis');
   return redisModule.redis;
@@ -93,6 +95,10 @@ const INVALIDATE_AUTH_CACHE_SCRIPT = [
   'return generation',
 ].join('; ');
 
+/**
+ * Call after any role or approval-status change that restricts access. Granting
+ * access may tolerate the short cache TTL; restrictions must invalidate promptly.
+ */
 export async function invalidateUserAuthCache(userId: string): Promise<void> {
   try {
     const redis = await loadRedis();
@@ -100,8 +106,8 @@ export async function invalidateUserAuthCache(userId: string): Promise<void> {
       keys: [generationKey(userId)],
       arguments: [String(GENERATION_TTL_SECONDS)],
     });
-  } catch {
+  } catch (error) {
     // Snapshots expire after 30 seconds even if explicit invalidation is unavailable.
-    console.error('Failed to invalidate account authorization cache', userId);
+    logEvent('error', 'Failed to invalidate account authorization cache', error);
   }
 }
