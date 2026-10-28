@@ -3,9 +3,7 @@ import { createHash } from 'node:crypto';
 type QuestionIdentity = { id: string };
 
 function rank(seed: string, scope: string, key: string): string {
-  return createHash('sha256')
-    .update(`${seed}:${scope}:${key}`)
-    .digest('hex');
+  return createHash('sha256').update(`${seed}:${scope}:${key}`).digest('hex');
 }
 
 /**
