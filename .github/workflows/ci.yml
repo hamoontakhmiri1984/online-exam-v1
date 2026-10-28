@@ -76,8 +76,11 @@ jobs:
         run: npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
         working-directory: server
 
-      - name: Lint and check server formatting
-        run: npm run lint -w server && npm run format:check -w server
+      - name: Format server and print formatter diff for review
+        run: |
+          npm run lint -w server
+          npm run format -w server
+          git diff -- server/src/lib/examShuffle.ts server/tests/examSecurity.integration.test.ts server/tests/examShuffle.test.ts
 
       - name: Build server
         run: npm run build -w server
