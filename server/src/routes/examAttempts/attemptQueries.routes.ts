@@ -27,7 +27,10 @@ router.get(
     await finalizeExpiredAttempts({ examId: exam.id });
 
     const parsedPage = Number.parseInt(String(req.query.page ?? '1'), 10);
-    const parsedPageSize = Number.parseInt(String(req.query.pageSize ?? '25'), 10);
+    const parsedPageSize = Number.parseInt(
+      String(req.query.pageSize ?? '25'),
+      10,
+    );
     const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
     const pageSize =
       Number.isFinite(parsedPageSize) && parsedPageSize > 0
@@ -45,7 +48,9 @@ router.get(
         include: {
           student: { select: { id: true, name: true, username: true } },
           events: {
-            where: { type: { in: ['TAB_HIDDEN', 'FULLSCREEN_EXIT', 'WINDOW_BLUR'] } },
+            where: {
+            type: { in: ['TAB_HIDDEN', 'FULLSCREEN_EXIT', 'WINDOW_BLUR'] },
+          },
             select: { type: true, createdAt: true },
             orderBy: { createdAt: 'asc' },
           },

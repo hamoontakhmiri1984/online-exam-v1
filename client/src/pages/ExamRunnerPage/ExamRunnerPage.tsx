@@ -99,10 +99,11 @@ function ExamRunnerPage() {
 
   useEffect(() => {
     if (!hasStarted || isFinished || !currentExamId) return;
+    const activeExamId = currentExamId;
 
     function handleVisibilityChange() {
       if (document.visibilityState === 'hidden') {
-        void recordAttemptEvent(currentExamId, 'TAB_HIDDEN').catch(
+        void recordAttemptEvent(activeExamId, 'TAB_HIDDEN').catch(
           () => undefined,
         );
       }
@@ -117,7 +118,7 @@ function ExamRunnerPage() {
     if (!hasStarted || isFinished || !currentExamId) return;
 
     function handleWindowBlur() {
-      void recordAttemptEvent(currentExamId, 'WINDOW_BLUR').catch(
+      void recordAttemptEvent(activeExamId, 'WINDOW_BLUR').catch(
         () => undefined,
       );
     }
