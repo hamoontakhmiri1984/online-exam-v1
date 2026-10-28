@@ -31,8 +31,8 @@ router.get(
       include: {
         student: { select: { id: true, name: true, username: true } },
         events: {
-          where: { type: 'TAB_HIDDEN' },
-          select: { createdAt: true },
+          where: { type: { in: ['TAB_HIDDEN', 'FULLSCREEN_EXIT'] } },
+          select: { type: true, createdAt: true },
           orderBy: { createdAt: 'asc' },
         },
       },
@@ -42,10 +42,18 @@ router.get(
       attempts.map((attempt) => ({
         ...serializeAttempt(attempt),
         student: attempt.student,
-        tabSwitchCount: attempt.events.length,
-        tabSwitches: attempt.events.map((event) =>
-          event.createdAt.toISOString(),
-        ),
+        tabSwitchCount: attempt.events.filter(
+          (event) => event.type === 'TAB_HIDDEN',
+        ).length,
+        tabSwitches: attempt.events
+          .filter((event) => event.type === 'TAB_HIDDEN')
+          .map((event) => event.createdAt.toISOString()),
+        fullscreenExitCount: attempt.events.filter(
+          (event) => event.type === 'FULLSCREEN_EXIT',
+        ).length,
+        fullscreenExits: attempt.events
+          .filter((event) => event.type === 'FULLSCREEN_EXIT')
+          .map((event) => event.createdAt.toISOString()),
       })),
     );
   }),
@@ -70,8 +78,8 @@ router.get(
       where: { examId: exam.id, finishedAt: { not: null } },
       include: {
         events: {
-          where: { type: 'TAB_HIDDEN' },
-          select: { createdAt: true },
+          where: { type: { in: ['TAB_HIDDEN', 'FULLSCREEN_EXIT'] } },
+          select: { type: true, createdAt: true },
           orderBy: { createdAt: 'asc' },
         },
       },
@@ -79,10 +87,18 @@ router.get(
     res.json(
       attempts.map((attempt) => ({
         ...serializeAttempt(attempt),
-        tabSwitchCount: attempt.events.length,
-        tabSwitches: attempt.events.map((event) =>
-          event.createdAt.toISOString(),
-        ),
+        tabSwitchCount: attempt.events.filter(
+          (event) => event.type === 'TAB_HIDDEN',
+        ).length,
+        tabSwitches: attempt.events
+          .filter((event) => event.type === 'TAB_HIDDEN')
+          .map((event) => event.createdAt.toISOString()),
+        fullscreenExitCount: attempt.events.filter(
+          (event) => event.type === 'FULLSCREEN_EXIT',
+        ).length,
+        fullscreenExits: attempt.events
+          .filter((event) => event.type === 'FULLSCREEN_EXIT')
+          .map((event) => event.createdAt.toISOString()),
       })),
     );
   }),
