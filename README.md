@@ -78,6 +78,3 @@ npm test -w server
 راهنمای [ایمیل، پایش و استقرار staging](docs/OPERATIONS.fa.md).
 
 راهنمای امنیت، تست نصب و محدودیت‌های ارزیابی موبایل: [اعتبارسنجی امنیت](docs/SECURITY-VALIDATION.fa.md).
-
-docker compose -p online-exam-v1 up -d postgres redis minio minio-init
-npx prisma migrate deploy

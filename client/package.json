@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "lint": "oxlint -c .oxlintrc.json --ignore-pattern=dist --ignore-pattern=.test-dist src tests scripts vite.config.ts",
     "test": "node scripts/run-tests.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\" \"tests/**/*.{ts,tsx,js,jsx,json,css,md}\" \"scripts/*.{ts,mjs,cjs}\" \"vite.config.ts\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\" \"tests/**/*.{ts,tsx,js,jsx,json,css,md}\" \"scripts/*.{ts,mjs,cjs}\" \"vite.config.ts\""
   },
   "dependencies": {
     "@fontsource-variable/vazirmatn": "^5.3.0",
@@ -36,6 +38,7 @@
     "oxlint": "^0.15.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.6.2",
-    "vite": "^6.0.0"
+    "vite": "^6.0.0",
+    "prettier": "^3.9.10"
   }
 }
