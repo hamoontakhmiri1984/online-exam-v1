@@ -13,6 +13,7 @@ import { resetPassword } from '../src/routes/auth/password/password.service';
 import { verifyPassword } from '../src/lib/password';
 import questions from '../src/routes/questions';
 import attempts from '../src/routes/examAttempts';
+import { getOptionOrder } from '../src/lib/examShuffle';
 import { errorHandler } from '../src/middleware/errorHandler';
 import { unavailable } from './helpers/serviceGuard';
 
@@ -366,4 +367,192 @@ test('Password reset ticket is single-use under concurrency and revokes the exis
   await assert.rejects(
     resetPassword(actor.accessToken, 'Another-password-123'),
   );
+});
+
+
+test('HTTP grading uses each student\'s shuffled option order and seed', async (t) => {
+  if (!ready) return unavailable(t, 'PostgreSQL/Redis unavailable');
+
+  const f = await fixture();
+  const secondStudent = await user('Student');
+  await prisma.group.update({
+    where: { id: groupIds[groupIds.length - 1] },
+    data: { students: { connect: { id: secondStudent.id } } },
+  });
+
+  try {
+    for (const actor of [f.student, secondStudent]) {
+      assert.equal(
+        (
+          await request(f.exam.id, 'attempts/start', actor.accessToken, 'POST', {})
+        ).status,
+        201,
+      );
+    }
+
+    let seedA = randomUUID();
+    let seedB = randomUUID();
+    while (
+      getOptionOrder(2, seedA, f.question.id).join(',') ===
+      getOptionOrder(2, seedB, f.question.id).join(',')
+    ) {
+      seedB = randomUUID();
+    }
+
+    await Promise.all([
+      prisma.examAttempt.update({
+        where: {
+          examId_studentId: { examId: f.exam.id, studentId: f.student.id },
+        },
+        data: { shuffleSeed: seedA },
+      }),
+      prisma.examAttempt.update({
+        where: {
+          examId_studentId: {
+            examId: f.exam.id,
+            studentId: secondStudent.id,
+          },
+        },
+        data: { shuffleSeed: seedB },
+      }),
+    ]);
+
+    const results = await Promise.all(
+      [
+        { actor: f.student, seed: seedA },
+        { actor: secondStudent, seed: seedB },
+      ].map(async ({ actor, seed }) => {
+        const displayed = await request(
+          f.exam.id,
+          'questions',
+          actor.accessToken,
+        );
+        assert.equal(displayed.status, 200);
+        assert.equal(displayed.body.length, 1);
+        const question = displayed.body[0];
+        const correctDisplayedIndex = question.options.indexOf('B');
+        assert.ok(correctDisplayedIndex >= 0);
+
+        const finished = await request(
+          f.exam.id,
+          'attempts/finish',
+          actor.accessToken,
+          'POST',
+          { answers: { [f.question.id]: correctDisplayedIndex } },
+        );
+        assert.equal(finished.status, 200);
+        assert.equal(finished.body.correctCount, 1);
+        assert.equal(finished.body.totalQuestions, 1);
+
+        const stored = await prisma.examAttempt.findUniqueOrThrow({
+          where: {
+            examId_studentId: {
+              examId: f.exam.id,
+              studentId: actor.id,
+            },
+          },
+        });
+        assert.equal(stored.shuffleSeed, seed);
+        assert.equal(stored.correctCount, 1);
+        return question.options;
+      }),
+    );
+
+    assert.notDeepEqual(results[0], results[1]);
+  } finally {
+    // The suite's shared teardown removes both students and their attempts.
+  }
+});
+
+test('HTTP audit endpoint returns paginated attempts and recorded browser events', async (t) => {
+  if (!ready) return unavailable(t, 'PostgreSQL/Redis unavailable');
+  const f = await fixture();
+
+  assert.equal(
+    (
+      await request(f.exam.id, 'attempts/start', f.student.accessToken, 'POST', {})
+    ).status,
+    201,
+  );
+  assert.equal(
+    (
+      await request(f.exam.id, 'attempts/events', f.student.accessToken, 'POST', {
+        type: 'TAB_HIDDEN',
+      })
+    ).status,
+    201,
+  );
+
+  const audit = await request(
+    f.exam.id,
+    'attempts/audit?page=1&pageSize=10',
+    f.teacher.accessToken,
+  );
+  assert.equal(audit.status, 200);
+  assert.equal(audit.body.page, 1);
+  assert.equal(audit.body.pageSize, 10);
+  assert.equal(audit.body.total, 1);
+  assert.equal(audit.body.items.length, 1);
+  assert.equal(audit.body.items[0].student.id, f.student.id);
+  assert.equal(audit.body.items[0].tabSwitchCount, 1);
+  assert.equal(audit.body.items[0].tabSwitches.length, 1);
+});
+
+test('HTTP attempt finish, answer-save and event limiters reject requests over their budgets', async (t) => {
+  if (!ready) return unavailable(t, 'PostgreSQL/Redis unavailable');
+  const f = await fixture();
+
+  const finishStatuses: number[] = [];
+  for (let i = 0; i < 11; i++) {
+    finishStatuses.push(
+      (
+        await request(
+          f.exam.id,
+          'attempts/finish',
+          f.student.accessToken,
+          'POST',
+          {},
+        )
+      ).status,
+    );
+  }
+  assert.equal(finishStatuses[0], 400);
+  assert.equal(finishStatuses[9], 400);
+  assert.equal(finishStatuses[10], 429);
+
+  const answerStatuses: number[] = [];
+  for (let i = 0; i < 121; i++) {
+    answerStatuses.push(
+      (
+        await request(
+          f.exam.id,
+          'attempts/answers',
+          f.student.accessToken,
+          'PATCH',
+          {},
+        )
+      ).status,
+    );
+  }
+  assert.equal(answerStatuses[0], 400);
+  assert.equal(answerStatuses[119], 400);
+  assert.equal(answerStatuses[120], 429);
+
+  const eventStatuses: number[] = [];
+  for (let i = 0; i < 31; i++) {
+    eventStatuses.push(
+      (
+        await request(
+          f.exam.id,
+          'attempts/events',
+          f.student.accessToken,
+          'POST',
+          {},
+        )
+      ).status,
+    );
+  }
+  assert.equal(eventStatuses[0], 400);
+  assert.equal(eventStatuses[29], 400);
+  assert.equal(eventStatuses[30], 429);
 });
