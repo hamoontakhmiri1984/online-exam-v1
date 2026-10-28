@@ -228,7 +228,10 @@ test('HTTP permissions and answer key: guest, unrelated users, owner, admin, act
   const released = (
     await request(f.exam.id, 'questions', f.student.accessToken)
   ).body[0];
-  assert.equal(released.options[released.correctOptionIndex], 'B');
+  assert.equal(
+    released.options[released.correctOptionIndex],
+    'B',
+  );
   await prisma.exam.update({
     where: { id: f.exam.id },
     data: { allowReview: false },
