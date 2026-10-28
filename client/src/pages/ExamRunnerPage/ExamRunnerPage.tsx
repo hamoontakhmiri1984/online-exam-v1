@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { recordAttemptEvent } from '../../api/examAttemptApi';
 import { useParams, useNavigate } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout/AppLayout';
 import Spinner from '../../components/Spinner/Spinner';
@@ -65,6 +66,83 @@ function ExamRunnerPage() {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasStarted, isFinished]);
+
+  const wasFullscreenRef = useRef(false);
+
+  useEffect(() => {
+    if (!hasStarted || isFinished || !examId) return;
+
+    function handleFullscreenChange() {
+      if (document.fullscreenElement) {
+        wasFullscreenRef.current = true;
+        return;
+      }
+
+      if (wasFullscreenRef.current) {
+        wasFullscreenRef.current = false;
+        void recordAttemptEvent(examId, 'FULLSCREEN_EXIT').catch(
+          () => undefined,
+        );
+      }
+    }
+
+    wasFullscreenRef.current = Boolean(document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      wasFullscreenRef.current = false;
+    };
+  }, [examId, hasStarted, isFinished]);
+
+  useEffect(() => {
+    if (!hasStarted || isFinished) return;
+
+    function blockClipboard(event: ClipboardEvent) {
+      event.preventDefault();
+    }
+
+    function blockContextMenu(event: MouseEvent) {
+      event.preventDefault();
+    }
+
+    function blockClipboardShortcuts(event: KeyboardEvent) {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      if (!['c', 'x', 'v'].includes(event.key.toLowerCase())) return;
+
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        target.closest('input, textarea, [contenteditable="true"]')
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+    }
+
+    function blockDrag(event: DragEvent) {
+      event.preventDefault();
+    }
+
+    document.addEventListener('copy', blockClipboard, true);
+    document.addEventListener('cut', blockClipboard, true);
+    document.addEventListener('paste', blockClipboard, true);
+    document.addEventListener('contextmenu', blockContextMenu, true);
+    document.addEventListener('dragstart', blockDrag, true);
+    document.addEventListener('drop', blockDrag, true);
+    window.addEventListener('keydown', blockClipboardShortcuts, true);
+
+    return () => {
+      document.removeEventListener('copy', blockClipboard, true);
+      document.removeEventListener('cut', blockClipboard, true);
+      document.removeEventListener('paste', blockClipboard, true);
+      document.removeEventListener('contextmenu', blockContextMenu, true);
+      document.removeEventListener('dragstart', blockDrag, true);
+      document.removeEventListener('drop', blockDrag, true);
+      window.removeEventListener('keydown', blockClipboardShortcuts, true);
+    };
   }, [hasStarted, isFinished]);
 
   if (dataError) {
