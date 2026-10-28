@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout/AppLayout';
 import Spinner from '../../components/Spinner/Spinner';
@@ -54,6 +54,23 @@ function ExamRunnerPage() {
   } = useExamRunner(examId ?? '');
 
   const { setExamActive } = useExamGuard();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const syncFullscreen = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    syncFullscreen();
+    return () => document.removeEventListener('fullscreenchange', syncFullscreen);
+  }, []);
+
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch {
+      // Fullscreen is optional; browser permissions or device support may deny it.
+    }
+  }
 
   useEffect(() => {
     setExamActive(hasStarted && !isFinished);
@@ -210,6 +227,8 @@ function ExamRunnerPage() {
     <QuestionScreen
       exam={exam}
       questions={questions}
+      isFullscreen={isFullscreen}
+      onToggleFullscreen={toggleFullscreen}
       currentQuestion={currentQuestion}
       currentIndex={currentIndex}
       isLastQuestion={isLastQuestion}
