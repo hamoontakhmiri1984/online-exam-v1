@@ -123,7 +123,9 @@ async function request(
   return { status: response.status, body: await response.json() };
 }
 
-test('HTTP permissions and answer key: guest, unrelated users, owner, admin, active/finished/review-disabled student', async (t) => {
+test(
+  'HTTP permissions and answer key: guest, unrelated users, owner, admin, active/finished/review-disabled student',
+  async (t) => {
   if (!ready) return unavailable(t, 'PostgreSQL/Redis unavailable');
   const f = await fixture(),
     outsider = await user('Student'),
@@ -256,7 +258,9 @@ test('HTTP permissions and answer key: guest, unrelated users, owner, admin, act
   );
 });
 
-test('HTTP autosave/submit races preserve final answers, ignore stale revisions and make duplicate finish idempotent', async (t) => {
+test(
+  'HTTP autosave/submit races preserve final answers, ignore stale revisions and make duplicate finish idempotent',
+  async (t) => {
   if (!ready) return unavailable(t, 'PostgreSQL/Redis unavailable');
   for (let round = 0; round < 5; round++) {
     const f = await fixture(),
@@ -350,7 +354,9 @@ test('HTTP attempt start rate limit caps repeated starts per student and exam', 
   assert.deepEqual(statuses, [201, 200, 200, 200, 200, 429]);
 });
 
-test('Password reset ticket is single-use under concurrency and revokes the existing session', async (t) => {
+test(
+  'Password reset ticket is single-use under concurrency and revokes the existing session',
+  async (t) => {
   if (!ready) return unavailable(t, 'PostgreSQL/Redis unavailable');
   const actor = await user('Student');
   const ticket = await signResetTicket(actor.id);
