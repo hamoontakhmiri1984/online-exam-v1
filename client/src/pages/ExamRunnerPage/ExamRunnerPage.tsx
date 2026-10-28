@@ -130,6 +130,9 @@ function ExamRunnerPage() {
     return () => window.removeEventListener('blur', handleWindowBlur);
   }, [currentExamId, hasStarted, isFinished]);
 
+  // Best-effort deterrent only: browser tools and screenshots can bypass it.
+  // Keyboard/context-menu blocking may hinder assistive technology; server-side
+  // answer secrecy and grading are the actual security controls.
   useEffect(() => {
     if (!hasStarted || isFinished) return;
 
