@@ -48,13 +48,12 @@ async function migrateLegacySession(userId: string): Promise<void> {
 
   const oldSessionKey = legacySessionKey(userId);
   const oldAliasesKey = legacyRotatedKey(userId);
-  const [legacySid, legacyAliases, sessionTtl, aliasesTtl] =
-    await Promise.all([
-      redis.get(oldSessionKey),
-      redis.hGetAll(oldAliasesKey),
-      redis.ttl(oldSessionKey),
-      redis.ttl(oldAliasesKey),
-    ]);
+  const [legacySid, legacyAliases, sessionTtl, aliasesTtl] = await Promise.all([
+    redis.get(oldSessionKey),
+    redis.hGetAll(oldAliasesKey),
+    redis.ttl(oldSessionKey),
+    redis.ttl(oldAliasesKey),
+  ]);
 
   const now = Date.now() / 1000;
   if (legacySid) {
