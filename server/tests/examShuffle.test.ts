@@ -3,12 +3,17 @@ import assert from 'node:assert/strict';
 
 import { getOptionOrder, shuffleExamQuestions } from '../src/lib/examShuffle';
 
-const questions = ['q-1', 'q-2', 'q-3', 'q-4', 'q-5', 'q-6'].map((id) => ({ id }));
+const questions = ['q-1', 'q-2', 'q-3', 'q-4', 'q-5', 'q-6'].map((id) => ({
+  id,
+}));
 
 test('question order is stable for an attempt and preserves every question', () => {
   const first = shuffleExamQuestions(questions, 'attempt-seed-a');
   assert.deepEqual(first, shuffleExamQuestions(questions, 'attempt-seed-a'));
-  assert.deepEqual(first.map((q) => q.id).sort(), questions.map((q) => q.id).sort());
+  assert.deepEqual(
+    first.map((q) => q.id).sort(),
+    questions.map((q) => q.id).sort(),
+  );
   assert.notDeepEqual(
     first.map((q) => q.id),
     shuffleExamQuestions(questions, 'attempt-seed-b').map((q) => q.id),
