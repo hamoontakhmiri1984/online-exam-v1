@@ -478,7 +478,13 @@ test('HTTP audit endpoint returns paginated attempts and recorded browser events
 
   assert.equal(
     (
-      await request(f.exam.id, 'attempts/start', f.student.accessToken, 'POST', {})
+      await request(
+        f.exam.id,
+        'attempts/start',
+        f.student.accessToken,
+        'POST',
+        {},
+      )
     ).status,
     201,
   );
@@ -512,7 +518,9 @@ test('HTTP audit endpoint returns paginated attempts and recorded browser events
   assert.equal(audit.body.items[0].tabSwitches.length, 1);
 });
 
-test('HTTP attempt finish, answer-save and event limiters reject requests over their budgets', async (t) => {
+test(
+  'HTTP attempt finish, answer-save and event limiters reject requests over their budgets',
+  async (t) => {
   if (!ready) return unavailable(t, 'PostgreSQL/Redis unavailable');
   const f = await fixture();
 
