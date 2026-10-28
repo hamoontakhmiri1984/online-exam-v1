@@ -1,4 +1,4 @@
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Maximize2, Minimize2 } from 'lucide-react';
 import AppLayout from '../../../components/AppLayout/AppLayout';
 import type { Exam } from '../../../api/examApi';
 import type { Question } from '../../../api/questionApi';
@@ -10,6 +10,8 @@ import type { AutosaveStatus } from '../../../hooks/useExamRunner/useExamAutosav
 interface QuestionScreenProps {
   exam: Exam;
   questions: Question[];
+  isFullscreen: boolean;
+  onToggleFullscreen: () => void;
   currentQuestion: Question | null;
   currentIndex: number;
   isLastQuestion: boolean;
@@ -28,6 +30,8 @@ interface QuestionScreenProps {
 function QuestionScreen({
   exam,
   questions,
+  isFullscreen,
+  onToggleFullscreen,
   currentQuestion,
   currentIndex,
   isLastQuestion,
@@ -56,6 +60,16 @@ function QuestionScreen({
           <div className="flex items-center gap-3">
             <SaveStatusBadge status={saveStatus} onRetry={onRetrySave} />
             <TimerBadge timeLeft={timeLeft} />
+            <button
+              type="button"
+              onClick={onToggleFullscreen}
+              className="flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+              aria-label={isFullscreen ? 'خروج از تمام‌صفحه' : 'ورود به تمام‌صفحه'}
+              title={isFullscreen ? 'خروج از تمام‌صفحه' : 'ورود به تمام‌صفحه'}
+            >
+              {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+              <span>{isFullscreen ? 'خروج از تمام‌صفحه' : 'تمام‌صفحه'}</span>
+            </button>
           </div>
         </div>
 
