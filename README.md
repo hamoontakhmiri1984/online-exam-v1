@@ -52,6 +52,7 @@ npm run build -w server
 npm test -w client
 npm run build -w client
 npm run lint -w client
+npm run format:check -w client
 ```
 
 تست Redis واقعی با REQUIRE_SERVICES=1 و REDIS_URL قابل اجراست.
