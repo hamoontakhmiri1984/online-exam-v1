@@ -307,7 +307,9 @@ test('Password reset ticket is single-use under concurrency and revokes the exis
   );
 });
 
-test('active attempt integrity events are saved and visible to the authorized instructor', async (t) => {
+test(
+  'active attempt integrity events are saved and visible to the authorized instructor',
+  async (t) => {
   if (!ready) return unavailable(t, 'PostgreSQL/Redis unavailable');
   const f = await fixture();
   assert.equal(
@@ -353,4 +355,5 @@ test('active attempt integrity events are saved and visible to the authorized in
     outsider.accessToken,
   );
   assert.equal(denied.status, 403);
-});
+  },
+);
