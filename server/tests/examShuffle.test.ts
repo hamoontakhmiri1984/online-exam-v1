@@ -51,7 +51,10 @@ test('displayed option selections remap to canonical indices for grading', () =>
 
 test('legacy attempts without a shuffle seed keep their original answer indices', () => {
   const answers = { q1: 1, q2: 0 };
-  assert.deepEqual(remapDisplayedAnswersForGrading(answers, questions, null), answers);
+  assert.deepEqual(
+    remapDisplayedAnswersForGrading(answers, questions, null),
+    answers,
+  );
 });
 
 test('shuffle indices form a permutation and validate lengths', () => {
