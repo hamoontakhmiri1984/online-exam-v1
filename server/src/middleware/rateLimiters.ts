@@ -114,3 +114,32 @@ export const authEntryLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'تعداد درخواست‌ها بیش از حد مجاز است؛ کمی صبر کنید.' },
 });
+
+function createExamAttemptLimiter(scope: string, windowMs: number, max: number) {
+  return rateLimit({
+    store: new RedisRateLimitStore(rateLimitRedis, scope),
+    passOnStoreError: false,
+    windowMs,
+    max,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) =>
+      `${req.user?.sub ?? 'unknown'}:${req.params.examId ?? 'unknown'}`,
+    message: {
+      error: 'تعداد درخواست‌های آزمون بیش از حد مجاز است. کمی بعد دوباره تلاش کنید.',
+    },
+  });
+}
+
+export const examAttemptStartLimiter = createExamAttemptLimiter(
+  'examAttemptStart', 10 * 60 * 1000, 5,
+);
+export const examAttemptFinishLimiter = createExamAttemptLimiter(
+  'examAttemptFinish', 5 * 60 * 1000, 10,
+);
+export const examAttemptAnswersLimiter = createExamAttemptLimiter(
+  'examAttemptAnswers', 60 * 1000, 120,
+);
+export const examAttemptEventLimiter = createExamAttemptLimiter(
+  'examAttemptEvent', 60 * 1000, 30,
+);
