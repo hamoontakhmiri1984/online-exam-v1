@@ -345,14 +345,29 @@ model ExamAttempt {
   finishedAt     DateTime?
   endedByTimeout Boolean   @default(false)
   expiresAt      DateTime
+  // Null for attempts active before deterministic shuffling was introduced.
+  shuffleSeed    String?
 
   exam    Exam @relation(fields: [examId], references: [id], onDelete: Restrict)
   student User @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  events  ExamAttemptEvent[]
 
   @@unique([examId, studentId])
   @@index([examId])
   @@index([studentId])
   @@map("exam_attempts")
+}
+
+model ExamAttemptEvent {
+  id        String   @id @default(cuid())
+  attemptId String
+  type      String
+  createdAt DateTime @default(now())
+
+  attempt ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@index([attemptId, createdAt])
+  @@map("exam_attempt_events")
 }
 
 // Append-only history; the newest startDate defines the current plan.
