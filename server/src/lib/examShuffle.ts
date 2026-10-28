@@ -36,11 +36,7 @@ export function getOptionOrder(
   if (!seed) return indexes;
 
   return indexes.sort((left, right) => {
-    const difference = rank(
-      seed,
-      `option:${questionId}`,
-      String(left),
-    ).localeCompare(
+    const difference = rank(seed, `option:${questionId}`, String(left)).localeCompare(
       rank(seed, `option:${questionId}`, String(right)),
     );
     return difference || left - right;
