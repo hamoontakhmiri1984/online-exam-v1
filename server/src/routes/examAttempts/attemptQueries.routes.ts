@@ -44,8 +44,8 @@ router.get(
           student: { select: { id: true, name: true, username: true } },
           events: {
             where: {
-            type: { in: ['TAB_HIDDEN', 'FULLSCREEN_EXIT', 'WINDOW_BLUR'] },
-          },
+              type: { in: ['TAB_HIDDEN', 'FULLSCREEN_EXIT', 'WINDOW_BLUR'] },
+            },
             select: { type: true, createdAt: true },
             orderBy: { createdAt: 'asc' },
           },

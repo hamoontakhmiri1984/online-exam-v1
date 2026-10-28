@@ -14,11 +14,16 @@ function loadTypeScript(file) {
       esModuleInterop: true,
     },
   }).outputText;
-  vm.runInNewContext(code, {
-    module,
-    exports: module.exports,
-    require,
-  }, { filename: file });
+
+  vm.runInNewContext(
+    code,
+    {
+      module,
+      exports: module.exports,
+      require,
+    },
+    { filename: file },
+  );
   return module.exports;
 }
 
@@ -43,20 +48,20 @@ test('audit pagination defaults, rejects invalid values and caps page size', () 
     path.join(src, 'lib/pagination.ts'),
   );
 
-  assert.deepEqual({ ...parsePagination(undefined, undefined) }, {
-    page: 1,
-    pageSize: 25,
-  });
-  assert.deepEqual({ ...parsePagination('3', '50') }, {
-    page: 3,
-    pageSize: 50,
-  });
-  assert.deepEqual({ ...parsePagination('-1', '1000') }, {
-    page: 1,
-    pageSize: 100,
-  });
-  assert.deepEqual({ ...parsePagination('not-a-page', '0') }, {
-    page: 1,
-    pageSize: 25,
-  });
+  assert.deepEqual(
+    { ...parsePagination(undefined, undefined) },
+    { page: 1, pageSize: 25 },
+  );
+  assert.deepEqual(
+    { ...parsePagination('3', '50') },
+    { page: 3, pageSize: 50 },
+  );
+  assert.deepEqual(
+    { ...parsePagination('-1', '1000') },
+    { page: 1, pageSize: 100 },
+  );
+  assert.deepEqual(
+    { ...parsePagination('not-a-page', '0') },
+    { page: 1, pageSize: 25 },
+  );
 });
