@@ -4,6 +4,7 @@ import { requireAuth } from '../../middleware/requireAuth';
 import { asyncHandler } from '../../lib/asyncHandler';
 import { prisma } from '../../lib/prisma';
 import { isAnswerKeyReleased } from '../../lib/examTiming';
+import { shuffleExamQuestions } from '../../lib/examShuffle';
 
 import {
   getExamQuestions,
@@ -30,12 +31,13 @@ router.get(
 
     // Release question content only after an attempt has started.
     let canSeeAnswerKey = false;
+    let activeShuffleSeed: string | null = null;
     if (role === 'Student') {
       const attempt = await prisma.examAttempt.findUnique({
         where: {
           examId_studentId: { examId: exam.id, studentId: sub },
         },
-        select: { id: true, finishedAt: true },
+        select: { id: true, finishedAt: true, shuffleSeed: true },
       });
       if (!attempt) {
         return res.json([]);
@@ -43,9 +45,20 @@ router.get(
       // Expose answers only after the attempt finishes and the shared exam window closes, with review enabled.
       canSeeAnswerKey =
         attempt.finishedAt !== null && isAnswerKeyReleased(exam);
+      if (attempt.finishedAt === null) activeShuffleSeed = attempt.shuffleSeed;
     }
 
-    const questions = await getExamQuestions(exam.id);
+    const storedQuestions = await getExamQuestions(exam.id);
+    const questions =
+      role === 'Student' && activeShuffleSeed
+        ? shuffleExamQuestions(storedQuestions, activeShuffleSeed).map(
+            ({ question, options, correctOptionIndex }) => ({
+              ...question,
+              optionsSnapshot: options,
+              correctIndexSnapshot: correctOptionIndex,
+            }),
+          )
+        : storedQuestions;
 
     if (role === 'Student') {
       return res.json(
