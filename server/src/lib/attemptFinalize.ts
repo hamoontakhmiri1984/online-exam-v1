@@ -4,6 +4,7 @@ import type { ExamAttempt } from '@prisma/client';
 import { prisma } from './prisma';
 import { notifyUser } from './notifications';
 import { FINISH_GRACE_MS } from './examTiming';
+import { getOptionOrder } from './examShuffle';
 
 export { FINISH_GRACE_MS };
 
@@ -25,16 +26,19 @@ export async function finalizeAttempt(input: {
   attemptId: string;
   examId: string;
   answers: AnswersMap;
+  shuffleSeed?: string | null;
   finishedAt: Date;
   endedByTimeout: boolean;
 }): Promise<{ won: boolean; attempt: ExamAttempt }> {
   const questions = await prisma.examQuestion.findMany({
     where: { examId: input.examId },
-    select: { id: true, correctIndexSnapshot: true },
+    select: { id: true, optionsSnapshot: true, correctIndexSnapshot: true },
   });
-  const correctCount = questions.filter(
-    (q) => input.answers[q.id] === q.correctIndexSnapshot,
-  ).length;
+  const correctCount = questions.filter((q) => {
+    const optionOrder = getOptionOrder(q.optionsSnapshot.length, input.shuffleSeed, q.id);
+    const selectedOriginalIndex = optionOrder[input.answers[q.id]];
+    return selectedOriginalIndex === q.correctIndexSnapshot;
+  }).length;
 
   const { count } = await prisma.examAttempt.updateMany({
     where: { id: input.attemptId, finishedAt: null },
@@ -103,6 +107,7 @@ export async function finalizeExpiredAttempts(
     const { won, attempt } = await finalizeAttempt({
       attemptId: a.id,
       examId: a.examId,
+      shuffleSeed: a.shuffleSeed,
       answers: sanitizeAnswers(a.answers),
       finishedAt: a.expiresAt,
       endedByTimeout: true,
