@@ -111,6 +111,13 @@ function IntroScreen({
               بهتره تا آخر آزمون از این صفحه خارج نشی.
             </li>
             <li className="flex items-start gap-2.5 text-sm text-gray-600 dark:text-gray-300">
+              <Ban
+                size={16}
+                className="mt-0.5 shrink-0 text-accent-500 dark:text-accent-400"
+              />
+              کپی، برش و چسباندن در صفحه‌ی آزمون غیرفعال است.
+            </li>
+            <li className="flex items-start gap-2.5 text-sm text-gray-600 dark:text-gray-300">
               <ShieldAlert
                 size={16}
                 className="mt-0.5 shrink-0 text-brand-600 dark:text-brand-400"
