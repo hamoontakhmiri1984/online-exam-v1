@@ -108,6 +108,10 @@ export async function invalidateUserAuthCache(userId: string): Promise<void> {
     });
   } catch (error) {
     // Snapshots expire after 30 seconds even if explicit invalidation is unavailable.
-    logEvent('error', 'Failed to invalidate account authorization cache', error);
+    logEvent(
+      'error',
+      'Failed to invalidate account authorization cache',
+      error,
+    );
   }
 }
