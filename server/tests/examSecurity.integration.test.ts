@@ -386,12 +386,12 @@ test(
         assert.equal(
           (
             await request(
-            f.exam.id,
-            'attempts/start',
-            actor.accessToken,
-            'POST',
-            {},
-          )
+              f.exam.id,
+              'attempts/start',
+              actor.accessToken,
+              'POST',
+              {},
+            )
           ).status,
           201,
         );
