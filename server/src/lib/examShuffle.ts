@@ -40,9 +40,7 @@ export function getOptionOrder(
       seed,
       `option:${questionId}`,
       String(left),
-    ).localeCompare(
-      rank(seed, `option:${questionId}`, String(right)),
-    );
+    ).localeCompare(rank(seed, `option:${questionId}`, String(right)));
     return difference || left - right;
   });
 }
