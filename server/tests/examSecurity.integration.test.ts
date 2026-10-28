@@ -103,7 +103,7 @@ async function fixture() {
       correctIndexSnapshot: 1,
     },
   });
-  return { teacher, student, exam, question };
+  return { teacher, student, exam, question, group };
 }
 async function request(
   examId: string,
@@ -376,7 +376,7 @@ test('HTTP grading uses each student\'s shuffled option order and seed', async (
   const f = await fixture();
   const secondStudent = await user('Student');
   await prisma.group.update({
-    where: { id: groupIds[groupIds.length - 1] },
+    where: { id: f.group.id },
     data: { students: { connect: { id: secondStudent.id } } },
   });
 
