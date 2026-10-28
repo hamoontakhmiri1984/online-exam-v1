@@ -26,6 +26,7 @@ export function shuffledIndices(
     )
     .map(({ index }) => index);
 }
+
 export type ShufflableExamQuestion = {
   id: string;
   optionsSnapshot: string[];
@@ -46,8 +47,12 @@ export function shuffleExamQuestions<T extends ShufflableExamQuestion>(
       );
       return {
         question,
-        options: optionOrder.map((optionIndex) => question.optionsSnapshot[optionIndex]),
-        correctOptionIndex: optionOrder.indexOf(question.correctIndexSnapshot),
+        options: optionOrder.map(
+          (optionIndex) => question.optionsSnapshot[optionIndex],
+        ),
+        correctOptionIndex: optionOrder.indexOf(
+          question.correctIndexSnapshot,
+        ),
       };
     },
   );
