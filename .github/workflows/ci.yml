@@ -91,6 +91,9 @@ jobs:
       - name: Lint client
         run: npm run lint -w client
 
+      - name: Check client formatting
+        run: npm run format:check -w client
+
       - name: Run client tests
         run: npm test -w client
 
