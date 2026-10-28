@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Exam } from '../../api/examApi';
-import { autosaveAnswers } from '../../api/examAttemptApi';
+import { autosaveAnswers, recordAttemptEvent } from '../../api/examAttemptApi';
 import { ApiError } from '../../lib/apiClient';
 import type { AnswersMap } from './useExamAnswers';
 import {
@@ -73,7 +73,13 @@ function useExamAutosave(
       controller.flushNow();
     }
     function handleVisibility() {
-      if (document.visibilityState === 'hidden') flushNow();
+      if (document.visibilityState === 'hidden') {
+        flushNow();
+        // Telemetry must never block answer autosave.
+        void recordAttemptEvent(examIdRef.current, 'TAB_HIDDEN').catch(
+          () => undefined,
+        );
+      }
     }
 
     document.addEventListener('visibilitychange', handleVisibility);
