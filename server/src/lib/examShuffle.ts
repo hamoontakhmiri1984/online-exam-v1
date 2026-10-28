@@ -1,22 +1,7 @@
-// Deterministic Fisher-Yates shuffles: an attempt's seed keeps order stable on reload.
-function seedToUint32(seed: string): number {
-  let hash = 2166136261;
-  for (let i = 0; i < seed.length; i++) {
-    hash = Math.imul(hash ^ seed.charCodeAt(i), 16777619);
-  }
-  return hash >>> 0;
-}
+import { createHash } from 'node:crypto';
 
-function createRandom(seed: string): () => number {
-  let state = seedToUint32(seed);
-  return () => {
-    let value = (state += 0x6d2b79f5);
-    value = Math.imul(value ^ (value >>> 15), value | 1);
-    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
-    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
+// A cryptographic hash gives each index a stable, seed-specific ordering without
+// reducing the UUID seed to a small PRNG state.
 export function shuffledIndices(
   length: number,
   seed: string,
@@ -25,18 +10,22 @@ export function shuffledIndices(
   if (!Number.isInteger(length) || length < 0) {
     throw new RangeError('length must be a non-negative integer');
   }
-  const indices = Array.from({ length }, (_, index) => index);
-  const random = createRandom(`${seed}:${purpose}`);
-  for (let index = indices.length - 1; index > 0; index--) {
-    const swapIndex = Math.floor(random() * (index + 1));
-    [indices[index], indices[swapIndex]] = [
-      indices[swapIndex],
-      indices[index],
-    ];
-  }
-  return indices;
-}
 
+  return Array.from({ length }, (_, index) => ({
+    index,
+    key: createHash('sha256')
+      .update(`${seed}:${purpose}:${index}`)
+      .digest('hex'),
+  }))
+    .sort((left, right) =>
+      left.key === right.key
+        ? left.index - right.index
+        : left.key < right.key
+          ? -1
+          : 1,
+    )
+    .map(({ index }) => index);
+}
 export type ShufflableExamQuestion = {
   id: string;
   optionsSnapshot: string[];
