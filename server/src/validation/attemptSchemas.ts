@@ -9,3 +9,7 @@ export const autosaveAnswersSchema = z.object({
   answers: answersShape,
   revision: z.number().int().min(1).max(2_147_483_647),
 });
+
+export const attemptEventSchema = z.object({
+  type: z.enum(['TAB_HIDDEN']),
+});
