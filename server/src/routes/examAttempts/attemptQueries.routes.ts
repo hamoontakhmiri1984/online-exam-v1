@@ -12,6 +12,44 @@ const router = Router({ mergeParams: true });
 router.use(requireAuth);
 
 router.get(
+  '/audit',
+  requireRole('Instructor', 'SuperAdmin'),
+  asyncHandler(async (req, res) => {
+    const { role, sub } = req.user!;
+    const { exam, allowed } = await loadAccessibleExam(
+      req.params.examId,
+      sub,
+      role,
+    );
+    if (!exam) throw notFound('آزمون یافت نشد');
+    if (!allowed) throw forbidden();
+
+    await finalizeExpiredAttempts({ examId: exam.id });
+    const attempts = await prisma.examAttempt.findMany({
+      where: { examId: exam.id },
+      orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
+      include: {
+        student: { select: { id: true, name: true, username: true } },
+        events: {
+          where: { type: 'TAB_HIDDEN' },
+          select: { createdAt: true },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    res.json(
+      attempts.map((attempt) => ({
+        ...serializeAttempt(attempt),
+        student: attempt.student,
+        tabSwitchCount: attempt.events.length,
+        tabSwitches: attempt.events.map((event) => event.createdAt.toISOString()),
+      })),
+    );
+  }),
+);
+
+router.get(
   '/',
   requireRole('Instructor', 'SuperAdmin'),
   asyncHandler(async (req, res) => {
