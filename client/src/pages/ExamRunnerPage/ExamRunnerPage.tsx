@@ -1,9 +1,13 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout/AppLayout';
 import Spinner from '../../components/Spinner/Spinner';
 import useExamRunner from '../../hooks/useExamRunner';
 import { useExamGuard } from '../../context/ExamGuardContext';
+import {
+  logExamIntegrityEvent,
+  type ExamIntegrityEventType,
+} from '../../api/examAttemptApi';
 import { formatExamDateTime } from '../../utils/formatDate';
 import IntroScreen from './components/IntroScreen';
 import QuestionScreen from './components/QuestionScreen';
@@ -50,11 +54,68 @@ function ExamRunnerPage() {
   } = useExamRunner(examId ?? '');
 
   const { setExamActive } = useExamGuard();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const syncFullscreen = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    syncFullscreen();
+    return () => document.removeEventListener('fullscreenchange', syncFullscreen);
+  }, []);
+
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch {
+      // Fullscreen is optional; browser permissions or device support may deny it.
+    }
+  }
 
   useEffect(() => {
     setExamActive(hasStarted && !isFinished);
     return () => setExamActive(false);
   }, [hasStarted, isFinished, setExamActive]);
+
+  // These signals help instructors review suspicious patterns; they are not
+  // treated as definitive proof of cheating and do not block clipboard actions.
+  useEffect(() => {
+    if (!examId || !hasStarted || isFinished) return;
+
+    const record = (type: ExamIntegrityEventType) => {
+      void logExamIntegrityEvent(examId, type).catch(() => {
+        // Logging must never interrupt answering or autosaving.
+      });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') record('tab_hidden');
+    };
+
+    let wasFullscreen = Boolean(document.fullscreenElement);
+    const handleFullscreenChange = () => {
+      if (document.fullscreenElement) {
+        wasFullscreen = true;
+      } else if (wasFullscreen) {
+        wasFullscreen = false;
+        record('fullscreen_exit');
+      }
+    };
+
+    const handleCopy = () => record('copy_attempt');
+    const handlePaste = () => record('paste_attempt');
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('copy', handleCopy);
+    document.addEventListener('paste', handlePaste);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('copy', handleCopy);
+      document.removeEventListener('paste', handlePaste);
+    };
+  }, [examId, hasStarted, isFinished]);
 
   useEffect(() => {
     if (!hasStarted || isFinished) return;
@@ -166,6 +227,8 @@ function ExamRunnerPage() {
     <QuestionScreen
       exam={exam}
       questions={questions}
+      isFullscreen={isFullscreen}
+      onToggleFullscreen={toggleFullscreen}
       currentQuestion={currentQuestion}
       currentIndex={currentIndex}
       isLastQuestion={isLastQuestion}

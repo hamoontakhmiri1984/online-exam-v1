@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { logEvent } from '../../lib/logger';
 import { Router } from 'express';
 import { Prisma } from '@prisma/client';
@@ -16,9 +17,11 @@ import {
   sanitizeAnswers,
 } from '../../lib/attemptFinalize';
 import { requireAuth, requireRole } from '../../middleware/requireAuth';
+import { examAttemptLimiter } from '../../middleware/rateLimiters';
 import {
   finishAttemptSchema,
   autosaveAnswersSchema,
+  proctorEventSchema,
 } from '../../validation/attemptSchemas';
 import { asyncHandler } from '../../lib/asyncHandler';
 import { notFound, forbidden, badRequest, conflict } from '../../lib/errors';
@@ -31,6 +34,7 @@ router.use(requireAuth);
 router.post(
   '/start',
   requireRole('Student'),
+  examAttemptLimiter,
   asyncHandler(async (req, res) => {
     const { sub } = req.user!;
     const { exam, allowed } = await loadAccessibleExam(
@@ -107,6 +111,7 @@ router.post(
             totalQuestions: 0,
             startedAt: now,
             expiresAt,
+            shuffleSeed: randomUUID(),
             finishedAt: null,
           },
         });
@@ -143,6 +148,7 @@ router.post(
 router.post(
   '/finish',
   requireRole('Student'),
+  examAttemptLimiter,
   asyncHandler(async (req, res) => {
     const { sub } = req.user!;
     const { exam, allowed } = await loadAccessibleExam(
@@ -183,6 +189,7 @@ router.post(
       answers,
       finishedAt,
       endedByTimeout,
+      shuffleSeed: existing.shuffleSeed,
     });
 
     if (won) {
@@ -198,6 +205,7 @@ router.post(
 router.patch(
   '/answers',
   requireRole('Student'),
+  examAttemptLimiter,
   asyncHandler(async (req, res) => {
     const { sub } = req.user!;
     const { exam, allowed } = await loadAccessibleExam(
@@ -249,6 +257,40 @@ router.patch(
     }
 
     res.json({ saved: true, revision });
+  }),
+);
+
+router.post(
+  '/events',
+  requireRole('Student'),
+  examAttemptLimiter,
+  asyncHandler(async (req, res) => {
+    const { sub } = req.user!;
+    const { exam, allowed } = await loadAccessibleExam(
+      req.params.examId,
+      sub,
+      'Student',
+    );
+    if (!exam) throw notFound('آزمون یافت نشد');
+    if (!allowed) throw forbidden();
+
+    const parsed = proctorEventSchema.safeParse(req.body);
+    if (!parsed.success) throw badRequest(parsed.error.issues[0].message);
+
+    const attempt = await prisma.examAttempt.findUnique({
+      where: { examId_studentId: { examId: exam.id, studentId: sub } },
+      select: { id: true, finishedAt: true, expiresAt: true },
+    });
+    if (!attempt) throw notFound('هنوز این آزمون رو شروع نکردی');
+    if (attempt.finishedAt) throw conflict('این آزمون قبلاً ثبت شده');
+    if (Date.now() > attempt.expiresAt.getTime() + FINISH_GRACE_MS) {
+      throw conflict('زمان این آزمون تموم شده');
+    }
+
+    await prisma.examAttemptEvent.create({
+      data: { attemptId: attempt.id, eventType: parsed.data.type },
+    });
+    res.status(201).json({ logged: true });
   }),
 );
 

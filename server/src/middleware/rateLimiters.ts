@@ -90,6 +90,21 @@ export const joinGroupLimiter = rateLimit({
   },
 });
 
+// Protect exam lifecycle and autosave with a shared per-student/per-exam budget.
+export const examAttemptLimiter = rateLimit({
+  store: new RedisRateLimitStore(rateLimitRedis, 'examAttempt'),
+  passOnStoreError: false,
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) =>
+    `${req.user?.sub ?? 'unknown-user'}:${req.params.examId ?? 'unknown-exam'}`,
+  message: {
+    error: 'تعداد درخواست‌های این آزمون بیش از حد مجاز است؛ کمی صبر کنید.',
+  },
+});
+
 export const checkoutLimiter = rateLimit({
   store: new RedisRateLimitStore(rateLimitRedis, 'checkout'),
   passOnStoreError: false,

@@ -122,3 +122,34 @@ export type FinishedAttemptWithExam = Omit<
 export function getMyResultsHistory(): Promise<FinishedAttemptWithExam[]> {
   return apiRequest<FinishedAttemptWithExam[]>('/attempts/me');
 }
+
+
+export type ExamIntegrityEventType =
+  | 'tab_hidden'
+  | 'fullscreen_exit'
+  | 'copy_attempt'
+  | 'paste_attempt';
+
+export type ExamIntegrityEvent = {
+  id: string;
+  eventType: ExamIntegrityEventType;
+  occurredAt: string;
+  attemptId: string;
+  student: { id: string; name: string | null; username: string | null };
+};
+
+export function logExamIntegrityEvent(
+  examId: string,
+  type: ExamIntegrityEventType
+): Promise<{ logged: boolean }> {
+  return apiRequest<{ logged: boolean }>(`/exams/${examId}/attempts/events`, {
+    method: 'POST',
+    body: { type },
+  });
+}
+
+export function getExamIntegrityEvents(
+  examId: string
+): Promise<ExamIntegrityEvent[]> {
+  return apiRequest<ExamIntegrityEvent[]>(`/exams/${examId}/attempts/events`);
+}

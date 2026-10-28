@@ -41,6 +41,10 @@ const ExamReviewPage = React.lazy(() =>
   import('../pages/ExamReviewPage/ExamReviewPage')
 );
 
+const ExamEventsPage = React.lazy(() =>
+  import('../pages/ExamEventsPage/ExamEventsPage')
+);
+
 const PracticePage = React.lazy(() => import('../pages/PracticePage/PracticePage'));
 const PracticeEditorPage = React.lazy(() => import('../pages/PracticePage/PracticeEditorPage'));
 const PracticeDetailPage = React.lazy(() => import('../pages/PracticePage/PracticeDetailPage'));
@@ -176,6 +180,12 @@ export const routes: RouteConfig[] = [
     Component: ExamReviewPage,
     protected: true,
     allowedRoles: ['Student'],
+  },
+  {
+    path: '/exams/:examId/events',
+    Component: ExamEventsPage,
+    protected: true,
+    allowedRoles: MANAGEMENT_ROLES,
   },
   {
     path: '/exams/:examId/questions',

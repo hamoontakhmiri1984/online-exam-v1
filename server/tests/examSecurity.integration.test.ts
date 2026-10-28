@@ -15,6 +15,7 @@ import questions from '../src/routes/questions';
 import attempts from '../src/routes/examAttempts';
 import { errorHandler } from '../src/middleware/errorHandler';
 import { unavailable } from './helpers/serviceGuard';
+import { shuffledIndices } from '../src/lib/examShuffle';
 
 let ready = false;
 let server: Server;
@@ -224,8 +225,25 @@ test('HTTP autosave/submit races preserve final answers, ignore stale revisions 
     const f = await fixture(),
       token = f.student.accessToken;
     await request(f.exam.id, 'attempts/start', token, 'POST', {});
-    const finalAnswers = { [f.question.id]: 1 },
-      staleAnswers = { [f.question.id]: 0 };
+    const attempt = await prisma.examAttempt.findUniqueOrThrow({
+      where: {
+        examId_studentId: { examId: f.exam.id, studentId: f.student.id },
+      },
+    });
+    assert.ok(attempt.shuffleSeed);
+    const optionOrder = shuffledIndices(
+      2,
+      attempt.shuffleSeed,
+      `options:${f.question.id}`,
+    );
+    const correctDisplayedIndex = optionOrder.indexOf(
+      f.question.correctIndexSnapshot,
+    );
+    const finalAnswers = { [f.question.id]: correctDisplayedIndex };
+    const staleAnswers = { [f.question.id]: 1 - correctDisplayedIndex };
+    const canonicalAnswers = {
+      [f.question.id]: f.question.correctIndexSnapshot,
+    };
     assert.equal(
       (
         await request(f.exam.id, 'attempts/answers', token, 'PATCH', {
@@ -264,7 +282,7 @@ test('HTTP autosave/submit races preserve final answers, ignore stale revisions 
         examId_studentId: { examId: f.exam.id, studentId: f.student.id },
       },
     });
-    assert.deepEqual(row.answers, finalAnswers);
+    assert.deepEqual(row.answers, canonicalAnswers);
     assert.equal(row.correctCount, 1);
     assert.ok(row.finishedAt);
     assert.equal(
@@ -284,7 +302,7 @@ test('HTTP autosave/submit races preserve final answers, ignore stale revisions 
       { answers: staleAnswers },
     );
     assert.equal(repeated.body.correctCount, 1);
-    assert.deepEqual(repeated.body.answers, finalAnswers);
+    assert.deepEqual(repeated.body.answers, canonicalAnswers);
   }
 });
 
@@ -305,4 +323,51 @@ test('Password reset ticket is single-use under concurrency and revokes the exis
   await assert.rejects(
     resetPassword(actor.accessToken, 'Another-password-123'),
   );
+});
+
+test('active attempt integrity events are saved and visible to the authorized instructor', async (t) => {
+  if (!ready) return unavailable(t, 'PostgreSQL/Redis unavailable');
+  const f = await fixture();
+  assert.equal(
+    (
+      await request(
+        f.exam.id,
+        'attempts/start',
+        f.student.accessToken,
+        'POST',
+        {},
+      )
+    ).status,
+    201,
+  );
+  const logged = await request(
+    f.exam.id,
+    'attempts/events',
+    f.student.accessToken,
+    'POST',
+    { type: 'tab_hidden' },
+  );
+  assert.equal(logged.status, 201);
+  assert.equal(logged.body.logged, true);
+
+  const visible = await request(
+    f.exam.id,
+    'attempts/events',
+    f.teacher.accessToken,
+  );
+  assert.equal(visible.status, 200);
+  assert.ok(
+    visible.body.some(
+      (event: { eventType: string; student: { id: string } }) =>
+        event.eventType === 'tab_hidden' && event.student.id === f.student.id,
+    ),
+  );
+
+  const outsider = await user('Student');
+  const denied = await request(
+    f.exam.id,
+    'attempts/events',
+    outsider.accessToken,
+  );
+  assert.equal(denied.status, 403);
 });

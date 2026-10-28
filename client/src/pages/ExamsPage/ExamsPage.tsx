@@ -229,6 +229,7 @@ function ExamsPage() {
                         onOpenQuestions={(e) =>
                           navigate(`/exams/${e.id}/questions`)
                         }
+                        onOpenEvents={(e) => navigate(`/exams/${e.id}/events`)}
                         onEdit={form.openEdit}
                         onDelete={setDeleteTarget}
                         onPublish={handlePublish}

@@ -9,3 +9,14 @@ export const autosaveAnswersSchema = z.object({
   answers: answersShape,
   revision: z.number().int().min(1).max(2_147_483_647),
 });
+
+// Client events are advisory signals, not proof of misconduct. Timestamps are
+// assigned on the server to avoid trusting a student's device clock.
+export const proctorEventSchema = z.object({
+  type: z.enum([
+    'tab_hidden',
+    'fullscreen_exit',
+    'copy_attempt',
+    'paste_attempt',
+  ]),
+});
