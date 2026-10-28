@@ -36,7 +36,7 @@ export default function ExamAttemptAuditPanel({ examId }: { examId: string }) {
 
   useEffect(() => {
     void load(1);
-  }, [examId]);
+  }, [load]);
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">

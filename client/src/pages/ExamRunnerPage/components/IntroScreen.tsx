@@ -168,6 +168,11 @@ function IntroScreen({
           از همین لحظه تایمر {exam.durationMinutes.toLocaleString('fa-IR')}{' '}
           دقیقه‌ای فعال می‌شه و امکان توقف اون وجود نداره.
         </p>
+        {fullscreenError && (
+          <p role="alert" className="mb-4 text-sm text-danger-600 dark:text-danger-400">
+            {fullscreenError}
+          </p>
+        )}
         <div className="flex gap-3">
           <button
             onClick={() => setShowStartConfirm(false)}
