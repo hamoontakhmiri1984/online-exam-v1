@@ -18,7 +18,7 @@
     "test:otp:integration": "node --require ./tests/loadTestEnv.cjs --require ts-node/register/transpile-only --test tests/otp.integration.test.ts",
     "lint": "oxlint -c .oxlintrc.json src scripts tests --deny-warnings",
     "format": "prettier --write \"src/**/*.ts\" \"scripts/*.{ts,cjs}\" \"tests/**/*.{ts,cjs}\"",
-    "format:check": "prettier --write src/lib/examShuffle.ts tests/examSecurity.integration.test.ts tests/examShuffle.test.ts && git diff"
+    "format:check": "prettier --check \"src/**/*.ts\" \"scripts/*.{ts,cjs}\" \"tests/**/*.{ts,cjs}\""
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.658.1",
