@@ -310,50 +310,50 @@ test('Password reset ticket is single-use under concurrency and revokes the exis
 test(
   'active attempt integrity events are saved and visible to the authorized instructor',
   async (t) => {
-  if (!ready) return unavailable(t, 'PostgreSQL/Redis unavailable');
-  const f = await fixture();
-  assert.equal(
-    (
-      await request(
-        f.exam.id,
-        'attempts/start',
-        f.student.accessToken,
-        'POST',
-        {},
-      )
-    ).status,
-    201,
-  );
-  const logged = await request(
-    f.exam.id,
-    'attempts/events',
-    f.student.accessToken,
-    'POST',
-    { type: 'tab_hidden' },
-  );
-  assert.equal(logged.status, 201);
-  assert.equal(logged.body.logged, true);
+    if (!ready) return unavailable(t, 'PostgreSQL/Redis unavailable');
+    const f = await fixture();
+    assert.equal(
+      (
+        await request(
+          f.exam.id,
+          'attempts/start',
+          f.student.accessToken,
+          'POST',
+          {},
+        )
+      ).status,
+      201,
+    );
+    const logged = await request(
+      f.exam.id,
+      'attempts/events',
+      f.student.accessToken,
+      'POST',
+      { type: 'tab_hidden' },
+    );
+    assert.equal(logged.status, 201);
+    assert.equal(logged.body.logged, true);
 
-  const visible = await request(
-    f.exam.id,
-    'attempts/events',
-    f.teacher.accessToken,
-  );
-  assert.equal(visible.status, 200);
-  assert.ok(
-    visible.body.some(
-      (event: { eventType: string; student: { id: string } }) =>
-        event.eventType === 'tab_hidden' &&
-        event.student.id === f.student.id,
-    ),
-  );
+    const visible = await request(
+      f.exam.id,
+      'attempts/events',
+      f.teacher.accessToken,
+    );
+    assert.equal(visible.status, 200);
+    assert.ok(
+      visible.body.some(
+        (event: { eventType: string; student: { id: string } }) =>
+          event.eventType === 'tab_hidden' &&
+          event.student.id === f.student.id,
+      ),
+    );
 
-  const outsider = await user('Student');
-  const denied = await request(
-    f.exam.id,
-    'attempts/events',
-    outsider.accessToken,
-  );
-  assert.equal(denied.status, 403);
+    const outsider = await user('Student');
+    const denied = await request(
+      f.exam.id,
+      'attempts/events',
+      outsider.accessToken,
+    );
+    assert.equal(denied.status, 403);
   },
 );
