@@ -188,7 +188,9 @@ test(
     const displayedQuestion = (
       await request(f.exam.id, 'questions', f.student.accessToken)
     ).body[0];
-    const answers = { [f.question.id]: displayedQuestion.options.indexOf('B') };
+    const answers = {
+      [f.question.id]: displayedQuestion.options.indexOf('B'),
+    };
     assert.equal(
       (
         await request(
@@ -242,10 +244,7 @@ test(
     const released = (
       await request(f.exam.id, 'questions', f.student.accessToken)
     ).body[0];
-    assert.equal(
-      released.options[released.correctOptionIndex],
-      'B',
-    );
+    assert.equal(released.options[released.correctOptionIndex], 'B');
     await prisma.exam.update({
       where: { id: f.exam.id },
       data: { allowReview: false },
@@ -272,7 +271,9 @@ test(
       ).body[0];
       const correctDisplayedIndex = displayedQuestion.options.indexOf('B');
       const finalAnswers = { [f.question.id]: correctDisplayedIndex };
-      const staleAnswers = { [f.question.id]: correctDisplayedIndex === 0 ? 1 : 0 };
+      const staleAnswers = {
+        [f.question.id]: correctDisplayedIndex === 0 ? 1 : 0,
+      };
       assert.equal(
         (
           await request(f.exam.id, 'attempts/answers', token, 'PATCH', {
