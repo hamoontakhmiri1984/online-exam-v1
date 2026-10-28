@@ -369,101 +369,100 @@ test('Password reset ticket is single-use under concurrency and revokes the exis
   );
 });
 
-
 test(
   'HTTP grading gives full marks for the displayed correct option under different seeds',
   async (t) => {
-  if (!ready) return unavailable(t, 'PostgreSQL/Redis unavailable');
+    if (!ready) return unavailable(t, 'PostgreSQL/Redis unavailable');
 
-  const f = await fixture();
-  const secondStudent = await user('Student');
-  await prisma.group.update({
-    where: { id: f.group.id },
-    data: { students: { connect: { id: secondStudent.id } } },
-  });
+    const f = await fixture();
+    const secondStudent = await user('Student');
+    await prisma.group.update({
+      where: { id: f.group.id },
+      data: { students: { connect: { id: secondStudent.id } } },
+    });
 
-  try {
-    for (const actor of [f.student, secondStudent]) {
-      assert.equal(
-        (
-          await request(f.exam.id, 'attempts/start', actor.accessToken, 'POST', {})
-        ).status,
-        201,
-      );
-    }
+    try {
+      for (const actor of [f.student, secondStudent]) {
+        assert.equal(
+          (
+            await request(f.exam.id, 'attempts/start', actor.accessToken, 'POST', {})
+          ).status,
+          201,
+        );
+      }
 
-    let seedA = randomUUID();
-    let seedB = randomUUID();
-    while (
-      getOptionOrder(2, seedA, f.question.id).join(',') ===
-      getOptionOrder(2, seedB, f.question.id).join(',')
-    ) {
-      seedB = randomUUID();
-    }
+      let seedA = randomUUID();
+      let seedB = randomUUID();
+      while (
+        getOptionOrder(2, seedA, f.question.id).join(',') ===
+        getOptionOrder(2, seedB, f.question.id).join(',')
+      ) {
+        seedB = randomUUID();
+      }
 
-    await Promise.all([
-      prisma.examAttempt.update({
-        where: {
-          examId_studentId: { examId: f.exam.id, studentId: f.student.id },
-        },
-        data: { shuffleSeed: seedA },
-      }),
-      prisma.examAttempt.update({
-        where: {
-          examId_studentId: {
-            examId: f.exam.id,
-            studentId: secondStudent.id,
+      await Promise.all([
+        prisma.examAttempt.update({
+          where: {
+            examId_studentId: { examId: f.exam.id, studentId: f.student.id },
           },
-        },
-        data: { shuffleSeed: seedB },
-      }),
-    ]);
-
-    const results = await Promise.all(
-      [
-        { actor: f.student, seed: seedA },
-        { actor: secondStudent, seed: seedB },
-      ].map(async ({ actor, seed }) => {
-        const displayed = await request(
-          f.exam.id,
-          'questions',
-          actor.accessToken,
-        );
-        assert.equal(displayed.status, 200);
-        assert.equal(displayed.body.length, 1);
-        const question = displayed.body[0];
-        const correctDisplayedIndex = question.options.indexOf('B');
-        assert.ok(correctDisplayedIndex >= 0);
-
-        const finished = await request(
-          f.exam.id,
-          'attempts/finish',
-          actor.accessToken,
-          'POST',
-          { answers: { [f.question.id]: correctDisplayedIndex } },
-        );
-        assert.equal(finished.status, 200);
-        assert.equal(finished.body.correctCount, 1);
-        assert.equal(finished.body.totalQuestions, 1);
-
-        const stored = await prisma.examAttempt.findUniqueOrThrow({
+          data: { shuffleSeed: seedA },
+        }),
+        prisma.examAttempt.update({
           where: {
             examId_studentId: {
               examId: f.exam.id,
-              studentId: actor.id,
+              studentId: secondStudent.id,
             },
           },
-        });
-        assert.equal(stored.shuffleSeed, seed);
-        assert.equal(stored.correctCount, 1);
-        return question.options;
-      }),
-    );
+          data: { shuffleSeed: seedB },
+        }),
+      ]);
 
-    assert.notDeepEqual(results[0], results[1]);
-  } finally {
-    // The suite's shared teardown removes both students and their attempts.
-  }
+      const results = await Promise.all(
+        [
+          { actor: f.student, seed: seedA },
+          { actor: secondStudent, seed: seedB },
+        ].map(async ({ actor, seed }) => {
+          const displayed = await request(
+            f.exam.id,
+            'questions',
+            actor.accessToken,
+          );
+          assert.equal(displayed.status, 200);
+          assert.equal(displayed.body.length, 1);
+          const question = displayed.body[0];
+          const correctDisplayedIndex = question.options.indexOf('B');
+          assert.ok(correctDisplayedIndex >= 0);
+
+          const finished = await request(
+            f.exam.id,
+            'attempts/finish',
+            actor.accessToken,
+            'POST',
+            { answers: { [f.question.id]: correctDisplayedIndex } },
+          );
+          assert.equal(finished.status, 200);
+          assert.equal(finished.body.correctCount, 1);
+          assert.equal(finished.body.totalQuestions, 1);
+
+          const stored = await prisma.examAttempt.findUniqueOrThrow({
+            where: {
+              examId_studentId: {
+                examId: f.exam.id,
+                studentId: actor.id,
+              },
+            },
+          });
+          assert.equal(stored.shuffleSeed, seed);
+          assert.equal(stored.correctCount, 1);
+          return question.options;
+        }),
+      );
+
+      assert.notDeepEqual(results[0], results[1]);
+    } finally {
+      // The suite's shared teardown removes both students and their attempts.
+    }
   },
 );
 
