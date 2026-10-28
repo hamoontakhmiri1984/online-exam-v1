@@ -5,6 +5,7 @@ import {
   ListChecks,
   UploadCloud,
   Undo2,
+  ShieldAlert,
 } from 'lucide-react';
 import type { Exam } from '../../../api/examApi';
 import { formatExamDateTime } from '../../../utils/formatDate';
@@ -19,6 +20,7 @@ type ExamRowProps = {
   participantCount: number;
   onTake: (exam: Exam) => void;
   onOpenQuestions: (exam: Exam) => void;
+  onOpenEvents: (exam: Exam) => void;
   onEdit: (exam: Exam) => void;
   onDelete: (exam: Exam) => void;
   onPublish: (exam: Exam) => void;
@@ -55,6 +57,7 @@ function ExamRow({
   participantCount,
   onTake,
   onOpenQuestions,
+  onOpenEvents,
   onEdit,
   onDelete,
   onPublish,
@@ -106,6 +109,17 @@ function ExamRow({
               title="شروع آزمون"
             >
               <PlayCircle size={16} />
+            </button>
+          )}
+          {(canManage || isObserver) && (
+            <button
+              type="button"
+              onClick={() => onOpenEvents(exam)}
+              className="flex h-8 items-center justify-center gap-1.5 rounded-lg px-2 text-gray-500 hover:bg-danger-500/10 hover:text-danger-600 dark:text-gray-400 dark:hover:text-danger-400 transition"
+              title="رویدادهای آزمون"
+            >
+              <ShieldAlert size={16} />
+              رویدادها
             </button>
           )}
           {isObserver && (
