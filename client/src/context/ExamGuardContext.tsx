@@ -58,8 +58,8 @@ export function ExamGuardProvider({ children }: { children: ReactNode }) {
           شما در حال آزمون هستید
         </h2>
         <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">
-          می‌خوای آزمون رو لغو کنی؟ اگه از این صفحه خارج بشی، آزمون نیمه‌کاره
-          می‌مونه و پیشرفتت ذخیره نمی‌شه.
+          می‌خوای از صفحه خارج بشی؟ پاسخ‌هایی که ذخیره شده‌اند باقی می‌مانند؛
+          اما تغییراتی که هنوز ذخیره نشده‌اند ممکن است از دست بروند.
         </p>
         <div className="flex gap-3">
           <button
