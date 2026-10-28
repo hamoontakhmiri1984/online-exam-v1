@@ -36,36 +36,23 @@ test('the same attempt seed creates stable question and option order', () => {
   );
 });
 
-test(
-  'displayed option selections remap to canonical indices for grading',
-  () => {
-    const seed = 'grade-seed';
-    const shuffled = shuffleExamQuestions(questions, seed);
-    const answers: Record<string, number> = {};
-    for (const entry of shuffled) {
-      // Pick the displayed index of the correct option for each question.
-      answers[entry.question.id] = entry.correctOptionIndex;
-    }
-    const canonical = remapDisplayedAnswersForGrading(
-      answers,
-      questions,
-      seed,
-    );
-    assert.equal(canonical.q1, 1);
-    assert.equal(canonical.q2, 0);
-  },
-);
+test('displayed option selections remap to canonical indices for grading', () => {
+  const seed = 'grade-seed';
+  const shuffled = shuffleExamQuestions(questions, seed);
+  const answers: Record<string, number> = {};
+  for (const entry of shuffled) {
+    // Pick the displayed index of the correct option for each question.
+    answers[entry.question.id] = entry.correctOptionIndex;
+  }
+  const canonical = remapDisplayedAnswersForGrading(answers, questions, seed);
+  assert.equal(canonical.q1, 1);
+  assert.equal(canonical.q2, 0);
+});
 
-test(
-  'legacy attempts without a shuffle seed keep their original answer indices',
-  () => {
-    const answers = { q1: 1, q2: 0 };
-    assert.deepEqual(
-      remapDisplayedAnswersForGrading(answers, questions, null),
-      answers,
-    );
-  },
-);
+test('legacy attempts without a shuffle seed keep their original answer indices', () => {
+  const answers = { q1: 1, q2: 0 };
+  assert.deepEqual(remapDisplayedAnswersForGrading(answers, questions, null), answers);
+});
 
 test('shuffle indices form a permutation and validate lengths', () => {
   const indices = shuffledIndices(20, 'permutation-seed', 'questions');
