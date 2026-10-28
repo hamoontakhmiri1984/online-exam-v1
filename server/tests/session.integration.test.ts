@@ -37,7 +37,9 @@ after(() => {
 
 const newUserId = () => `test-user-${crypto.randomUUID()}`;
 
-test('validate Lua is read-only and resolves aliases through declared keys', () => {
+test(
+  'validate Lua is read-only and resolves aliases through declared keys',
+  () => {
   assert.doesNotMatch(
     VALIDATE_SESSION_SCRIPT,
     /redis\.call\('(GET|ZREMRANGEBYSCORE|ZREM|SET|DEL|HSET|HDEL|ZADD|EXPIRE)'/,
@@ -47,7 +49,8 @@ test('validate Lua is read-only and resolves aliases through declared keys', () 
     /redis\.call\('HGET', KEYS\[2\], current\)/,
   );
   assert.doesNotMatch(VALIDATE_SESSION_SCRIPT, /ARGV\[.*\] \.\./);
-});
+  },
+);
 
 test(
   'دو refresh هم‌زمان با یک sid قدیمی، هر دو همون sid جدید رو می‌گیرن',
