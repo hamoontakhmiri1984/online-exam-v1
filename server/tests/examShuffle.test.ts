@@ -12,10 +12,7 @@ test(
   () => {
     const first = shuffleExamQuestions(questions, 'attempt-seed-a');
 
-    assert.deepEqual(
-      first,
-      shuffleExamQuestions(questions, 'attempt-seed-a'),
-    );
+    assert.deepEqual(first, shuffleExamQuestions(questions, 'attempt-seed-a'));
     assert.deepEqual(
       first.map((question) => question.id).sort(),
       questions.map((question) => question.id).sort(),
@@ -34,22 +31,10 @@ test(
   () => {
     const first = getOptionOrder(5, 'attempt-seed-a', 'q-1');
 
-    assert.deepEqual(
-      first,
-      getOptionOrder(5, 'attempt-seed-a', 'q-1'),
-    );
-    assert.deepEqual(
-      [...first].sort((a, b) => a - b),
-      [0, 1, 2, 3, 4],
-    );
-    assert.notDeepEqual(
-      first,
-      getOptionOrder(5, 'attempt-seed-b', 'q-1'),
-    );
-    assert.notDeepEqual(
-      first,
-      getOptionOrder(5, 'attempt-seed-a', 'q-2'),
-    );
+    assert.deepEqual(first, getOptionOrder(5, 'attempt-seed-a', 'q-1'));
+    assert.deepEqual([...first].sort((a, b) => a - b), [0, 1, 2, 3, 4]);
+    assert.notDeepEqual(first, getOptionOrder(5, 'attempt-seed-b', 'q-1'));
+    assert.notDeepEqual(first, getOptionOrder(5, 'attempt-seed-a', 'q-2'));
   },
 );
 
