@@ -337,6 +337,28 @@ test(
 );
 
 test(
+  'HTTP attempt start rate limit caps repeated starts per student and exam',
+  async (t) => {
+    if (!ready) return unavailable(t, 'PostgreSQL/Redis unavailable');
+
+    const f = await fixture();
+    const statuses: number[] = [];
+    for (let index = 0; index < 6; index++) {
+      const result = await request(
+        f.exam.id,
+        'attempts/start',
+        f.student.accessToken,
+        'POST',
+        {},
+      );
+      statuses.push(result.status);
+    }
+
+    assert.deepEqual(statuses, [201, 200, 200, 200, 200, 429]);
+  },
+);
+
+test(
   'Password reset ticket is single-use under concurrency and revokes the existing session',
   async (t) => {
     if (!ready) return unavailable(t, 'PostgreSQL/Redis unavailable');
