@@ -80,7 +80,7 @@ function ExamRunnerPage() {
         return;
       }
 
-      if (wasFullscreenRef.current) {
+      if (wasFullscreenRef.current && currentExamId) {
         wasFullscreenRef.current = false;
         void recordAttemptEvent(currentExamId, 'FULLSCREEN_EXIT').catch(
           () => undefined,
