@@ -130,7 +130,8 @@ function createExamAttemptLimiter(
     keyGenerator: (req) =>
       `${req.user?.sub ?? 'unknown'}:${req.params.examId ?? 'unknown'}`,
     message: {
-      error: 'تعداد درخواست‌های آزمون بیش از حد مجاز است. کمی بعد دوباره تلاش کنید.',
+      error:
+        'تعداد درخواست‌های آزمون بیش از حد مجاز است. کمی بعد دوباره تلاش کنید.',
     },
   });
 }
