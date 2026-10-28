@@ -33,7 +33,6 @@ router.get(
   }),
 );
 
-
 router.get(
   '/events',
   requireRole('Instructor', 'SuperAdmin'),
