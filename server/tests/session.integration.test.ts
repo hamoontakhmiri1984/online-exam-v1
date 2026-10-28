@@ -55,27 +55,27 @@ test(
 test(
   'دو refresh هم‌زمان با یک sid قدیمی، هر دو همون sid جدید رو می‌گیرن',
   async (t) => {
-  if (!redisAvailable) return unavailable(t, 'Redis در دسترس نیست');
-  const userId = newUserId();
-  try {
-    const s0 = await createSession(userId);
+    if (!redisAvailable) return unavailable(t, 'Redis در دسترس نیست');
+    const userId = newUserId();
+    try {
+      const s0 = await createSession(userId);
 
-    const [a, b] = await Promise.all([
-      rotateSessionWithGrace(userId, s0),
-      rotateSessionWithGrace(userId, s0),
-    ]);
+      const [a, b] = await Promise.all([
+        rotateSessionWithGrace(userId, s0),
+        rotateSessionWithGrace(userId, s0),
+      ]);
 
-    assert.ok(a, 'رفرش اول باید موفق باشه');
-    assert.equal(a, b, 'رفرش دوم نباید sid جدید دیگه‌ای بسازه');
-    assert.notEqual(a, s0);
+      assert.ok(a, 'رفرش اول باید موفق باشه');
+      assert.equal(a, b, 'رفرش دوم نباید sid جدید دیگه‌ای بسازه');
+      assert.notEqual(a, s0);
 
-    // توکن رفرش اول (و دوم) هنوز معتبره - قبلاً دومی اولی رو باطل می‌کرد
-    assert.equal(await isSessionValid(userId, a!), true);
-    // sid قدیمی تا پایان grace هنوز معتبره (درخواست‌های در حال پرواز)
-    assert.equal(await isSessionValid(userId, s0), true);
-  } finally {
-    await revokeSession(userId);
-  }
+      // توکن رفرش اول (و دوم) هنوز معتبره - قبلاً دومی اولی رو باطل می‌کرد
+      assert.equal(await isSessionValid(userId, a!), true);
+      // sid قدیمی تا پایان grace هنوز معتبره (درخواست‌های در حال پرواز)
+      assert.equal(await isSessionValid(userId, s0), true);
+    } finally {
+      await revokeSession(userId);
+    }
 });
 
 test('sid ناشناخته/باطل rotate نمی‌شه', async (t) => {
