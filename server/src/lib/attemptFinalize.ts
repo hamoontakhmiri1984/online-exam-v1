@@ -35,7 +35,11 @@ export async function finalizeAttempt(input: {
     select: { id: true, optionsSnapshot: true, correctIndexSnapshot: true },
   });
   const correctCount = questions.filter((q) => {
-    const optionOrder = getOptionOrder(q.optionsSnapshot.length, input.shuffleSeed, q.id);
+    const optionOrder = getOptionOrder(
+      q.optionsSnapshot.length,
+      input.shuffleSeed,
+      q.id,
+    );
     const selectedOriginalIndex = optionOrder[input.answers[q.id]];
     return selectedOriginalIndex === q.correctIndexSnapshot;
   }).length;
