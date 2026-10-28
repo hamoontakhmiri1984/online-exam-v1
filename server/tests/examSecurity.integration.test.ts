@@ -385,7 +385,13 @@ test(
       for (const actor of [f.student, secondStudent]) {
         assert.equal(
           (
-            await request(f.exam.id, 'attempts/start', actor.accessToken, 'POST', {})
+            await request(
+            f.exam.id,
+            'attempts/start',
+            actor.accessToken,
+            'POST',
+            {},
+          )
           ).status,
           201,
         );
@@ -478,9 +484,15 @@ test('HTTP audit endpoint returns paginated attempts and recorded browser events
   );
   assert.equal(
     (
-      await request(f.exam.id, 'attempts/events', f.student.accessToken, 'POST', {
-        type: 'TAB_HIDDEN',
-      })
+      await request(
+        f.exam.id,
+        'attempts/events',
+        f.student.accessToken,
+        'POST',
+        {
+          type: 'TAB_HIDDEN',
+        },
+      )
     ).status,
     201,
   );
