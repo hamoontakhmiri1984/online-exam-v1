@@ -4,6 +4,7 @@ import type { ExamAttempt } from '@prisma/client';
 import { prisma } from './prisma';
 import { notifyUser } from './notifications';
 import { FINISH_GRACE_MS } from './examTiming';
+import { remapDisplayedAnswersForGrading } from './examShuffle';
 
 export { FINISH_GRACE_MS };
 
@@ -27,19 +28,27 @@ export async function finalizeAttempt(input: {
   answers: AnswersMap;
   finishedAt: Date;
   endedByTimeout: boolean;
+  shuffleSeed?: string | null;
 }): Promise<{ won: boolean; attempt: ExamAttempt }> {
   const questions = await prisma.examQuestion.findMany({
     where: { examId: input.examId },
-    select: { id: true, correctIndexSnapshot: true },
+    select: { id: true, optionsSnapshot: true, correctIndexSnapshot: true },
   });
+  // Active attempts store selected indices in displayed order. Remap them to
+  // the original option order before grading and persisting the final result.
+  const gradedAnswers = remapDisplayedAnswersForGrading(
+    input.answers,
+    questions,
+    input.shuffleSeed,
+  );
   const correctCount = questions.filter(
-    (q) => input.answers[q.id] === q.correctIndexSnapshot,
+    (q) => gradedAnswers[q.id] === q.correctIndexSnapshot,
   ).length;
 
   const { count } = await prisma.examAttempt.updateMany({
     where: { id: input.attemptId, finishedAt: null },
     data: {
-      answers: input.answers,
+      answers: gradedAnswers,
       correctCount,
       totalQuestions: questions.length,
       finishedAt: input.finishedAt,
@@ -106,6 +115,7 @@ export async function finalizeExpiredAttempts(
       answers: sanitizeAnswers(a.answers),
       finishedAt: a.expiresAt,
       endedByTimeout: true,
+      shuffleSeed: a.shuffleSeed,
     });
     if (!won) continue;
     finalized++;
