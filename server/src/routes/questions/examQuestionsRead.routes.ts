@@ -4,6 +4,7 @@ import { requireAuth } from '../../middleware/requireAuth';
 import { asyncHandler } from '../../lib/asyncHandler';
 import { prisma } from '../../lib/prisma';
 import { isAnswerKeyReleased } from '../../lib/examTiming';
+import { getOptionOrder, shuffleExamQuestions } from '../../lib/examShuffle';
 
 import {
   getExamQuestions,
@@ -30,17 +31,19 @@ router.get(
 
     // Release question content only after an attempt has started.
     let canSeeAnswerKey = false;
+    let shuffleSeed: string | null = null;
     if (role === 'Student') {
       const attempt = await prisma.examAttempt.findUnique({
         where: {
           examId_studentId: { examId: exam.id, studentId: sub },
         },
-        select: { id: true, finishedAt: true },
+        select: { id: true, finishedAt: true, shuffleSeed: true },
       });
       if (!attempt) {
         return res.json([]);
       }
-      // Expose answers only after the attempt finishes and the shared exam window closes, with review enabled.
+      shuffleSeed = attempt.shuffleSeed;
+      // Release the answer key only after the shared exam window closes.
       canSeeAnswerKey =
         attempt.finishedAt !== null && isAnswerKeyReleased(exam);
     }
@@ -48,16 +51,28 @@ router.get(
     const questions = await getExamQuestions(exam.id);
 
     if (role === 'Student') {
+      const orderedQuestions = shuffleExamQuestions(questions, shuffleSeed);
       return res.json(
-        questions.map((question) => ({
-          id: question.id,
-          examId: question.examId,
-          text: question.textSnapshot,
-          options: question.optionsSnapshot,
-          ...(canSeeAnswerKey
-            ? { correctOptionIndex: question.correctIndexSnapshot }
-            : {}),
-        })),
+        orderedQuestions.map((question) => {
+          const optionOrder = getOptionOrder(
+            question.optionsSnapshot.length,
+            shuffleSeed,
+            question.id,
+          );
+          return {
+            id: question.id,
+            examId: question.examId,
+            text: question.textSnapshot,
+            options: optionOrder.map((index) => question.optionsSnapshot[index]),
+            ...(canSeeAnswerKey
+              ? {
+                  correctOptionIndex: optionOrder.indexOf(
+                    question.correctIndexSnapshot,
+                  ),
+                }
+              : {}),
+          };
+        }),
       );
     }
 
