@@ -32,6 +32,13 @@ function IntroScreen({
 
   function confirmStart() {
     setShowStartConfirm(false);
+
+    // Fullscreen must be requested from the user's click; failure must not block the exam.
+    const root = document.documentElement;
+    if (typeof root.requestFullscreen === 'function') {
+      void root.requestFullscreen().catch(() => undefined);
+    }
+
     onStart();
   }
 
@@ -98,6 +105,13 @@ function IntroScreen({
                 className="mt-0.5 shrink-0 text-accent-500 dark:text-accent-400"
               />
               بهتره تا آخر آزمون از این صفحه خارج نشی.
+            </li>
+            <li className="flex items-start gap-2.5 text-sm text-gray-600 dark:text-gray-300">
+              <ShieldAlert
+                size={16}
+                className="mt-0.5 shrink-0 text-brand-600 dark:text-brand-400"
+              />
+              آزمون تلاش می‌کند در حالت تمام‌صفحه اجرا شود. می‌توانی خروج از آن را در مرورگر انجام بدهی؛ این رویداد ثبت می‌شود.
             </li>
           </ul>
 
