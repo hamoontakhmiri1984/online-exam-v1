@@ -42,12 +42,16 @@ test('validate Lua is read-only and resolves aliases through declared keys', () 
     VALIDATE_SESSION_SCRIPT,
     /redis\.call\('(GET|ZREMRANGEBYSCORE|ZREM|SET|DEL|HSET|HDEL|ZADD|EXPIRE)'/,
   );
-  assert.match(VALIDATE_SESSION_SCRIPT, /redis\.call\('HGET', KEYS\[2\], current\)/);
+  assert.match(
+    VALIDATE_SESSION_SCRIPT,
+    /redis\.call\('HGET', KEYS\[2\], current\)/,
+  );
   assert.doesNotMatch(VALIDATE_SESSION_SCRIPT, /ARGV\[.*\] \.\./);
 });
 
-
-test('دو refresh هم‌زمان با یک sid قدیمی، هر دو همون sid جدید رو می‌گیرن', async (t) => {
+test(
+  'دو refresh هم‌زمان با یک sid قدیمی، هر دو همون sid جدید رو می‌گیرن',
+  async (t) => {
   if (!redisAvailable) return unavailable(t, 'Redis در دسترس نیست');
   const userId = newUserId();
   try {
