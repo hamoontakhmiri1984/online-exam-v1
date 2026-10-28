@@ -69,9 +69,10 @@ function ExamRunnerPage() {
   }, [hasStarted, isFinished]);
 
   const wasFullscreenRef = useRef(false);
+  const currentExamId = examId;
 
   useEffect(() => {
-    if (!hasStarted || isFinished || !examId) return;
+    if (!hasStarted || isFinished || !currentExamId) return;
 
     function handleFullscreenChange() {
       if (document.fullscreenElement) {
@@ -81,7 +82,7 @@ function ExamRunnerPage() {
 
       if (wasFullscreenRef.current) {
         wasFullscreenRef.current = false;
-        void recordAttemptEvent(examId, 'FULLSCREEN_EXIT').catch(
+        void recordAttemptEvent(currentExamId, 'FULLSCREEN_EXIT').catch(
           () => undefined,
         );
       }
@@ -94,7 +95,7 @@ function ExamRunnerPage() {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       wasFullscreenRef.current = false;
     };
-  }, [examId, hasStarted, isFinished]);
+  }, [currentExamId, hasStarted, isFinished]);
 
   useEffect(() => {
     if (!hasStarted || isFinished) return;
