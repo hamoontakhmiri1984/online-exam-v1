@@ -77,7 +77,8 @@ async function migrateLegacySession(userId: string): Promise<void> {
     await redis.expire(sessionsKey(userId), REFRESH_TTL_SECONDS);
   }
 
-  await redis.del([oldSessionKey, oldAliasesKey]);
+  await redis.del(oldSessionKey);
+  await redis.del(oldAliasesKey);
   await redis.set(markerKey, '1');
 }
 
@@ -91,7 +92,7 @@ export const CREATE_SESSION_SCRIPT = [
   'end',
   "redis.call('EXPIRE', KEYS[1], tonumber(ARGV[2]))",
   'return ARGV[3]',
-].join('\\n');
+].join('\n');
 
 export async function createSession(userId: string): Promise<string> {
   const sessionId = crypto.randomUUID();
@@ -138,7 +139,7 @@ export const VALIDATE_SESSION_SCRIPT = [
   '  current = nextSid',
   'end',
   'return 0',
-].join('\\n');
+].join('\n');
 
 export async function isSessionValid(
   userId: string,
@@ -180,7 +181,7 @@ export const ROTATE_SESSION_SCRIPT = [
   '  followedAlias = true',
   'end',
   'return false',
-].join('\\n');
+].join('\n');
 
 export async function rotateSessionWithGrace(
   userId: string,
@@ -224,7 +225,7 @@ export const REVOKE_ONE_SESSION_SCRIPT = [
   '  current = nextSid',
   'end',
   'return false',
-].join('\\n');
+].join('\n');
 
 // With a SID, revoke only that logical device session (following its rotation aliases).
 // Without a SID, revoke every device session for password reset or account rejection.
@@ -235,12 +236,9 @@ export async function revokeSession(
   if (!sessionId) {
     await withSessionStore(async () => {
       await migrateLegacySession(userId);
-      await redis.del([
-        sessionsKey(userId),
-        rotationAliasesKey(userId),
-        legacySessionKey(userId),
-        legacyRotatedKey(userId),
-      ]);
+      await redis.del([sessionsKey(userId), rotationAliasesKey(userId)]);
+      await redis.del(legacySessionKey(userId));
+      await redis.del(legacyRotatedKey(userId));
     });
     return null;
   }
