@@ -14,6 +14,8 @@ export type ExamAttempt = {
   finishedAt: string | null;
   expiresAt: string; // The server deadline is authoritative.
   endedByTimeout: boolean;
+  tabSwitchCount?: number;
+  tabSwitches?: string[];
 };
 
 // Narrow completed attempts for reports and averages.
@@ -60,6 +62,16 @@ export function finishAttempt(
   return apiRequest<ExamAttempt>(`/exams/${examId}/attempts/finish`, {
     method: 'POST',
     body: { answers },
+  });
+}
+
+export function recordAttemptEvent(
+  examId: string,
+  type: 'TAB_HIDDEN',
+): Promise<{ recorded: boolean }> {
+  return apiRequest<{ recorded: boolean }>(`/exams/${examId}/attempts/events`, {
+    method: 'POST',
+    body: { type },
   });
 }
 
