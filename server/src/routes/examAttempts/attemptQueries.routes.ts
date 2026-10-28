@@ -80,7 +80,9 @@ router.get(
       attempts.map((attempt) => ({
         ...serializeAttempt(attempt),
         tabSwitchCount: attempt.events.length,
-        tabSwitches: attempt.events.map((event) => event.createdAt.toISOString()),
+        tabSwitches: attempt.events.map((event) =>
+          event.createdAt.toISOString(),
+        ),
       })),
     );
   }),
