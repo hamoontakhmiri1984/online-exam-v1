@@ -36,7 +36,11 @@ function IntroScreen({
     // Fullscreen must be requested from the user's click; failure must not block the exam.
     const root = document.documentElement;
     if (typeof root.requestFullscreen === 'function') {
-      void root.requestFullscreen().catch(() => undefined);
+      try {
+        void root.requestFullscreen().catch(() => undefined);
+      } catch {
+        // Some browsers reject fullscreen synchronously; starting must still work.
+      }
     }
 
     onStart();
