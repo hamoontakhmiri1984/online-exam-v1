@@ -40,15 +40,15 @@ const newUserId = () => `test-user-${crypto.randomUUID()}`;
 test(
   'validate Lua is read-only and resolves aliases through declared keys',
   () => {
-  assert.doesNotMatch(
-    VALIDATE_SESSION_SCRIPT,
-    /redis\.call\('(GET|ZREMRANGEBYSCORE|ZREM|SET|DEL|HSET|HDEL|ZADD|EXPIRE)'/,
-  );
-  assert.match(
-    VALIDATE_SESSION_SCRIPT,
-    /redis\.call\('HGET', KEYS\[2\], current\)/,
-  );
-  assert.doesNotMatch(VALIDATE_SESSION_SCRIPT, /ARGV\[.*\] \.\./);
+    assert.doesNotMatch(
+      VALIDATE_SESSION_SCRIPT,
+      /redis\.call\('(GET|ZREMRANGEBYSCORE|ZREM|SET|DEL|HSET|HDEL|ZADD|EXPIRE)'/,
+    );
+    assert.match(
+      VALIDATE_SESSION_SCRIPT,
+      /redis\.call\('HGET', KEYS\[2\], current\)/,
+    );
+    assert.doesNotMatch(VALIDATE_SESSION_SCRIPT, /ARGV\[.*\] \.\./);
   },
 );
 
