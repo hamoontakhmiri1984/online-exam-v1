@@ -51,9 +51,7 @@ export function shuffleExamQuestions<T extends ShufflableExamQuestion>(
         options: optionOrder.map(
           (optionIndex) => question.optionsSnapshot[optionIndex],
         ),
-        correctOptionIndex: optionOrder.indexOf(
-          question.correctIndexSnapshot,
-        ),
+        correctOptionIndex: optionOrder.indexOf(question.correctIndexSnapshot),
       };
     },
   );
@@ -63,9 +61,7 @@ export function shuffleExamQuestions<T extends ShufflableExamQuestion>(
 // snapshotted order for grading, while leaving the stored answers review-friendly.
 export function remapDisplayedAnswersForGrading(
   answers: Record<string, number>,
-  questions: Array<
-    Pick<ShufflableExamQuestion, 'id' | 'optionsSnapshot'>
-  >,
+  questions: Array<Pick<ShufflableExamQuestion, 'id' | 'optionsSnapshot'>>,
   seed: string | null | undefined,
 ): Record<string, number> {
   if (!seed) return { ...answers };
