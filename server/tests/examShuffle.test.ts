@@ -44,19 +44,29 @@ test('displayed option selections remap to canonical indices for grading', () =>
     // Pick the displayed index of the correct option for each question.
     answers[entry.question.id] = entry.correctOptionIndex;
   }
-  const canonical = remapDisplayedAnswersForGrading(answers, questions, seed);
+  const canonical = remapDisplayedAnswersForGrading(
+    answers,
+    questions,
+    seed,
+  );
   assert.equal(canonical.q1, 1);
   assert.equal(canonical.q2, 0);
 });
 
 test('legacy attempts without a shuffle seed keep their original answer indices', () => {
   const answers = { q1: 1, q2: 0 };
-  assert.deepEqual(remapDisplayedAnswersForGrading(answers, questions, null), answers);
+  assert.deepEqual(
+    remapDisplayedAnswersForGrading(answers, questions, null),
+    answers,
+  );
 });
 
 test('shuffle indices form a permutation and validate lengths', () => {
   const indices = shuffledIndices(20, 'permutation-seed', 'questions');
   assert.equal(indices.length, 20);
-  assert.deepEqual([...indices].sort((a, b) => a - b), Array.from({ length: 20 }, (_, i) => i));
+  assert.deepEqual(
+    [...indices].sort((a, b) => a - b),
+    Array.from({ length: 20 }, (_, i) => i),
+  );
   assert.throws(() => shuffledIndices(-1, 'seed', 'test'), RangeError);
 });
