@@ -4,6 +4,10 @@ import AppLayout from '../../components/AppLayout/AppLayout';
 import Spinner from '../../components/Spinner/Spinner';
 import useExamRunner from '../../hooks/useExamRunner';
 import { useExamGuard } from '../../context/ExamGuardContext';
+import {
+  logExamIntegrityEvent,
+  type ExamIntegrityEventType,
+} from '../../api/examAttemptApi';
 import { formatExamDateTime } from '../../utils/formatDate';
 import IntroScreen from './components/IntroScreen';
 import QuestionScreen from './components/QuestionScreen';
@@ -55,6 +59,46 @@ function ExamRunnerPage() {
     setExamActive(hasStarted && !isFinished);
     return () => setExamActive(false);
   }, [hasStarted, isFinished, setExamActive]);
+
+  // These signals help instructors review suspicious patterns; they are not
+  // treated as definitive proof of cheating and do not block clipboard actions.
+  useEffect(() => {
+    if (!examId || !hasStarted || isFinished) return;
+
+    const record = (type: ExamIntegrityEventType) => {
+      void logExamIntegrityEvent(examId, type).catch(() => {
+        // Logging must never interrupt answering or autosaving.
+      });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') record('tab_hidden');
+    };
+
+    let wasFullscreen = Boolean(document.fullscreenElement);
+    const handleFullscreenChange = () => {
+      if (document.fullscreenElement) {
+        wasFullscreen = true;
+      } else if (wasFullscreen) {
+        wasFullscreen = false;
+        record('fullscreen_exit');
+      }
+    };
+
+    const handleCopy = () => record('copy_attempt');
+    const handlePaste = () => record('paste_attempt');
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('copy', handleCopy);
+    document.addEventListener('paste', handlePaste);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('copy', handleCopy);
+      document.removeEventListener('paste', handlePaste);
+    };
+  }, [examId, hasStarted, isFinished]);
 
   useEffect(() => {
     if (!hasStarted || isFinished) return;
