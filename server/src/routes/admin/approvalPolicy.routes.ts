@@ -63,6 +63,9 @@ router.put(
         (input.requireGroupApproval && input.pendingGroups === 'approve')
       )
         throw badRequest('تأیید جمعی فقط در حالت آزاد مجاز است.');
+      // This bulk path only grants access (Pending -> Approved), so the short
+      // cache TTL is safe. Any future bulk rejection/suspension must invalidate
+      // each affected user's auth cache after the transaction commits.
       const approvedInstructors =
         !input.requireInstructorApproval &&
         input.pendingInstructors === 'approve'

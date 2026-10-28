@@ -7,6 +7,7 @@ import { asyncHandler } from '../../lib/asyncHandler';
 import { notFound, forbidden } from '../../lib/errors';
 
 import { serializeAttempt } from './examAttempts.service';
+import { parsePagination } from '../../lib/pagination';
 
 const router = Router({ mergeParams: true });
 router.use(requireAuth);
@@ -25,21 +26,35 @@ router.get(
     if (!allowed) throw forbidden();
 
     await finalizeExpiredAttempts({ examId: exam.id });
-    const attempts = await prisma.examAttempt.findMany({
-      where: { examId: exam.id },
-      orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
-      include: {
-        student: { select: { id: true, name: true, username: true } },
-        events: {
-          where: { type: { in: ['TAB_HIDDEN', 'FULLSCREEN_EXIT'] } },
-          select: { type: true, createdAt: true },
-          orderBy: { createdAt: 'asc' },
-        },
-      },
-    });
 
-    res.json(
-      attempts.map((attempt) => ({
+    const { page, pageSize } = parsePagination(
+      req.query.page,
+      req.query.pageSize,
+    );
+    const where = { examId: exam.id };
+
+    const [total, attempts] = await Promise.all([
+      prisma.examAttempt.count({ where }),
+      prisma.examAttempt.findMany({
+        where,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
+        include: {
+          student: { select: { id: true, name: true, username: true } },
+          events: {
+            where: {
+              type: { in: ['TAB_HIDDEN', 'FULLSCREEN_EXIT', 'WINDOW_BLUR'] },
+            },
+            select: { type: true, createdAt: true },
+            orderBy: { createdAt: 'asc' },
+          },
+        },
+      }),
+    ]);
+
+    res.json({
+      items: attempts.map((attempt) => ({
         ...serializeAttempt(attempt),
         student: attempt.student,
         tabSwitchCount: attempt.events.filter(
@@ -54,8 +69,18 @@ router.get(
         fullscreenExits: attempt.events
           .filter((event) => event.type === 'FULLSCREEN_EXIT')
           .map((event) => event.createdAt.toISOString()),
+        windowBlurCount: attempt.events.filter(
+          (event) => event.type === 'WINDOW_BLUR',
+        ).length,
+        windowBlurs: attempt.events
+          .filter((event) => event.type === 'WINDOW_BLUR')
+          .map((event) => event.createdAt.toISOString()),
       })),
-    );
+      page,
+      pageSize,
+      total,
+      totalPages: Math.ceil(total / pageSize),
+    });
   }),
 );
 

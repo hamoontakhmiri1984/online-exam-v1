@@ -29,20 +29,32 @@ function IntroScreen({
   startError,
 }: IntroScreenProps) {
   const [showStartConfirm, setShowStartConfirm] = useState(false);
+  const [fullscreenError, setFullscreenError] = useState<string | null>(null);
 
-  function confirmStart() {
-    setShowStartConfirm(false);
-
-    // Fullscreen must be requested from the user's click; failure must not block the exam.
+  async function confirmStart() {
+    setFullscreenError(null);
     const root = document.documentElement;
-    if (typeof root.requestFullscreen === 'function') {
-      try {
-        void root.requestFullscreen().catch(() => undefined);
-      } catch {
-        // Some browsers reject fullscreen synchronously; starting must still work.
-      }
+
+    if (typeof root.requestFullscreen !== 'function') {
+      setFullscreenError(
+        'مرورگر شما از حالت تمام‌صفحه پشتیبانی نمی‌کند؛ برای شروع آزمون از مرورگر دسکتاپ پشتیبانی‌شده استفاده کنید.',
+      );
+      return;
     }
 
+    try {
+      await root.requestFullscreen();
+      if (!document.fullscreenElement) {
+        throw new Error('Fullscreen was not entered');
+      }
+    } catch {
+      setFullscreenError(
+        'برای شروع آزمون باید حالت تمام‌صفحه فعال شود. اجازهٔ تمام‌صفحه را در مرورگر بدهید و دوباره تلاش کنید.',
+      );
+      return;
+    }
+
+    setShowStartConfirm(false);
     onStart();
   }
 
@@ -122,13 +134,13 @@ function IntroScreen({
                 size={16}
                 className="mt-0.5 shrink-0 text-brand-600 dark:text-brand-400"
               />
-              آزمون تلاش می‌کند در حالت تمام‌صفحه اجرا شود. می‌توانی خروج از آن را در مرورگر انجام بدهی؛ این رویداد ثبت می‌شود.
+              برای شروع آزمون باید حالت تمام‌صفحه فعال باشد. خروج از تمام‌صفحه ثبت می‌شود، اما این رویداد به‌تنهایی نشانهٔ قطعی تقلب نیست.
             </li>
           </ul>
 
-          {startError && (
+          {(startError || fullscreenError) && (
             <p className="mb-4 rounded-xl bg-danger-50 px-3 py-2 text-sm text-danger-600 dark:bg-danger-500/10 dark:text-danger-400">
-              {startError}
+              {fullscreenError || startError}
             </p>
           )}
 
@@ -156,6 +168,11 @@ function IntroScreen({
           از همین لحظه تایمر {exam.durationMinutes.toLocaleString('fa-IR')}{' '}
           دقیقه‌ای فعال می‌شه و امکان توقف اون وجود نداره.
         </p>
+        {fullscreenError && (
+          <p role="alert" className="mb-4 text-sm text-danger-600 dark:text-danger-400">
+            {fullscreenError}
+          </p>
+        )}
         <div className="flex gap-3">
           <button
             onClick={() => setShowStartConfirm(false)}

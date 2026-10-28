@@ -51,7 +51,18 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
 }
 
 export function verifyRefreshToken(token: string): RefreshTokenPayload {
-  return jwt.verify(token, env.JWT_REFRESH_SECRET, {
+  const payload = jwt.verify(token, env.JWT_REFRESH_SECRET, {
     algorithms: ['HS256'],
-  }) as RefreshTokenPayload;
+  }) as Partial<RefreshTokenPayload> & { purpose?: unknown };
+
+  if (
+    typeof payload.sub !== 'string' ||
+    typeof payload.sid !== 'string' ||
+    typeof payload.rememberMe !== 'boolean' ||
+    payload.purpose !== undefined
+  ) {
+    throw new Error('invalid refresh token');
+  }
+
+  return payload as RefreshTokenPayload;
 }

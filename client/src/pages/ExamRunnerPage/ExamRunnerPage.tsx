@@ -74,6 +74,8 @@ function ExamRunnerPage() {
   useEffect(() => {
     if (!hasStarted || isFinished || !currentExamId) return;
 
+    const activeExamId = currentExamId;
+
     function handleFullscreenChange() {
       if (document.fullscreenElement) {
         wasFullscreenRef.current = true;
@@ -82,7 +84,7 @@ function ExamRunnerPage() {
 
       if (wasFullscreenRef.current && currentExamId) {
         wasFullscreenRef.current = false;
-        void recordAttemptEvent(currentExamId, 'FULLSCREEN_EXIT').catch(
+        void recordAttemptEvent(activeExamId, 'FULLSCREEN_EXIT').catch(
           () => undefined,
         );
       }
@@ -97,6 +99,40 @@ function ExamRunnerPage() {
     };
   }, [currentExamId, hasStarted, isFinished]);
 
+  useEffect(() => {
+    if (!hasStarted || isFinished || !currentExamId) return;
+    const activeExamId = currentExamId;
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden') {
+        void recordAttemptEvent(activeExamId, 'TAB_HIDDEN').catch(
+          () => undefined,
+        );
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () =>
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [currentExamId, hasStarted, isFinished]);
+
+  useEffect(() => {
+    if (!hasStarted || isFinished || !currentExamId) return;
+    const activeExamId = currentExamId;
+
+    function handleWindowBlur() {
+      void recordAttemptEvent(activeExamId, 'WINDOW_BLUR').catch(
+        () => undefined,
+      );
+    }
+
+    window.addEventListener('blur', handleWindowBlur);
+    return () => window.removeEventListener('blur', handleWindowBlur);
+  }, [currentExamId, hasStarted, isFinished]);
+
+  // Best-effort deterrent only: browser tools and screenshots can bypass it.
+  // Keyboard/context-menu blocking may hinder assistive technology; server-side
+  // answer secrecy and grading are the actual security controls.
   useEffect(() => {
     if (!hasStarted || isFinished) return;
 

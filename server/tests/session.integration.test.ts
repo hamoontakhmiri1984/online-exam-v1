@@ -11,6 +11,7 @@ import { AppError } from '../src/lib/errors';
 import {
   createSession,
   isSessionValid,
+  VALIDATE_SESSION_SCRIPT,
   revokeSession,
   rotateSessionWithGrace,
   withSessionStore,
@@ -36,29 +37,47 @@ after(() => {
 
 const newUserId = () => `test-user-${crypto.randomUUID()}`;
 
-test('دو refresh هم‌زمان با یک sid قدیمی، هر دو همون sid جدید رو می‌گیرن', async (t) => {
-  if (!redisAvailable) return unavailable(t, 'Redis در دسترس نیست');
-  const userId = newUserId();
-  try {
-    const s0 = await createSession(userId);
+test(
+  'validate Lua is read-only and resolves aliases through declared keys',
+  () => {
+    assert.doesNotMatch(
+      VALIDATE_SESSION_SCRIPT,
+      /redis\.call\('(GET|ZREMRANGEBYSCORE|ZREM|SET|DEL|HSET|HDEL|ZADD|EXPIRE)'/,
+    );
+    assert.match(
+      VALIDATE_SESSION_SCRIPT,
+      /redis\.call\('HGET', KEYS\[2\], current\)/,
+    );
+    assert.doesNotMatch(VALIDATE_SESSION_SCRIPT, /ARGV\[.*\] \.\./);
+  },
+);
 
-    const [a, b] = await Promise.all([
-      rotateSessionWithGrace(userId, s0),
-      rotateSessionWithGrace(userId, s0),
-    ]);
+test(
+  'دو refresh هم‌زمان با یک sid قدیمی، هر دو همون sid جدید رو می‌گیرن',
+  async (t) => {
+    if (!redisAvailable) return unavailable(t, 'Redis در دسترس نیست');
+    const userId = newUserId();
+    try {
+      const s0 = await createSession(userId);
 
-    assert.ok(a, 'رفرش اول باید موفق باشه');
-    assert.equal(a, b, 'رفرش دوم نباید sid جدید دیگه‌ای بسازه');
-    assert.notEqual(a, s0);
+      const [a, b] = await Promise.all([
+        rotateSessionWithGrace(userId, s0),
+        rotateSessionWithGrace(userId, s0),
+      ]);
 
-    // توکن رفرش اول (و دوم) هنوز معتبره - قبلاً دومی اولی رو باطل می‌کرد
-    assert.equal(await isSessionValid(userId, a!), true);
-    // sid قدیمی تا پایان grace هنوز معتبره (درخواست‌های در حال پرواز)
-    assert.equal(await isSessionValid(userId, s0), true);
-  } finally {
-    await revokeSession(userId);
-  }
-});
+      assert.ok(a, 'رفرش اول باید موفق باشه');
+      assert.equal(a, b, 'رفرش دوم نباید sid جدید دیگه‌ای بسازه');
+      assert.notEqual(a, s0);
+
+      // توکن رفرش اول (و دوم) هنوز معتبره - قبلاً دومی اولی رو باطل می‌کرد
+      assert.equal(await isSessionValid(userId, a!), true);
+      // sid قدیمی تا پایان grace هنوز معتبره (درخواست‌های در حال پرواز)
+      assert.equal(await isSessionValid(userId, s0), true);
+    } finally {
+      await revokeSession(userId);
+    }
+  },
+);
 
 test('sid ناشناخته/باطل rotate نمی‌شه', async (t) => {
   if (!redisAvailable) return unavailable(t, 'Redis در دسترس نیست');
@@ -119,7 +138,9 @@ test('بعد از logout هیچ sid ای معتبر یا قابل rotate نیس�
   assert.equal(await rotateSessionWithGrace(userId, s1!), null);
 });
 
-test('rotate زنجیره‌ای A→B→C: sid قدیمی A همون sid *فعلی* (C) رو می‌گیره، نه B ی مرده', async (t) => {
+test(
+  'rotate زنجیره‌ای A→B→C: sid قدیمی A همون sid *فعلی* (C) رو می‌گیره، نه B ی مرده',
+  async (t) => {
   if (!redisAvailable) return unavailable(t, 'Redis در دسترس نیست');
   const userId = newUserId();
   try {

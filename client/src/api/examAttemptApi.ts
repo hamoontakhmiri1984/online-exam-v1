@@ -18,6 +18,8 @@ export type ExamAttempt = {
   tabSwitches?: string[];
   fullscreenExitCount?: number;
   fullscreenExits?: string[];
+  windowBlurCount?: number;
+  windowBlurs?: string[];
 };
 
 // Narrow completed attempts for reports and averages.
@@ -69,7 +71,7 @@ export function finishAttempt(
 
 export function recordAttemptEvent(
   examId: string,
-  type: 'TAB_HIDDEN' | 'FULLSCREEN_EXIT',
+  type: 'TAB_HIDDEN' | 'FULLSCREEN_EXIT' | 'WINDOW_BLUR',
 ): Promise<{ recorded: boolean }> {
   return apiRequest<{ recorded: boolean }>(`/exams/${examId}/attempts/events`, {
     method: 'POST',
@@ -87,10 +89,30 @@ export type ExamAttemptAudit = ExamAttempt & {
   tabSwitches: string[];
   fullscreenExitCount: number;
   fullscreenExits: string[];
+  windowBlurCount: number;
+  windowBlurs: string[];
 };
 
-export function getExamAttemptAudit(examId: string): Promise<ExamAttemptAudit[]> {
-  return apiRequest<ExamAttemptAudit[]>(`/exams/${examId}/attempts/audit`);
+export type ExamAttemptAuditPage = {
+  items: ExamAttemptAudit[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
+export function getExamAttemptAudit(
+  examId: string,
+  page = 1,
+  pageSize = 25,
+): Promise<ExamAttemptAuditPage> {
+  const query = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+  });
+  return apiRequest<ExamAttemptAuditPage>(
+    `/exams/${examId}/attempts/audit?${query.toString()}`,
+  );
 }
 
 // Ignore inaccessible exams, but propagate infrastructure errors.
