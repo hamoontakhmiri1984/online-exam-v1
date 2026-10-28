@@ -247,7 +247,9 @@ test('HTTP autosave/submit races preserve final answers, ignore stale revisions 
     const f = await fixture(),
       token = f.student.accessToken;
     await request(f.exam.id, 'attempts/start', token, 'POST', {});
-    const displayedQuestion = (await request(f.exam.id, 'questions', token)).body[0];
+    const displayedQuestion = (
+      await request(f.exam.id, 'questions', token)
+    ).body[0];
     const correctDisplayedIndex = displayedQuestion.options.indexOf('B');
     const finalAnswers = { [f.question.id]: correctDisplayedIndex };
     const staleAnswers = {
