@@ -17,13 +17,10 @@ export function shuffledIndices(
       .update(`${seed}:${purpose}:${index}`)
       .digest('hex'),
   }))
-    .sort((left, right) =>
-      left.key === right.key
-        ? left.index - right.index
-        : left.key < right.key
-          ? -1
-          : 1,
-    )
+    .sort((left, right) => {
+      if (left.key !== right.key) return left.key < right.key ? -1 : 1;
+      return left.index - right.index;
+    })
     .map(({ index }) => index);
 }
 
@@ -36,7 +33,11 @@ export type ShufflableExamQuestion = {
 export function shuffleExamQuestions<T extends ShufflableExamQuestion>(
   questions: T[],
   seed: string,
-): Array<{ question: T; options: string[]; correctOptionIndex: number }> {
+): Array<{
+  question: T;
+  options: string[];
+  correctOptionIndex: number;
+}> {
   return shuffledIndices(questions.length, seed, 'questions').map(
     (questionIndex) => {
       const question = questions[questionIndex];
@@ -62,7 +63,9 @@ export function shuffleExamQuestions<T extends ShufflableExamQuestion>(
 // snapshotted order for grading, while leaving the stored answers review-friendly.
 export function remapDisplayedAnswersForGrading(
   answers: Record<string, number>,
-  questions: Array<Pick<ShufflableExamQuestion, 'id' | 'optionsSnapshot'>>,
+  questions: Array<
+    Pick<ShufflableExamQuestion, 'id' | 'optionsSnapshot'>
+  >,
   seed: string | null | undefined,
 ): Record<string, number> {
   if (!seed) return { ...answers };
