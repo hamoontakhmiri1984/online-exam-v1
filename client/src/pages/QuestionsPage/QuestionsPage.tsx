@@ -15,6 +15,7 @@ import ImportQuestionsModal from './components/ImportQuestionsModal';
 import DeleteQuestionModal from './components/DeleteQuestionModal';
 import BankQuestionPicker from './components/BankQuestionPicker';
 import QuestionSources from './components/QuestionSources';
+import ExamAttemptAuditPanel from './components/ExamAttemptAuditPanel';
 
 // Keying by exam keeps pending requests and modal drafts isolated when the URL changes.
 export default function QuestionsPage() {
@@ -127,6 +128,7 @@ function ExamQuestionsEditor({ examId }: { examId: string }) {
                 setDeleteTarget(q);
               }}
             />
+            {isInstructor && locked && <ExamAttemptAuditPanel examId={examId} />}
             {canEdit && exam.status === 'draft' && (
               <footer className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
                 <p className="text-sm text-gray-500">
