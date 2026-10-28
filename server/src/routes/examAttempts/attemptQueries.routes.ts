@@ -28,8 +28,21 @@ router.get(
 
     const attempts = await prisma.examAttempt.findMany({
       where: { examId: exam.id, finishedAt: { not: null } },
+      include: {
+        events: {
+          where: { type: 'TAB_HIDDEN' },
+          select: { createdAt: true },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
     });
-    res.json(attempts.map(serializeAttempt));
+    res.json(
+      attempts.map((attempt) => ({
+        ...serializeAttempt(attempt),
+        tabSwitchCount: attempt.events.length,
+        tabSwitches: attempt.events.map((event) => event.createdAt.toISOString()),
+      })),
+    );
   }),
 );
 
