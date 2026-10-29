@@ -1,3 +1,5 @@
+import { logEvent } from './logger';
+
 async function loadRedis() {
   const redisModule = await import('./redis');
   return redisModule.redis;
@@ -102,6 +104,6 @@ export async function invalidateUserAuthCache(userId: string): Promise<void> {
     });
   } catch {
     // Snapshots expire after 30 seconds even if explicit invalidation is unavailable.
-    console.error('Failed to invalidate account authorization cache', userId);
+    logEvent('error', 'auth_cache_invalidation_failed', new Error('Failed to invalidate account authorization cache'));
   }
 }
