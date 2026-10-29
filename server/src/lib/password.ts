@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 
 const SALT_ROUNDS = 12;
 
-export const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).{6,}$/;
+export const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).{10,}$/;
 
 export function isPasswordValid(password: string): boolean {
   return PASSWORD_REGEX.test(password);
