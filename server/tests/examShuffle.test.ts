@@ -36,28 +36,51 @@ test('option order is a stable complete permutation per attempt and question', (
   assert.notDeepEqual(first, getOptionOrder(5, 'attempt-seed-a', 'q-2'));
 });
 
-test('grading maps shuffled displayed option indices back to original indices', () => {
-  const questionsWithAnswers = [
-    { id: 'q-1', optionsSnapshot: ['a', 'b', 'c', 'd'], correctIndexSnapshot: 2 },
-    { id: 'q-2', optionsSnapshot: ['a', 'b', 'c', 'd'], correctIndexSnapshot: 0 },
-    { id: 'q-3', optionsSnapshot: ['a', 'b', 'c', 'd'], correctIndexSnapshot: 3 },
-  ];
+test(
+  'grading maps shuffled displayed option indices back to original indices',
+  () => {
+    const questionsWithAnswers = [
+      {
+        id: 'q-1',
+        optionsSnapshot: ['a', 'b', 'c', 'd'],
+        correctIndexSnapshot: 2,
+      },
+      {
+        id: 'q-2',
+        optionsSnapshot: ['a', 'b', 'c', 'd'],
+        correctIndexSnapshot: 0,
+      },
+      {
+        id: 'q-3',
+        optionsSnapshot: ['a', 'b', 'c', 'd'],
+        correctIndexSnapshot: 3,
+      },
+    ];
 
-  for (const seed of ['attempt-seed-a', 'attempt-seed-b', 'attempt-seed-c']) {
-    const answers = Object.fromEntries(
-      questionsWithAnswers.map((question) => {
-        const order = getOptionOrder(question.optionsSnapshot.length, seed, question.id);
-        return [question.id, order.indexOf(question.correctIndexSnapshot)];
-      }),
-    );
+    for (const seed of [
+      'attempt-seed-a',
+      'attempt-seed-b',
+      'attempt-seed-c',
+    ]) {
+      const answers = Object.fromEntries(
+        questionsWithAnswers.map((question) => {
+          const order = getOptionOrder(
+            question.optionsSnapshot.length,
+            seed,
+            question.id,
+          );
+          return [question.id, order.indexOf(question.correctIndexSnapshot)];
+        }),
+      );
 
-    assert.equal(
-      calculateCorrectCount(questionsWithAnswers, answers, seed),
-      questionsWithAnswers.length,
-      `all correct answers should grade correctly with seed ${seed}`,
-    );
-  }
-});
+      assert.equal(
+        calculateCorrectCount(questionsWithAnswers, answers, seed),
+        questionsWithAnswers.length,
+        `all correct answers should grade correctly with seed ${seed}`,
+      );
+    }
+  },
+);
 
 test('legacy attempts retain the original order', () => {
   assert.deepEqual(shuffleExamQuestions(questions, null), questions);
