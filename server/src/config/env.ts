@@ -9,6 +9,8 @@ const envSchema = z.object({
   REDIS_URL: z.string().min(1),
   JWT_ACCESS_SECRET: z.string().min(32),
   JWT_REFRESH_SECRET: z.string().min(32),
+  JWT_RESET_SECRET: z.string().default(''),
+  EXAM_TAB_SWITCH_LIMIT: z.coerce.number().int().min(1).max(20).default(3),
   JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
   JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
   GOOGLE_CLIENT_ID: z.string().default(''),
