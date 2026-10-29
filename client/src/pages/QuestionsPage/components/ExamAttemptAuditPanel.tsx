@@ -17,7 +17,7 @@ export default function ExamAttemptAuditPanel({ examId }: { examId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const load = useCallback(async (targetPage = page) => {
+  const load = useCallback(async (targetPage: number) => {
     setLoading(true);
     setError('');
     try {
@@ -30,11 +30,11 @@ export default function ExamAttemptAuditPanel({ examId }: { examId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [examId, page]);
+  }, [examId]);
 
   useEffect(() => {
     void load(1);
-  }, [examId]);
+  }, [load]);
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
