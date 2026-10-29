@@ -68,6 +68,19 @@ function ExamRunnerPage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasStarted, isFinished]);
 
+  useEffect(() => {
+    if (!hasStarted || isFinished || !examId) return;
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden') {
+        void recordAttemptEvent(examId, 'TAB_HIDDEN').catch(() => undefined);
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [examId, hasStarted, isFinished]);
+
   const wasFullscreenRef = useRef(false);
   const currentExamId = examId;
 

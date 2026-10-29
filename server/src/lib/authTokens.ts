@@ -17,6 +17,8 @@ const REFRESH_COOKIE_NAME = 'refreshToken';
 const REFRESH_MAX_AGE_MS = durationToSeconds(env.JWT_REFRESH_EXPIRES_IN) * 1000;
 
 const RESET_TICKET_TTL_SECONDS = 10 * 60;
+// Production config requires a dedicated reset-only secret; local/test can derive a distinct key.
+const RESET_TICKET_SECRET = env.JWT_RESET_SECRET || crypto.createHmac('sha256', env.JWT_REFRESH_SECRET).update('online-exam/reset-ticket/v1').digest('hex');
 
 interface ResetTicketPayload {
   sub: string;
@@ -119,7 +121,7 @@ export async function signResetTicket(userId: string): Promise<string> {
     EX: RESET_TICKET_TTL_SECONDS,
   });
 
-  return jwt.sign(payload, env.JWT_ACCESS_SECRET, {
+  return jwt.sign(payload, RESET_TICKET_SECRET, {
     algorithm: 'HS256',
     expiresIn: RESET_TICKET_TTL_SECONDS,
   });
@@ -128,7 +130,7 @@ export async function signResetTicket(userId: string): Promise<string> {
 export async function verifyResetTicket(
   token: string,
 ): Promise<ResetTicketPayload> {
-  const payload = jwt.verify(token, env.JWT_ACCESS_SECRET, {
+  const payload = jwt.verify(token, RESET_TICKET_SECRET, {
     algorithms: ['HS256'],
   }) as ResetTicketPayload;
 

@@ -9,6 +9,8 @@ const envSchema = z.object({
   REDIS_URL: z.string().min(1),
   JWT_ACCESS_SECRET: z.string().min(32),
   JWT_REFRESH_SECRET: z.string().min(32),
+  JWT_RESET_SECRET: z.string().default(''),
+  EXAM_TAB_SWITCH_LIMIT: z.coerce.number().int().min(1).max(20).default(3),
   JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
   JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
   GOOGLE_CLIENT_ID: z.string().default(''),
@@ -82,6 +84,12 @@ if (parsedEnv.NODE_ENV === 'production') {
     ) {
       throw new Error(`${key} must be a random production secret`);
     }
+  }
+  if (!parsedEnv.JWT_RESET_SECRET.trim() || parsedEnv.JWT_RESET_SECRET.length < 32) {
+    throw new Error('JWT_RESET_SECRET must be configured with a separate random secret of at least 32 characters');
+  }
+  if (parsedEnv.JWT_RESET_SECRET === parsedEnv.JWT_ACCESS_SECRET || parsedEnv.JWT_RESET_SECRET === parsedEnv.JWT_REFRESH_SECRET) {
+    throw new Error('Reset, access, and refresh secrets must be different');
   }
   if (parsedEnv.JWT_ACCESS_SECRET === parsedEnv.JWT_REFRESH_SECRET) {
     throw new Error('Access and refresh signing secrets must be different');
