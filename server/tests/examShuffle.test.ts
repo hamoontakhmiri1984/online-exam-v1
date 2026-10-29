@@ -88,7 +88,10 @@ test(
   },
 );
 
-test('legacy attempts retain the original order', () => {
+test(
+  'legacy attempts retain the original order',
+  () => {
   assert.deepEqual(shuffleExamQuestions(questions, null), questions);
-  assert.deepEqual(getOptionOrder(4, null, 'q-1'), [0, 1, 2, 3]);
-});
+    assert.deepEqual(getOptionOrder(4, null, 'q-1'), [0, 1, 2, 3]);
+  },
+);
