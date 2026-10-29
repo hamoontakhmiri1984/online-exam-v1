@@ -368,7 +368,6 @@ test('Password reset ticket is single-use under concurrency and revokes the exis
   );
 });
 
-
 test(
   'HTTP attempt audit is paginated and returns stable page metadata',
   async (t) => {
@@ -418,4 +417,3 @@ test(
     assert.notEqual(first.body.items[0].id, second.body.items[0].id);
   },
 );
-
