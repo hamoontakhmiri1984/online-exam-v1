@@ -89,8 +89,25 @@ export type ExamAttemptAudit = ExamAttempt & {
   fullscreenExits: string[];
 };
 
-export function getExamAttemptAudit(examId: string): Promise<ExamAttemptAudit[]> {
-  return apiRequest<ExamAttemptAudit[]>(`/exams/${examId}/attempts/audit`);
+export type ExamAttemptAuditPage = {
+  items: ExamAttemptAudit[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export function getExamAttemptAudit(
+  examId: string,
+  page = 1,
+  pageSize = 20,
+): Promise<ExamAttemptAuditPage> {
+  const params = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+  });
+  return apiRequest<ExamAttemptAuditPage>(
+    `/exams/${examId}/attempts/audit?${params.toString()}`,
+  );
 }
 
 // Ignore inaccessible exams, but propagate infrastructure errors.
