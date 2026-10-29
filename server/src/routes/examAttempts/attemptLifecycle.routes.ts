@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import { logEvent } from '../../lib/logger';
+import { env } from '../../config/env';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import {
@@ -66,6 +67,23 @@ router.post(
     await prisma.examAttemptEvent.create({
       data: { attemptId: attempt.id, type: parsed.data.type },
     });
+
+    // Server-side review flag after repeated tab exits; not proof of cheating.
+    if (parsed.data.type === 'TAB_HIDDEN') {
+      const tabExitCount = await prisma.examAttemptEvent.count({
+        where: { attemptId: attempt.id, type: 'TAB_HIDDEN' },
+      });
+      if (tabExitCount === env.EXAM_TAB_SWITCH_LIMIT) {
+        await prisma.examAttemptEvent.create({
+          data: { attemptId: attempt.id, type: 'TAB_SWITCH_THRESHOLD_REACHED' },
+        });
+        logEvent('warn', 'Exam attempt reached tab-switch review threshold', {
+          attemptId: attempt.id,
+          tabExitCount,
+        });
+      }
+    }
+
     res.status(201).json({ recorded: true });
   }),
 );
