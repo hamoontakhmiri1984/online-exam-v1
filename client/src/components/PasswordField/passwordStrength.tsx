@@ -29,7 +29,7 @@ export function getPasswordStrength(password: string): PasswordStrengthResult {
   }
 
   let score = 0;
-  if (password.length >= 6) score += 1;
+  if (password.length >= 14) score += 1;
   if (password.length >= 10) score += 1;
   if (/[a-zA-Z]/.test(password) && /[0-9]/.test(password)) score += 1;
   if (/[^a-zA-Z0-9]/.test(password) || /[A-Z]/.test(password)) score += 1;
