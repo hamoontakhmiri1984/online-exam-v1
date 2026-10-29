@@ -85,6 +85,12 @@ if (parsedEnv.NODE_ENV === 'production') {
       throw new Error(`${key} must be a random production secret`);
     }
   }
+  if (!parsedEnv.JWT_RESET_SECRET.trim() || parsedEnv.JWT_RESET_SECRET.length < 32) {
+    throw new Error('JWT_RESET_SECRET must be configured with a separate random secret of at least 32 characters');
+  }
+  if (parsedEnv.JWT_RESET_SECRET === parsedEnv.JWT_ACCESS_SECRET || parsedEnv.JWT_RESET_SECRET === parsedEnv.JWT_REFRESH_SECRET) {
+    throw new Error('Reset, access, and refresh secrets must be different');
+  }
   if (parsedEnv.JWT_ACCESS_SECRET === parsedEnv.JWT_REFRESH_SECRET) {
     throw new Error('Access and refresh signing secrets must be different');
   }
