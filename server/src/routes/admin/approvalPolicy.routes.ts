@@ -8,6 +8,7 @@ import {
   assertPolicyRevision,
 } from '../../lib/approvalPolicy';
 import { recordAdminAction } from '../../lib/adminAudit';
+import { invalidateUserAuthCache } from '../../lib/userAuthCache';
 
 const router = Router();
 const schema = z
@@ -63,16 +64,29 @@ router.put(
         (input.requireGroupApproval && input.pendingGroups === 'approve')
       )
         throw badRequest('تأیید جمعی فقط در حالت آزاد مجاز است.');
-      const approvedInstructors =
+
+      // Capture the exact users in this bulk operation so their authorization
+      // cache can be invalidated after the transaction commits.
+      const instructorsToApprove =
         !input.requireInstructorApproval &&
         input.pendingInstructors === 'approve'
-          ? (
-              await db.user.updateMany({
-                where: { role: 'Instructor', approvalStatus: 'Pending' },
-                data: { approvalStatus: 'Approved' },
-              })
-            ).count
-          : 0;
+          ? await db.user.findMany({
+              where: { role: 'Instructor', approvalStatus: 'Pending' },
+              select: { id: true },
+            })
+          : [];
+      const approvedInstructors = instructorsToApprove.length
+        ? (
+            await db.user.updateMany({
+              where: {
+                id: { in: instructorsToApprove.map((user) => user.id) },
+                role: 'Instructor',
+                approvalStatus: 'Pending',
+              },
+              data: { approvalStatus: 'Approved' },
+            })
+          ).count
+        : 0;
       const approvedGroups =
         !input.requireGroupApproval && input.pendingGroups === 'approve'
           ? (
@@ -111,12 +125,23 @@ router.put(
         },
       });
       return {
-        ...policy,
-        pendingInstructors: instructorCount - approvedInstructors,
-        pendingGroups: groupCount - approvedGroups,
+        response: {
+          ...policy,
+          pendingInstructors: instructorCount - approvedInstructors,
+          pendingGroups: groupCount - approvedGroups,
+        },
+        instructorIdsToInvalidate: instructorsToApprove.map((user) => user.id),
       };
     });
-    res.json(result);
+
+    // Invalidate only after commit; invalidating inside the transaction could
+    // allow a stale database read to repopulate the new cache generation.
+    await Promise.all(
+      result.instructorIdsToInvalidate.map((userId) =>
+        invalidateUserAuthCache(userId),
+      ),
+    );
+    res.json(result.response);
   }),
 );
 export default router;
