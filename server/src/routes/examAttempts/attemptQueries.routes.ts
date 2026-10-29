@@ -5,6 +5,7 @@ import { finalizeExpiredAttempts } from '../../lib/attemptFinalize';
 import { requireAuth, requireRole } from '../../middleware/requireAuth';
 import { asyncHandler } from '../../lib/asyncHandler';
 import { notFound, forbidden } from '../../lib/errors';
+import { pagedResult, parsePaging } from '../../lib/adminPaging';
 
 import { serializeAttempt } from './examAttempts.service';
 
@@ -24,38 +25,45 @@ router.get(
     if (!exam) throw notFound('آزمون یافت نشد');
     if (!allowed) throw forbidden();
 
+    const paging = parsePaging(req.query);
     await finalizeExpiredAttempts({ examId: exam.id });
-    const attempts = await prisma.examAttempt.findMany({
-      where: { examId: exam.id },
-      orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
-      include: {
-        student: { select: { id: true, name: true, username: true } },
-        events: {
-          where: { type: { in: ['TAB_HIDDEN', 'FULLSCREEN_EXIT'] } },
-          select: { type: true, createdAt: true },
-          orderBy: { createdAt: 'asc' },
+    const where = { examId: exam.id };
+    const [attempts, total] = await prisma.$transaction([
+      prisma.examAttempt.findMany({
+        where,
+        skip: paging.skip,
+        take: paging.take,
+        orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
+        include: {
+          student: { select: { id: true, name: true, username: true } },
+          events: {
+            where: { type: { in: ['TAB_HIDDEN', 'FULLSCREEN_EXIT'] } },
+            select: { type: true, createdAt: true },
+            orderBy: { createdAt: 'asc' },
+          },
         },
-      },
-    });
+      }),
+      prisma.examAttempt.count({ where }),
+    ]);
 
-    res.json(
-      attempts.map((attempt) => ({
-        ...serializeAttempt(attempt),
-        student: attempt.student,
-        tabSwitchCount: attempt.events.filter(
-          (event) => event.type === 'TAB_HIDDEN',
-        ).length,
-        tabSwitches: attempt.events
-          .filter((event) => event.type === 'TAB_HIDDEN')
-          .map((event) => event.createdAt.toISOString()),
-        fullscreenExitCount: attempt.events.filter(
-          (event) => event.type === 'FULLSCREEN_EXIT',
-        ).length,
-        fullscreenExits: attempt.events
-          .filter((event) => event.type === 'FULLSCREEN_EXIT')
-          .map((event) => event.createdAt.toISOString()),
-      })),
-    );
+    const items = attempts.map((attempt) => ({
+      ...serializeAttempt(attempt),
+      student: attempt.student,
+      tabSwitchCount: attempt.events.filter(
+        (event) => event.type === 'TAB_HIDDEN',
+      ).length,
+      tabSwitches: attempt.events
+        .filter((event) => event.type === 'TAB_HIDDEN')
+        .map((event) => event.createdAt.toISOString()),
+      fullscreenExitCount: attempt.events.filter(
+        (event) => event.type === 'FULLSCREEN_EXIT',
+      ).length,
+      fullscreenExits: attempt.events
+        .filter((event) => event.type === 'FULLSCREEN_EXIT')
+        .map((event) => event.createdAt.toISOString()),
+    }));
+
+    res.json(pagedResult(items, total, paging));
   }),
 );
 
