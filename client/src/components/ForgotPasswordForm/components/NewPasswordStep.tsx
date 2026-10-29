@@ -28,7 +28,7 @@ function NewPasswordStep({
         name="new-password"
         autoComplete="new-password"
         autoFocus
-        placeholder="حداقل ۶ کاراکتر، ترکیبی از حرف و عدد"
+        placeholder="حداقل ۱۰ کاراکتر، ترکیبی از حرف و عدد"
         value={newPassword}
         onChange={(e) => onNewPasswordChange(e.target.value)}
         showStrength
