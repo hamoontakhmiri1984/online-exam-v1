@@ -21,6 +21,26 @@ export function sanitizeAnswers(raw: unknown): AnswersMap {
   return out;
 }
 
+export function calculateCorrectCount(
+  questions: Array<{
+    id: string;
+    optionsSnapshot: { length: number };
+    correctIndexSnapshot: number;
+  }>,
+  answers: AnswersMap,
+  shuffleSeed?: string | null,
+): number {
+  return questions.filter((question) => {
+    const optionOrder = getOptionOrder(
+      question.optionsSnapshot.length,
+      shuffleSeed,
+      question.id,
+    );
+    const selectedOriginalIndex = optionOrder[answers[question.id]];
+    return selectedOriginalIndex === question.correctIndexSnapshot;
+  }).length;
+}
+
 // Only the winning atomic finalizer may emit notifications.
 export async function finalizeAttempt(input: {
   attemptId: string;
@@ -34,15 +54,11 @@ export async function finalizeAttempt(input: {
     where: { examId: input.examId },
     select: { id: true, optionsSnapshot: true, correctIndexSnapshot: true },
   });
-  const correctCount = questions.filter((q) => {
-    const optionOrder = getOptionOrder(
-      q.optionsSnapshot.length,
-      input.shuffleSeed,
-      q.id,
-    );
-    const selectedOriginalIndex = optionOrder[input.answers[q.id]];
-    return selectedOriginalIndex === q.correctIndexSnapshot;
-  }).length;
+  const correctCount = calculateCorrectCount(
+    questions,
+    input.answers,
+    input.shuffleSeed,
+  );
 
   const { count } = await prisma.examAttempt.updateMany({
     where: { id: input.attemptId, finishedAt: null },
