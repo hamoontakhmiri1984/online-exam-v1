@@ -367,3 +367,33 @@ test('Password reset ticket is single-use under concurrency and revokes the exis
     resetPassword(actor.accessToken, 'Another-password-123'),
   );
 });
+
+
+test('HTTP attempt audit is paginated and returns stable page metadata', async (t) => {
+  if (!ready) return unavailable(t, 'PostgreSQL/Redis unavailable');
+
+  const f = await fixture();
+  const extraStudents = [await user('Student'), await user('Student')];
+  await prisma.group.update({
+    where: { id: f.group.id },
+    data: { students: { connect: extraStudents.map((student) => ({ id: student.id })) } },
+  });
+
+  for (const student of [f.student, ...extraStudents]) {
+    const started = await request(f.exam.id, 'attempts/start', student.accessToken, 'POST', {});
+    assert.ok([200, 201].includes(started.status));
+  }
+
+  const first = await request(f.exam.id, 'attempts/audit?page=1&pageSize=1', f.teacher.accessToken);
+  const second = await request(f.exam.id, 'attempts/audit?page=2&pageSize=1', f.teacher.accessToken);
+
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  assert.equal(first.body.total, 3);
+  assert.equal(first.body.page, 1);
+  assert.equal(first.body.pageSize, 1);
+  assert.equal(first.body.items.length, 1);
+  assert.equal(second.body.page, 2);
+  assert.equal(second.body.items.length, 1);
+  assert.notEqual(first.body.items[0].id, second.body.items[0].id);
+});
