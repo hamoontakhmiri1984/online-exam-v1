@@ -25,7 +25,7 @@ type PasswordFieldProps = {
 
 // Keep these rules aligned with the server password policy.
 const PASSWORD_REQUIREMENTS = [
-  { id: 'length', label: 'حداقل ۶ کاراکتر', test: (v: string) => v.length >= 6 },
+  { id: 'length', label: 'حداقل ۱۰ کاراکتر', test: (v: string) => v.length >= 10 },
   { id: 'letter', label: 'یک حرف انگلیسی', test: (v: string) => /[A-Za-z]/.test(v) },
   { id: 'digit', label: 'یک عدد', test: (v: string) => /\d/.test(v) },
 ] as const;
