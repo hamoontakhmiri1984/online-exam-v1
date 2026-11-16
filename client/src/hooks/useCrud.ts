@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { ApiError } from '../lib/apiClient';
+import { notifySaveSuccess } from '../components/Toast/Toast';
 
 type CrudApi<T, TInput> = {
   getAll: () => Promise<T[]>;
@@ -30,6 +32,7 @@ function useCrud<T extends { id: string }, TInput>(
   const [items, setItems] = useState<T[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [writeError, setWriteError] = useState<string | null>(null);
 
   // Refs provide current callbacks without retriggering fetch effects on every render.
   const apiRef = useRef(api);
@@ -46,6 +49,7 @@ function useCrud<T extends { id: string }, TInput>(
   }, []);
 
   async function addItem(input: TInput): Promise<T | undefined> {
+    setWriteError(null);
     if (!apiRef.current.add) {
       setError(messagesRef.current.unsupported);
       return undefined;
@@ -53,14 +57,18 @@ function useCrud<T extends { id: string }, TInput>(
     try {
       const newItem = await apiRef.current.add(input);
       setItems((prev) => [...prev, newItem]);
+      notifySaveSuccess('مورد جدید با موفقیت ثبت شد');
       return newItem;
-    } catch {
-      setError(messagesRef.current.add);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : messagesRef.current.add;
+      setWriteError(message);
+      setError(message);
       return undefined;
     }
   }
 
   async function updateItem(id: string, input: TInput): Promise<T | undefined> {
+    setWriteError(null);
     if (!apiRef.current.update) {
       setError(messagesRef.current.unsupported);
       return undefined;
@@ -68,9 +76,14 @@ function useCrud<T extends { id: string }, TInput>(
     try {
       const updated = await apiRef.current.update(id, input);
       setItems((prev) => prev.map((item) => (item.id === id ? updated : item)));
+      notifySaveSuccess('تغییرات با موفقیت ذخیره شد');
       return updated;
-    } catch {
-      setError(messagesRef.current.update);
+    } catch (err) {
+      const reason = err instanceof ApiError && err.message === 'محدودیت پلن'
+        ? 'برای فعال‌کردن دوباره این آزمون، باید ظرفیت آزمون فعال در پلن شما وجود داشته باشد. اگر ظرفیت تکمیل است، یکی از آزمون‌های فعال را پایان دهید یا پلن را ارتقا دهید.'
+        : err instanceof ApiError ? err.message : messagesRef.current.update;
+      setWriteError(reason);
+      setError(reason);
       return undefined;
     }
   }
@@ -97,6 +110,8 @@ function useCrud<T extends { id: string }, TInput>(
     items,
     loading,
     error,
+    writeError,
+    clearWriteError: () => setWriteError(null),
     clearError: () => setError(null),
 
     canAdd: !!api.add,

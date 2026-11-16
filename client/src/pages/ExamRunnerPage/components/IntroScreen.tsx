@@ -10,6 +10,7 @@ import {
 import AppLayout from '../../../components/AppLayout/AppLayout';
 import Modal from '../../../components/Modal/Modal';
 import type { Exam } from '../../../api/examApi';
+import ScheduledExamCountdown, { useScheduledCountdown } from './ScheduledExamCountdown';
 
 interface IntroScreenProps {
   exam: Exam;
@@ -29,9 +30,12 @@ function IntroScreen({
   startError,
 }: IntroScreenProps) {
   const [showStartConfirm, setShowStartConfirm] = useState(false);
+  const remaining = useScheduledCountdown(exam.date);
+  const notStarted = remaining > 0;
 
   function confirmStart() {
     setShowStartConfirm(false);
+    if (new Date(exam.date).getTime() > Date.now()) return;
 
     // Fullscreen must be requested from the user's click; failure must not block the exam.
     const root = document.documentElement;
@@ -88,6 +92,8 @@ function IntroScreen({
             </div>
           </div>
 
+          {notStarted && <div className="mb-6"><ScheduledExamCountdown scheduledAt={exam.date} /></div>}
+
           <ul className="mb-8 flex flex-col gap-3">
             <li className="flex items-start gap-2.5 text-sm text-gray-600 dark:text-gray-300">
               <Clock
@@ -134,10 +140,10 @@ function IntroScreen({
 
           <button
             onClick={() => setShowStartConfirm(true)}
-            disabled={isStarting}
+            disabled={isStarting || notStarted}
             className="w-full rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isStarting ? 'در حال شروع...' : 'شروع آزمون'}
+            {notStarted ? 'تا زمان شروع آزمون منتظر بمانید' : isStarting ? 'در حال شروع...' : 'شروع آزمون'}
           </button>
         </div>
       </div>
@@ -165,6 +171,7 @@ function IntroScreen({
           </button>
           <button
             onClick={confirmStart}
+            disabled={notStarted || isStarting}
             className="flex-1 rounded-xl bg-brand-600 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700"
           >
             بله، شروع کن

@@ -19,8 +19,8 @@ import {
 } from 'lucide-react';
 
 import type { Role } from '../../api/authApi';
-
 import { ALL_ROLES } from '../../constants/roles';
+
 
 export type NavigationGroupId = 'users' | 'content' | 'finance' | 'system';
 
@@ -43,11 +43,22 @@ export type NavigationItem = {
 export const navigationItems: NavigationItem[] = [
   { label: 'پشتیبانی', to: '/support', icon: Users, roles: ['Instructor', 'Student'] },
   {
+    label: 'میز کار',
+    to: '/workspace',
+    icon: LayoutDashboard,
+    roles: ['Instructor', 'SuperAdmin'],
+  },
+  {
     label: 'داشبورد',
-    adminLabel: 'میزکار',
     to: '/dashboard',
     icon: LayoutDashboard,
-    roles: ALL_ROLES,
+    roles: ['Student'],
+  },
+  {
+    label: 'گروه‌ها',
+    to: '/groups',
+    icon: Layers,
+    roles: ['Instructor'],
   },
   {
     label: 'آزمون‌ها',
@@ -57,28 +68,21 @@ export const navigationItems: NavigationItem[] = [
     roles: ALL_ROLES,
   },
   {
-    label: 'تمرین‌ها',
-
-    to: '/practice',
-    icon: BookOpenCheck,
-    roles: ['Instructor', 'Student'],
-  },
-  {
-    label: 'بانک سوال',
+    label: 'بانک سؤال',
     to: '/question-banks',
     icon: LibraryBig,
     roles: ['Instructor'],
   },
   {
+    label: 'تمرین‌ها',
+    to: '/practice',
+    icon: BookOpenCheck,
+    roles: ['Instructor', 'Student'],
+  },
+  {
     label: 'دانشجویان',
     to: '/students',
     icon: Users,
-    roles: ['Instructor'],
-  },
-  {
-    label: 'گروه‌ها',
-    to: '/groups',
-    icon: Layers,
     roles: ['Instructor'],
   },
   {
@@ -126,7 +130,13 @@ export const navigationItems: NavigationItem[] = [
     roles: ['SuperAdmin'],
     group: 'users',
   },
-  { label: 'تأیید گروه‌ها', to: '/group-approvals', icon: ShieldCheck, roles: ['SuperAdmin'], group: 'users' },
+  {
+    label: 'تأیید گروه‌ها',
+    to: '/group-approvals',
+    icon: ShieldCheck,
+    roles: ['SuperAdmin'],
+    group: 'users',
+  },
   {
     label: 'دسته‌بندی‌ها',
     to: '/categories',

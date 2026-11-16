@@ -151,16 +151,10 @@ function GroupsPage() {
                 می‌کنی، نه مستقیم به تک‌تک دانشجوها
               </p>
             </div>
-            <button
-              onClick={openAddModal}
-              disabled={planLimit.checkingLimit}
-              className="flex shrink-0 items-center gap-1.5 bg-brand-600 text-white px-4 py-2 rounded-lg hover:bg-brand-700 transition text-sm disabled:opacity-60"
-            >
-              <Plus size={16} />
-              گروه جدید
-            </button>
+
           </div>
 
+          <section className="groups-outer-panel rounded-2xl border border-violet-200/50 bg-white/80 p-4 shadow-sm backdrop-blur-xl dark:border-violet-400/15 dark:bg-gray-900/80 sm:p-5">
           {visibleGroups.length === 0 ? (
             <EmptyState
               icon={Users}
@@ -169,7 +163,7 @@ function GroupsPage() {
               action={{ label: '+ گروه جدید', onClick: openAddModal }}
             />
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,17rem),1fr))] gap-4">
               {visibleGroups.map((group) => (
                 <GroupCard
                   key={group.id}
@@ -184,6 +178,8 @@ function GroupsPage() {
               ))}
             </div>
           )}
+          {visibleGroups.length > 0 && <div className="mt-4 flex justify-center rounded-xl bg-violet-50/25 px-4 py-4 dark:bg-violet-500/5"><button type="button" onClick={openAddModal} disabled={planLimit.checkingLimit} className="ui-create-cta"><Plus size={17}/> گروه جدید</button></div>}
+          </section>
         </>
       )}
 
@@ -198,6 +194,7 @@ function GroupsPage() {
         studentIds={form.studentIds}
         onToggleStudent={form.toggleStudent}
         onSubmit={form.handleSubmit}
+        validationError={form.validationError}
         onClose={form.close}
       />
 

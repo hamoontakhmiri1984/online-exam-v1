@@ -53,8 +53,8 @@ function useGroupFormModal({
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
-    if (!name.trim() || !category) {
-      setValidationError('لطفاً نام گروه و دسته‌بندی را مشخص کنید');
+    if (name.trim().length < 2 || !category) {
+      setValidationError('نام گروه باید حداقل دو حرف باشد و دسته‌بندی انتخاب شود.');
       return;
     }
 

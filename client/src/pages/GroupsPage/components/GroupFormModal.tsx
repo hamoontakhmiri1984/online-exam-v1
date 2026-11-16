@@ -1,3 +1,4 @@
+import { Save } from 'lucide-react';
 import { userDisplayName } from '../../../lib/userDisplayName';
 import Modal from '../../../components/Modal/Modal';
 import type { Category } from '../../../constants/categories';
@@ -15,6 +16,7 @@ type GroupFormModalProps = {
   studentIds: string[];
   onToggleStudent: (studentId: string) => void;
   onSubmit: (event: React.FormEvent) => void;
+  validationError?: string | null;
   onClose: () => void;
 };
 
@@ -29,6 +31,7 @@ function GroupFormModal({
   studentIds,
   onToggleStudent,
   onSubmit,
+  validationError,
   onClose,
 }: GroupFormModalProps) {
   return (
@@ -36,24 +39,28 @@ function GroupFormModal({
       <h2 className="text-lg font-bold mb-4 dark:text-white">
         {isEditing ? 'ویرایش گروه' : 'گروه جدید'}
       </h2>
-      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+        {validationError && <p role="alert" className="form-inline-error">{validationError}</p>}
         <div className="flex flex-col gap-1">
           <label className="text-sm text-gray-600 dark:text-gray-300">
             نام گروه
           </label>
           <input
             value={name}
+            required
+            minLength={2}
+            aria-invalid={!!validationError && name.trim().length < 2}
             onChange={(e) => onNameChange(e.target.value)}
             className="border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand-400 focus:ring-4 focus:ring-brand-50 dark:focus:ring-brand-900 transition"
             placeholder="مثلاً: کلاس ریاضی - ترم پاییز"
           />
         </div>
 
-        <CategorySelect
+        <div className={validationError && !category ? "form-invalid-field" : ""}><CategorySelect
           label="دسته‌بندی موضوعی"
           value={category}
           onChange={(value) => onCategoryChange(value as Category)}
-        />
+        /></div>
 
         <div className="flex flex-col gap-2">
           <label className="text-sm text-gray-600 dark:text-gray-300">
@@ -91,9 +98,9 @@ function GroupFormModal({
 
         <button
           type="submit"
-          className="w-full bg-brand-600 text-white font-medium px-4 py-2.5 rounded-xl hover:bg-brand-700 transition"
+          className="ui-primary-gradient flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-semibold text-white transition"
         >
-          {isEditing ? 'ذخیره تغییرات' : 'ساخت گروه'}
+          <Save size={17} /> {isEditing ? 'ذخیره تغییرات' : 'ساخت گروه'}
         </button>
       </form>
     </Modal>

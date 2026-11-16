@@ -3,6 +3,13 @@ export type ServiceLocation = { hostname: string; protocol: string };
 
 const LOCAL_SERVICE_URL = /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?\/?$/i;
 const CODESPACES_FRONTEND_HOST = /-5173\.app\.github\.dev$/i;
+const CODESPACES_API_HOST = /-4000\.app\.github\.dev$/i;
+
+const credentialEndpoints = new Set([
+  '/auth/login/password',
+  '/auth/google',
+  '/auth/otp/verify',
+]);
 
 /**
  * In Codespaces, use the same-origin Vite proxy for API and Socket.IO requests.
@@ -25,25 +32,26 @@ export function resolveServiceBaseUrl(
   const hostname = location?.hostname.toLowerCase();
 
   if (location && hostname && CODESPACES_FRONTEND_HOST.test(hostname)) {
-    const apiHostname = hostname.replace(
-      /-5173(?=\.app\.github\.dev$)/i,
-      '-4000',
-    );
-    const isLocalUrl = !value || LOCAL_SERVICE_URL.test(value);
-    let isPairedForwardedApiUrl = false;
+    // A production-style /api setting accidentally hits Vite's SPA on Codespaces.
+    // Forwarded API URLs can also point to a previous Codespace.
+    const isLocalUrl =
+      !value ||
+      LOCAL_SERVICE_URL.test(value) ||
+      /^\/(?:api|__api)\/?$/i.test(value);
+    let isForwardedApiUrl = false;
 
     if (value) {
       try {
         const configuredUrl = new URL(value);
-        isPairedForwardedApiUrl =
+        isForwardedApiUrl =
           configuredUrl.protocol === location.protocol &&
-          configuredUrl.hostname.toLowerCase() === apiHostname;
+          CODESPACES_API_HOST.test(configuredUrl.hostname);
       } catch {
         // Preserve invalid/custom values so configuration issues remain visible.
       }
     }
 
-    if (isLocalUrl || isPairedForwardedApiUrl) return '';
+    if (isLocalUrl || isForwardedApiUrl) return '';
   }
 
   return value || 'http://localhost:4000';
@@ -86,6 +94,8 @@ type RequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   signal?: AbortSignal;
+  headers?: Record<string, string>;
+  keepalive?: boolean;
 };
 
 // Concurrent 401 responses share one refresh request.
@@ -94,28 +104,40 @@ export type RefreshOutcome =
   | { status: 'expired' }
   | { status: 'unavailable' };
 
+export const AUTH_REQUEST_TIMEOUT_MS = 15_000;
 let refreshPromise: Promise<RefreshOutcome> | null = null;
+let refreshController: AbortController | null = null;
+let pendingCredentialRequests = 0;
 
 export async function refreshSession(): Promise<RefreshOutcome> {
+  if (pendingCredentialRequests > 0) return { status: 'unavailable' };
   if (!refreshPromise) {
+    refreshController = new AbortController();
+    const signal = AbortSignal.any([
+      refreshController.signal,
+      AbortSignal.timeout(AUTH_REQUEST_TIMEOUT_MS),
+    ]);
     refreshPromise = fetch(buildApiUrl('/auth/refresh'), {
       method: 'POST',
       credentials: 'include',
+      signal,
     })
       .then(async (res): Promise<RefreshOutcome> => {
+        if (signal.aborted) return { status: 'unavailable' };
         if (res.status === 401) return { status: 'expired' };
         if (!res.ok) return { status: 'unavailable' };
         const data = (await res.json().catch(() => null)) as {
           accessToken?: string;
         } | null;
         // A successful response without a token is unavailable, not an expired session.
-        return data?.accessToken
+        return !signal.aborted && data?.accessToken
           ? { status: 'ok', token: data.accessToken }
           : { status: 'unavailable' };
       })
       .catch((): RefreshOutcome => ({ status: 'unavailable' }))
       .finally(() => {
         refreshPromise = null;
+        refreshController = null;
       });
   }
   return refreshPromise;
@@ -135,7 +157,9 @@ export function setOnSessionExpired(handler: () => void): void {
 
 // Retry once after refresh; only an explicit refresh rejection ends the session.
 async function refreshForRetry(): Promise<boolean> {
+  const previousToken = accessToken;
   const outcome = await refreshSession();
+  if (accessToken !== previousToken) return accessToken !== null;
   if (outcome.status === 'ok') {
     accessToken = outcome.token;
     return true;
@@ -161,10 +185,39 @@ export async function apiRequest<T>(
   options: RequestOptions = {},
   isRetryAfterRefresh = false
 ): Promise<T> {
-  const { method = 'GET', body, signal } = options;
+  if (!credentialEndpoints.has(path)) {
+    return requestJson<T>(path, options, isRetryAfterRefresh);
+  }
+
+  // An older refresh must not replace the session cookie from a new login.
+  pendingCredentialRequests++;
+  refreshController?.abort();
+  const timeout = AbortSignal.timeout(AUTH_REQUEST_TIMEOUT_MS);
+  const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
+  try {
+    const data = await requestJson<T>(path, { ...options, signal }, true);
+    timeout.throwIfAborted();
+    return data;
+  } catch (error) {
+    if (timeout.aborted) {
+      throw new ApiError(504, 'پاسخ ورود از سرور نرسید. دوباره تلاش کنید.');
+    }
+    throw error;
+  } finally {
+    pendingCredentialRequests--;
+  }
+}
+
+async function requestJson<T>(
+  path: string,
+  options: RequestOptions,
+  isRetryAfterRefresh: boolean,
+): Promise<T> {
+  const { method = 'GET', body, signal, headers: extraHeaders, keepalive } = options;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    ...extraHeaders,
   };
   if (accessToken) {
     headers.Authorization = `Bearer ${accessToken}`;
@@ -177,22 +230,23 @@ export async function apiRequest<T>(
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal,
+      keepalive,
       // Include the refresh cookie on cross-origin API requests.
       credentials: 'include',
     });
   } catch {
     // Status zero represents a transport failure, not an HTTP response.
-    throw new ApiError(0, 'اتصال به سرور برقرار نشد');
+    throw new ApiError(0, 'ارتباط با API برقرار نشد؛ مطمئن شوید سرور پورت ۴۰۰۰ اجراست.');
   }
 
-  // Retry once after refreshing; never recursively refresh the refresh endpoint.
+  // Retry protected requests once with the renewed access token.
   if (
     response.status === 401 &&
     !isRetryAfterRefresh &&
     path !== '/auth/refresh'
   ) {
     if (await refreshForRetry()) {
-      return apiRequest<T>(path, options, true);
+      return requestJson<T>(path, options, true);
     }
   }
 
@@ -241,7 +295,7 @@ export async function apiMultipartRequest<T>(
       credentials: 'include',
     });
   } catch {
-    throw new ApiError(0, 'اتصال به سرور برقرار نشد');
+    throw new ApiError(0, 'ارتباط با API برقرار نشد؛ مطمئن شوید سرور پورت ۴۰۰۰ اجراست.');
   }
 
   if (response.status === 401 && !isRetryAfterRefresh) {

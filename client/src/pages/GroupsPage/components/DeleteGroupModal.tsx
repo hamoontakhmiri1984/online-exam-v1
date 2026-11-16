@@ -1,41 +1,9 @@
-import Modal from '../../../components/Modal/Modal';
+import ConfirmDeleteModal from '../../../components/Modal/ConfirmDeleteModal';
 
-type DeleteGroupModalProps = {
-  isOpen: boolean;
-  groupName?: string;
-  onConfirm: () => void;
-  onClose: () => void;
-};
+type Props = { isOpen: boolean; groupName?: string; onConfirm: () => void; onClose: () => void };
 
-function DeleteGroupModal({
-  isOpen,
-  groupName,
-  onConfirm,
-  onClose,
-}: DeleteGroupModalProps) {
-  return (
-    <Modal isOpen={isOpen} onClose={onClose}>
-      <h2 className="text-lg font-bold mb-2 dark:text-white">حذف گروه</h2>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-        آیا از حذف «{groupName}» مطمئنی؟ درس‌ها/آزمون‌های وصل‌شده به این گروه
-        دیگه برای اعضاش نمایش داده نمی‌شن (ولی خودشون حذف نمی‌شن).
-      </p>
-      <div className="flex gap-3">
-        <button
-          onClick={onClose}
-          className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-        >
-          انصراف
-        </button>
-        <button
-          onClick={onConfirm}
-          className="flex-1 rounded-xl bg-danger-600 py-2.5 text-sm font-medium text-white hover:bg-danger-700 transition"
-        >
-          حذف
-        </button>
-      </div>
-    </Modal>
-  );
+export default function DeleteGroupModal({ isOpen, groupName, onConfirm, onClose }: Props) {
+  return <ConfirmDeleteModal isOpen={isOpen} title="حذف گروه"
+    description={`گروه «${groupName ?? ''}» حذف شود؟ درس‌ها و آزمون‌های متصل برای اعضای این گروه دیگر نمایش داده نمی‌شوند، ولی خودشان حذف نمی‌شوند.`}
+    onConfirm={onConfirm} onClose={onClose}/>;
 }
-
-export default DeleteGroupModal;

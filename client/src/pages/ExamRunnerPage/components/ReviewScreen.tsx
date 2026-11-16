@@ -4,7 +4,6 @@ import type { Exam } from '../../../api/examApi';
 import type { Question } from '../../../api/questionApi';
 import TimerBadge from './TimerBadge';
 import ExamWarnings from './ExamWarnings';
-import SaveStatusBadge from './SaveStatusBadge';
 import type { AutosaveStatus } from '../../../hooks/useExamRunner/useExamAutosave';
 
 interface ReviewScreenProps {
@@ -26,8 +25,6 @@ function ReviewScreen({
   questions,
   answers,
   timeLeft,
-  saveStatus,
-  onRetrySave,
   activeWarning,
   onDismissWarning,
   onGoToQuestion,
@@ -57,7 +54,6 @@ function ReviewScreen({
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <SaveStatusBadge status={saveStatus} onRetry={onRetrySave} />
             <TimerBadge timeLeft={timeLeft} />
           </div>
         </div>

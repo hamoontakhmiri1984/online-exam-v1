@@ -1,178 +1,35 @@
-import { useEffect, useState } from 'react';
-import { Clock, CheckCircle2 } from 'lucide-react';
+import { useState } from 'react';
+import { CheckCircle2, Clock3, Sparkles } from 'lucide-react';
 
-type Phase = 'question' | 'timer' | 'result';
+const options = ['useEffect', 'useState', 'useRef', 'useMemo'];
 
-const PHASE_ORDER: Phase[] = ['question', 'timer', 'result'];
-const PHASE_DURATION_MS = 3400;
-
-const DEMO_QUESTION = {
-  meta: 'سوال ۳ از ۱۰',
-  text: 'کدام هوک برای مدیریت state محلی در React استفاده می‌شود؟',
-  options: ['useEffect', 'useState', 'useRef', 'useMemo'],
-  correctIndex: 1,
-};
-
-function LiveExamCard() {
-  const [phaseIndex, setPhaseIndex] = useState<number>(0);
-  const [selectedOption, setSelectedOption] = useState<number | null>(null);
-  const [countdown, setCountdown] = useState<number>(12);
-
-  const phase = PHASE_ORDER[phaseIndex];
-
-  useEffect(() => {
-    const cycle = setInterval(() => {
-      setPhaseIndex((prev) => (prev + 1) % PHASE_ORDER.length);
-    }, PHASE_DURATION_MS);
-    return () => clearInterval(cycle);
-  }, []);
-
-  useEffect(() => {
-    if (phase === 'question') {
-      setSelectedOption(null);
-      const pick = setTimeout(
-        () => setSelectedOption(DEMO_QUESTION.correctIndex),
-        1300
-      );
-      return () => clearTimeout(pick);
-    }
-
-    if (phase === 'timer') {
-      setCountdown(12);
-      const tick = setInterval(() => {
-        setCountdown((prev) => (prev > 0 ? prev - 1 : 0));
-      }, 240);
-      return () => clearInterval(tick);
-    }
-  }, [phase]);
-
-  const resultPercent = 92;
-  const RING_RADIUS = 42;
-  const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
-  const ringOffset =
-    RING_CIRCUMFERENCE - (resultPercent / 100) * RING_CIRCUMFERENCE;
-
+export default function LiveExamCard() {
+  const [selected, setSelected] = useState<number | null>(null);
   return (
-    <div className="relative w-full max-w-sm rounded-3xl border border-gray-100 bg-white shadow-2xl shadow-brand-600/10 dark:border-gray-800 dark:bg-gray-900">
-
-      <div className="flex items-center justify-between rounded-t-3xl border-b border-gray-100 px-5 py-3 dark:border-gray-800">
-        <div className="flex gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-gray-200 dark:bg-gray-700" />
-          <span className="h-2.5 w-2.5 rounded-full bg-gray-200 dark:bg-gray-700" />
-          <span className="h-2.5 w-2.5 rounded-full bg-gray-200 dark:bg-gray-700" />
-        </div>
-        <span className="flex items-center gap-1.5 text-[11px] font-medium text-gray-400">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success-600/60" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success-600" />
-          </span>
-         آزمون آنلاین
-        </span>
+    <div className="glass-exam-preview relative w-full max-w-sm overflow-hidden rounded-3xl border border-white/50 bg-white/70 shadow-2xl dark:border-white/10 dark:bg-slate-900/70">
+      <div className="flex items-center justify-between border-b border-violet-500/10 px-5 py-4 dark:border-white/10">
+        <span className="flex items-center gap-2 text-xs font-bold text-gray-700 dark:text-slate-200"><Sparkles size={16} className="text-violet-500" />پیش‌نمایش آزمون</span>
+        <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-700 dark:text-emerald-300"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />آماده اجرا</span>
       </div>
-
-      <div key={phase} className="animate-fade-slide min-h-55 p-6">
-        {phase === 'question' && (
-          <div>
-            <div className="mb-4 flex items-center justify-between">
-              <span className="text-xs font-medium text-gray-400">
-                {DEMO_QUESTION.meta}
-              </span>
-              <span className="flex items-center gap-1.5 rounded-lg bg-brand-600/10 px-3 py-1 text-xs font-bold text-brand-600 dark:text-brand-500">
-                <Clock size={13} />
-                ۰۰:۴۸
-              </span>
-            </div>
-
-            <p className="mb-4 text-sm font-bold leading-relaxed text-gray-900 dark:text-white">
-              {DEMO_QUESTION.text}
-            </p>
-
-            <div className="flex flex-col gap-2">
-              {DEMO_QUESTION.options.map((option, index) => {
-                const isSelected = selectedOption === index;
-                return (
-                  <div
-                    key={option}
-                    className={`flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-xs transition-all duration-300 ${
-                      isSelected
-                        ? 'border-brand-500 bg-brand-600/5 text-brand-700 dark:text-brand-500'
-                        : 'border-gray-100 text-gray-600 dark:border-gray-800 dark:text-gray-300'
-                    }`}
-                  >
-                    <span
-                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition ${
-                        isSelected
-                          ? 'border-brand-500 bg-brand-500'
-                          : 'border-gray-300 dark:border-gray-600'
-                      }`}
-                    >
-                      {isSelected && (
-                        <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                      )}
-                    </span>
-                    {option}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {phase === 'timer' && (
-          <div className="flex flex-col items-center justify-center py-6 text-center">
-            <span className="mb-4 text-xs font-medium text-gray-400">
-              زمان باقی‌مانده
-            </span>
-            <div className="flex h-28 w-28 items-center justify-center rounded-full border-4 border-gray-100 text-3xl font-extrabold text-brand-600 dark:border-gray-800 dark:text-brand-500">
-              {countdown}
-            </div>
-            <p className="mt-5 text-xs text-gray-400">
-              آزمون به‌صورت خودکار ادامه پیدا می‌کند
-            </p>
-          </div>
-        )}
-
-        {phase === 'result' && (
-          <div className="flex flex-col items-center py-3 text-center">
-            <div className="relative mb-3 flex h-28 w-28 items-center justify-center">
-              <svg
-                className="absolute inset-0 -rotate-90"
-                viewBox="0 0 100 100"
-              >
-                <circle
-                  cx="50"
-                  cy="50"
-                  r={RING_RADIUS}
-                  fill="none"
-                  strokeWidth="7"
-                  className="stroke-gray-100 dark:stroke-gray-800"
-                />
-                <circle
-                  cx="50"
-                  cy="50"
-                  r={RING_RADIUS}
-                  fill="none"
-                  strokeWidth="7"
-                  strokeLinecap="round"
-                  strokeDasharray={RING_CIRCUMFERENCE}
-                  strokeDashoffset={ringOffset}
-                  className="stroke-success-600 transition-[stroke-dashoffset] duration-1000 ease-out"
-                />
-              </svg>
-              <CheckCircle2
-                size={26}
-                className="text-success-600 dark:text-success-500"
-              />
-            </div>
-            <div className="mb-1 text-4xl font-extrabold text-gray-900 dark:text-white">
-              ۹۲٪
-            </div>
-            <p className="text-xs text-gray-400">۹ پاسخ درست از ۱۰ سوال</p>
-          </div>
-        )}
+      <div className="p-6">
+        <div className="mb-5 flex items-center justify-between">
+          <span className="text-xs font-medium text-gray-500 dark:text-slate-400">سؤال ۳ از ۱۰</span>
+          <span className="flex items-center gap-1.5 rounded-lg bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-700 dark:text-violet-300"><Clock3 size={14} /> ۰۰:۴۸</span>
+        </div>
+        <p className="mb-5 text-sm font-bold leading-8 text-gray-900 dark:text-white">کدام هوک برای مدیریت وضعیت محلی در React استفاده می‌شود؟</p>
+        <div className="space-y-2.5">
+          {options.map((option, index) => (
+            <button key={option} type="button" aria-pressed={selected === index}
+              onClick={() => setSelected(index)}
+              className={`glass-answer flex w-full items-center justify-between rounded-xl border px-4 py-3 text-right text-xs transition-colors duration-200 ${selected === index ? 'border-violet-400 bg-violet-500/10 text-violet-700 dark:text-violet-200' : 'border-gray-200/70 bg-white/45 text-gray-600 hover:border-violet-300 dark:border-white/10 dark:bg-white/5 dark:text-slate-300'}`}>
+              {option}
+              <span className={`flex h-4 w-4 items-center justify-center rounded-full border ${selected === index ? 'border-violet-500 bg-violet-500 text-white' : 'border-gray-300 dark:border-slate-500'}`}>{selected === index && <CheckCircle2 size={12} />}</span>
+            </button>
+          ))}
+        </div>
+        <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-violet-500/10"><div className="h-full w-3/10 rounded-full bg-linear-to-l from-violet-500 to-cyan-400" /></div>
+        <p className="mt-3 text-[11px] text-gray-400 dark:text-slate-400">نمونه تعاملی • یک گزینه را انتخاب کنید</p>
       </div>
     </div>
   );
 }
-
-export default LiveExamCard;

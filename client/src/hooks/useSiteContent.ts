@@ -1,25 +1,25 @@
 import { useEffect, useState } from 'react';
 import { getSiteContent, type SiteContentMap } from '../api/cmsApi';
 
-// Share one public CMS request; consumers render defaults while content is unavailable.
-function useSiteContent(): SiteContentMap | null {
-  const [sections, setSections] = useState<SiteContentMap | null>(null);
+type PublicContentState = { sections: SiteContentMap | null; loading: boolean; error: boolean };
+
+// Wait for the public CMS response; never flash template defaults while fetching.
+function useSiteContent(): PublicContentState {
+  const [state, setState] = useState<PublicContentState>({ sections: null, loading: true, error: false });
 
   useEffect(() => {
     let cancelled = false;
     getSiteContent()
-      .then((res) => {
-        if (!cancelled) setSections(res.sections);
+      .then(res => {
+        if (!cancelled) setState({ sections: res.sections, loading: false, error: false });
       })
       .catch(() => {
-        // Keep the default public content when CMS loading fails.
+        if (!cancelled) setState({ sections: null, loading: false, error: true });
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
-  return sections;
+  return state;
 }
 
 export default useSiteContent;

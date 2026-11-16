@@ -12,6 +12,7 @@ export type RouteConfig = {
 };
 
 const SupportPage = React.lazy(() => import('../pages/SupportPage/SupportPage'));
+const NotificationsPage = React.lazy(() => import('../pages/NotificationsPage/NotificationsPage'));
 
 const LandingPage = React.lazy(() => import('../pages/LandingPage/LandingPage'));
 
@@ -22,6 +23,8 @@ const SignupPage = React.lazy(() => import('../pages/SignupPage/SignupPage'));
 const ForgotPasswordPage = React.lazy(() =>
   import('../pages/ForgotPasswordPage/ForgotPasswordPage')
 );
+
+const WorkspacePage = React.lazy(() => import('../pages/WorkspacePage/WorkspacePage'));
 
 const DashboardPage = React.lazy(() =>
   import('../pages/DashboardPage/DashboardPage')
@@ -113,6 +116,8 @@ const EventsPage = React.lazy(() => import('../pages/AdminManagementPage/EventsP
 const GroupApprovalsPage = React.lazy(() => import('../pages/AdminManagementPage/GroupApprovalsPage'));
 
 export const routes: RouteConfig[] = [
+  { path: '/workspace', Component: WorkspacePage, protected: true, allowedRoles: MANAGEMENT_ROLES },
+  { path: '/notifications', Component: NotificationsPage, protected: true },
   { path: '/support', Component: SupportPage, protected: true },
   { path: '/subscriptions', Component: SubscriptionsPage, protected: true, allowedRoles: ['SuperAdmin'] },
   { path: '/payments', Component: PaymentsPage, protected: true, allowedRoles: ['SuperAdmin'] },

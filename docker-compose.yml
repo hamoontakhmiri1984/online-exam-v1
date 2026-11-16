@@ -22,6 +22,23 @@ services:
     volumes:
       - redis-data:/data
 
+  # Warm standby for recovery/reads. No automatic promotion: writes stay on redis.
+  redis-replica:
+    image: redis:7-alpine
+    restart: unless-stopped
+    depends_on:
+      - redis
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Run node scripts/setup-local.cjs}
+    command: ["/bin/sh", "-ec", 'exec redis-server --appendonly yes --replicaof redis 6379 --masterauth "$REDIS_PASSWORD" --requirepass "$REDIS_PASSWORD"']
+    volumes:
+      - redis-replica-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli info replication | grep -q "^role:slave"']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
   # Build fixed official source releases; prebuilt upstream images may be unavailable.
   # ذخیره‌ی فایل‌های آپلودی (ویدیو/پیوست درس) - مقادیر با server/.env هماهنگه
   minio:
@@ -74,4 +91,5 @@ services:
 volumes:
   postgres-data:
   redis-data:
+  redis-replica-data:
   minio-data:

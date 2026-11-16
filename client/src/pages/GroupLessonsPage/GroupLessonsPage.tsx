@@ -132,7 +132,7 @@ function GroupLessonsPage() {
             <h1 className="text-2xl font-bold dark:text-white">
               {group?.name}
             </h1>
-            {canManage && (
+            {canManage && sessions.length > 0 && (
               <button
                 type="button"
                 onClick={form.openAdd}
@@ -153,11 +153,7 @@ function GroupLessonsPage() {
                   ? 'با دکمه‌ی «جلسه جدید» اولین ویدیوی این گروه رو اضافه کن.'
                   : 'وقتی مدرس ویدیویی برای این گروه اضافه کنه، اینجا نشون داده می‌شه.'
               }
-              action={
-                canManage
-                  ? { label: '+ جلسه جدید', onClick: form.openAdd }
-                  : undefined
-              }
+              action={canManage ? { label: '+ جلسه جدید', onClick: form.openAdd } : undefined}
             />
           ) : (
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -204,6 +200,7 @@ function GroupLessonsPage() {
         onAttachmentChange={form.handleAttachmentChange}
         onRemoveAttachment={form.removeAttachment}
         onSubmit={form.handleSubmit}
+        validationError={form.validationError}
         onClose={form.close}
       />
 

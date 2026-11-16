@@ -4,11 +4,14 @@ import { useCallback, useState, type ReactNode } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
-  CalendarDays,
   CheckCircle2,
   ChevronLeft,
   RotateCw,
   XCircle,
+  GraduationCap,
+  UsersRound,
+  ClipboardCheck,
+  ClockAlert,
 } from 'lucide-react';
 import AppLayout from '../../../components/AppLayout/AppLayout';
 import Toast from '../../../components/Toast/Toast';
@@ -20,11 +23,12 @@ import {
   type AdminExamState,
 } from '../../../api/adminDashboardApi';
 import { formatDateOnly, formatExamDateTime } from '../../../utils/formatDate';
-import { getTodayJalali } from '../Dashboard.utils';
+import { DashboardWelcome, DashboardStatCard } from '../components/DashboardVisuals';
+import { toPersianDigits } from '../../../utils/persianDigits';
 
 const fa = (n: number) => n.toLocaleString('fa-IR');
 const panel =
-  'overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900';
+  'glass-admin-panel overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900';
 const linkBtn =
   'inline-flex items-center rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-brand-500 dark:border-gray-700 dark:text-gray-200 dark:hover:border-brand-500/50 dark:hover:bg-brand-500/10 dark:hover:text-brand-300';
 
@@ -58,36 +62,6 @@ function StatusChip({ state }: { state: AdminExamState }) {
   );
 }
 
-function StatCell({
-  label,
-  value,
-  alert = false,
-}: {
-  label: string;
-  value: number;
-  alert?: boolean;
-}) {
-  return (
-    <div
-      className={`px-5 py-5 ${
-        alert
-          ? 'bg-amber-50 dark:bg-amber-500/10'
-          : 'bg-white dark:bg-gray-900'
-      }`}
-    >
-      <p
-        className={`text-3xl font-bold tabular-nums ${
-          alert
-            ? 'text-amber-700 dark:text-amber-400'
-            : 'text-gray-900 dark:text-white'
-        }`}
-      >
-        {fa(value)}
-      </p>
-      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{label}</p>
-    </div>
-  );
-}
 
 function QueueRow({
   title,
@@ -204,12 +178,12 @@ function RecentExams({ exams }: { exams: AdminDashboardData['recentExams'] }) {
               <li key={e.id} className="space-y-3 px-5 py-4">
                 <div className="flex items-start justify-between gap-3">
                   <p className="font-medium text-gray-900 dark:text-gray-100">
-                    {e.title}
+                    {toPersianDigits(e.title)}
                   </p>
                   <StatusChip state={e.status} />
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {e.instructorName || '—'} — {formatExamDateTime(e.scheduledAt)} —{' '}
+                  {e.instructorName || '—'} — {toPersianDigits(formatExamDateTime(e.scheduledAt))} —{' '}
                   {fa(e.participants)} شرکت‌کننده
                 </p>
                 <ExamActions instructorId={e.instructorId} />
@@ -268,14 +242,15 @@ function Content({ data }: { data: AdminDashboardData }) {
   const { stats, attention, recentExams } = data;
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-gray-200 bg-gray-200 lg:grid-cols-4 dark:border-gray-800 dark:bg-gray-800">
-        <StatCell label="مدرسان تأییدشده" value={stats.approvedInstructors} />
-        <StatCell label="دانشجویان" value={stats.students} />
-        <StatCell label="آزمون‌های فعال" value={stats.activeExams} />
-        <StatCell
+      <div className="glass-unified-stats glass-admin-stats grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <DashboardStatCard label="مدرسان تأییدشده" value={fa(stats.approvedInstructors)} icon={GraduationCap} tone="violet" />
+        <DashboardStatCard label="دانشجویان" value={fa(stats.students)} icon={UsersRound} tone="cyan" />
+        <DashboardStatCard label="آزمون‌های فعال" value={fa(stats.activeExams)} icon={ClipboardCheck} tone="green" />
+        <DashboardStatCard
           label="درخواست‌های منتظر بررسی"
-          value={stats.pendingRequests}
-          alert={stats.pendingRequests > 0}
+          icon={ClockAlert}
+          tone="amber"
+          value={fa(stats.pendingRequests)}
         />
       </div>
 
@@ -297,7 +272,7 @@ function Content({ data }: { data: AdminDashboardData }) {
                 key={i.id}
                 title={i.name || 'بدون نام'}
                 sub={i.email || i.phone || '—'}
-                date={formatDateOnly(i.createdAt)}
+                date={toPersianDigits(formatDateOnly(i.createdAt))}
               />
             ))}
           </Queue>
@@ -311,7 +286,7 @@ function Content({ data }: { data: AdminDashboardData }) {
                 key={g.id}
                 title={g.name}
                 sub={`${g.category} — ${g.instructorName || 'بدون نام'}`}
-                date={formatDateOnly(g.createdAt)}
+                date={toPersianDigits(formatDateOnly(g.createdAt))}
               />
             ))}
           </Queue>
@@ -343,6 +318,7 @@ export default function AdminDashboard() {
 
   return (
     <AppLayout title="میزکار">
+      <div className="glass-dashboard">
       {error && (
         <Toast
           message={error}
@@ -352,24 +328,7 @@ export default function AdminDashboard() {
         />
       )}
 
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-            میزکار{displayName ? ` · ${displayName}` : ''}
-          </h1>
-          {data && (
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {pending > 0
-                ? `${fa(pending)} درخواست در انتظار بررسی است`
-                : 'درخواستی در انتظار بررسی نیست'}
-            </p>
-          )}
-        </div>
-        <p className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-          <CalendarDays size={14} />
-          {getTodayJalali()}
-        </p>
-      </div>
+      <DashboardWelcome name={displayName || 'مدیر سامانه'} description={data && pending > 0 ? `${fa(pending)} درخواست در انتظار بررسی است` : 'نمای کلی فعالیت‌ها و عملکرد سامانه'} />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-gray-500 dark:text-gray-400" role="status">
@@ -405,6 +364,7 @@ export default function AdminDashboard() {
           </button>
         </div>
       )}
+      </div>
     </AppLayout>
   );
 }

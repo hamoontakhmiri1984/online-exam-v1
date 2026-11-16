@@ -23,7 +23,8 @@ function isoToLocalDateAndTime(iso: string): { date: string; time: string } {
 }
 
 function localDateAndTimeToIso(date: string, time: string): string {
-  return new Date(`${date}T${time}`).toISOString();
+  const parsed = new Date(`${date}T${time}`);
+  return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString();
 }
 
 function useExamFormModal({
@@ -41,6 +42,7 @@ function useExamFormModal({
   const [allowReview, setAllowReview] = useState(true);
   const [groupIds, setGroupIds] = useState<string[]>([]);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   function openAdd() {
     setEditingId(null);
@@ -51,6 +53,7 @@ function useExamFormModal({
     setDurationMinutes(30);
     setAllowReview(true);
     setGroupIds([]);
+    setValidationError(null);
     setIsOpen(true);
   }
 
@@ -64,6 +67,7 @@ function useExamFormModal({
     setDurationMinutes(exam.durationMinutes);
     setAllowReview(exam.allowReview);
     setGroupIds(exam.groupIds);
+    setValidationError(null);
     setIsOpen(true);
   }
 
@@ -79,6 +83,7 @@ function useExamFormModal({
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (isSubmitting) return;
 
     if (
       !title.trim() ||
@@ -111,11 +116,20 @@ function useExamFormModal({
       return;
     }
 
+    if (!/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(scheduledTime)) {
+      setValidationError('ساعت برگزاری باید به صورت ۲۴ ساعته باشد؛ مانند ۱۴:۳۰');
+      return;
+    }
+
     const existingExam = editingId
       ? exams.find((exam) => exam.id === editingId)
       : undefined;
 
     const scheduledIso = localDateAndTimeToIso(scheduledDate, scheduledTime);
+    if (!scheduledIso || !Number.isFinite(Date.parse(scheduledIso))) {
+      setValidationError('تاریخ و ساعت برگزاری معتبر نیست.');
+      return;
+    }
 
     // Validate past schedules only on creation or schedule changes, at minute precision.
     const currentMinute = Math.floor(Date.now() / 60_000);
@@ -142,13 +156,18 @@ function useExamFormModal({
       groupIds,
     };
 
-    const saved = editingId
-      ? await updateItem(editingId, examData)
-      : await addItem(examData);
-
-    // Keep the form contents when saving fails.
-    if (saved) {
-      setIsOpen(false);
+    setValidationError(null);
+    setIsSubmitting(true);
+    try {
+      const saved = editingId
+        ? await updateItem(editingId, examData)
+        : await addItem(examData);
+      // The CRUD handler shows precise backend errors inside the dialog.
+      if (saved) setIsOpen(false);
+    } catch (err) {
+      setValidationError(err instanceof Error ? err.message : 'ذخیره آزمون انجام نشد.');
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -170,6 +189,7 @@ function useExamFormModal({
     groupIds,
     toggleGroup,
     validationError,
+    isSubmitting,
     dismissValidationError: () => setValidationError(null),
     openAdd,
     openEdit,

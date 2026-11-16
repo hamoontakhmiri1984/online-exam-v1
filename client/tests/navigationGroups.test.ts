@@ -25,7 +25,7 @@ test('SuperAdmin menu is split into ordered groups under small headings', () => 
   assert.deepEqual(
     sections.map((s) => s.items.map((i) => i.to)),
     [
-      ['/dashboard', '/exams'],
+      ['/workspace', '/exams'],
       ['/instructors', '/instructor-students', '/instructor-approvals', '/group-approvals'],
       ['/categories', '/site-content', '/blog-posts'],
       ['/subscriptions', '/payments', '/reports'],

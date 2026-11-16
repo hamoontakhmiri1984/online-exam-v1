@@ -61,6 +61,8 @@ export const createPractice = (input: PracticeInput) =>
   apiRequest<{ id: string }>('/practice', { method: 'POST', body: input });
 export const updatePractice = (id: string, input: PracticeInput) =>
   apiRequest<{ id: string }>(`/practice/${id}`, { method: 'PUT', body: input });
+export const deletePractice = (id: string) =>
+  apiRequest<void>(`/practice/${id}`, { method: 'DELETE' });
 export const setPracticeStatus = (
   id: string,
   status: 'Published' | 'Archived',

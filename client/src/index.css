@@ -164,3 +164,118 @@ input:autofill:active {
 }
 :root { --report-tooltip: #ffffff; --report-text: #111827; }
 .dark { --report-tooltip: #111827; --report-text: #f3f4f6; }
+
+/*
+ * Site-wide single-select design system. Native selects receive the same
+ * violet surface, border, sizing and focus ring as UiSelect's combobox.
+ * Do not override multi-select controls or custom combobox menus.
+ */
+select:not([multiple]):not([size]) {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 44px;
+  border: 1px solid rgba(167, 139, 250, .5);
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, .96);
+  color: #334155;
+  font: inherit;
+  font-size: 14px;
+  direction: rtl;
+  padding: 10px 16px 10px 42px;
+  cursor: pointer;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%237c3aed' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: 18px;
+  background-position: left 13px center;
+}
+select:not([multiple]):not([size]):hover:not(:disabled) {
+  border-color: #a78bfa;
+}
+select:not([multiple]):not([size]):focus-visible {
+  outline: none;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, .17);
+}
+select:not([multiple]):not([size]):disabled {
+  cursor: not-allowed;
+  opacity: .5;
+}
+select:not([multiple]):not([size]) option {
+  background: #fff;
+  color: #334155;
+}
+.dark select:not([multiple]):not([size]) {
+  background-color: rgba(30, 41, 59, .95);
+  border-color: rgba(167, 139, 250, .34);
+  color: #f8fafc;
+  color-scheme: dark;
+}
+.dark select:not([multiple]):not([size]) option {
+  background: #1e293b;
+  color: #f8fafc;
+}
+
+/* Consistent brand-purple checkmarks and selected radio indicators throughout the site. */
+input[type="checkbox"], input[type="radio"] {
+  accent-color: #7c3aed;
+}
+input[type="checkbox"], input[type="radio"]:focus-visible {
+  outline: 2px solid #a78bfa;
+  outline-offset: 2px;
+}
+/* Tailwind accent utilities must not turn native checks blue elsewhere. */
+input[type="checkbox"], input[type="radio"]:checked {
+  accent-color: #7c3aed;
+}
+
+/* Lightweight loading indicator. Scoped to avoid changing other page animations. */
+@keyframes site-loader-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes site-loader-breathe {
+  0%, 100% { transform: scale(.88); opacity: .7; }
+  50% { transform: scale(1); opacity: 1; }
+}
+.site-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 145px;
+  padding: 24px 16px;
+}
+.site-loading-compact { min-height: 72px; padding: 12px; }
+.site-loading-spinner {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+}
+.site-loading-compact .site-loading-spinner { width: 32px; height: 32px; }
+.site-loading-spinner-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid rgba(139, 92, 246, .13);
+  border-top-color: #7c3aed;
+  border-right-color: #a78bfa;
+  box-shadow: 0 0 22px rgba(124, 58, 237, .1);
+  animation: site-loader-spin .85s linear infinite;
+}
+.site-loading-spinner-core {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #a78bfa, #6d28d9);
+  box-shadow: 0 0 12px rgba(124, 58, 237, .32);
+  animation: site-loader-breathe 1.4s ease-in-out infinite;
+}
+.dark .site-loading-spinner-ring {
+  border-color: rgba(172, 147, 249, .15);
+  border-top-color: #c4b5fd;
+  border-right-color: #8b5cf6;
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-loading-spinner-ring, .site-loading-spinner-core { animation-duration: 3s; }
+}

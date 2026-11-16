@@ -20,6 +20,7 @@ const statuses = {
 };
 export default function PaymentsPage() {
   const [days, setDays] = useState(30);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const list = usePagedList(
     (q) => getReportList<ReportPayment>('payments', q, days),
     String(days),
@@ -37,6 +38,8 @@ export default function PaymentsPage() {
       <LoadError message={list.error} retry={list.reload} />
       <DataTable
         items={list.items}
+        selectedId={selectedId}
+        onSelect={item => setSelectedId(item.id)}
         loading={list.loading}
         columns={[
           {

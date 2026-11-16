@@ -1,4 +1,5 @@
 import InstructorFilter from '../../components/AdminUI/InstructorFilter';
+import UiSelect from '../../components/UiSelect';
 import { useState } from 'react';
 import AppLayout from '../../components/AppLayout/AppLayout';
 import PageHeader from '../../components/PageHeader/PageHeader';
@@ -6,7 +7,6 @@ import DataTable from '../../components/AdminUI/DataTable';
 import FilterBar, {
   RangeSelect,
   LoadError,
-  controlClass,
 } from '../../components/AdminUI/FilterBar';
 import ReportOverview from '../../components/AdminUI/ReportOverview';
 import ListPagination from '../../components/ListPagination/ListPagination';
@@ -24,6 +24,7 @@ export default function ReportsPage() {
   );
   return (
     <AppLayout title="گزارش‌ها">
+      <div className="reports-page">
       <PageHeader
         title="گزارش‌ها"
         description="عملکرد آموزشی و فعالیت سامانه در بازهٔ انتخاب‌شده"
@@ -50,15 +51,15 @@ export default function ReportsPage() {
         <h2 className="text-lg font-semibold dark:text-white">
           نتایج آزمون‌ها
         </h2>
-        <select
+        <UiSelect
           aria-label="ترتیب نتایج"
-          className={controlClass}
+          className="min-w-40"
           value={order}
           onChange={(e) => setOrder(e.target.value)}
         >
           <option value="newest">جدیدترین</option>
           <option value="oldest">قدیمی‌ترین</option>
-        </select>
+        </UiSelect>
       </div>
       <ListPagination {...list} maxSearchLength={100} />
       <LoadError message={list.error} retry={list.reload} />
@@ -93,6 +94,7 @@ export default function ReportsPage() {
           },
         ]}
       />
+      </div>
     </AppLayout>
   );
 }

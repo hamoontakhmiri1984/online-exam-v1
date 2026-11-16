@@ -11,6 +11,7 @@ import {
 import {
   assertOtpSendAllowed,
   assertOtpVerifyCaptcha,
+  rememberLoginOtpChallenge,
 } from '../../../lib/otpAbuseGuard';
 
 import { sendOtp } from '../../../services/otpSender';
@@ -105,6 +106,7 @@ export async function requestOtp(data: RequestOtpData, ip: string) {
       await simulateOtpCreationCost();
     }
 
+    if (data.purpose === 'LOGIN') await rememberLoginOtpChallenge(ip, value);
     return {
       message: 'اگر این حساب وجود داشته باشه، کد ارسال می‌شه',
     };
@@ -136,6 +138,7 @@ export async function verifyOtpCode(data: VerifyOtpData, ip: string) {
   if (data.purpose === 'LOGIN') {
     await assertOtpVerifyCaptcha({
       ip,
+      identifier: value,
       captchaId: data.captchaId,
       captchaAnswer: data.captchaAnswer,
     });

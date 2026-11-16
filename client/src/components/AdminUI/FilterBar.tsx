@@ -1,3 +1,4 @@
+import UiSelect from '../UiSelect';
 import type { ReactNode } from 'react';
 export const controlClass =
   'rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100';
@@ -18,8 +19,8 @@ export function RangeSelect({
   return (
     <label className="flex items-center gap-2 text-sm text-gray-500">
       بازهٔ زمانی
-      <select
-        className={controlClass}
+      <UiSelect
+        className="min-w-36"
         value={days}
         onChange={(e) => onChange(Number(e.target.value))}
       >
@@ -28,7 +29,7 @@ export function RangeSelect({
             {n.toLocaleString('fa-IR')} روز اخیر
           </option>
         ))}
-      </select>
+      </UiSelect>
     </label>
   );
 }

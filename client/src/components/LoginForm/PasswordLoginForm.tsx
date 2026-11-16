@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { loginWithPassword, type CaptchaAnswer } from '../../api/authApi';
@@ -63,6 +63,7 @@ function PasswordLoginForm({
 
   function handlePasswordChange(event: React.ChangeEvent<HTMLInputElement>) {
     setPassword(event.target.value);
+    if (serverError) setServerError('');
 
     if (passwordError) {
       setPasswordError('');
@@ -134,17 +135,6 @@ function PasswordLoginForm({
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
       <AuthBack onClick={onBack ?? onEdit} disabled={loading} />
-      {serverError && (
-        <p
-          role="alert"
-          className="flex items-start gap-2 rounded-lg border border-danger-100 bg-danger-50 px-3 py-2 text-sm text-danger-600 dark:border-danger-900 dark:bg-danger-950/40 dark:text-danger-400"
-        >
-          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-
-          <span>{serverError}</span>
-        </p>
-      )}
-
       <IdentifierSummary identifier={identifier} onEdit={onEdit} disabled={loading} />
 
       <input
@@ -170,7 +160,7 @@ function PasswordLoginForm({
         value={password}
         onChange={handlePasswordChange}
         onBlur={handlePasswordBlur}
-        error={passwordError}
+        error={passwordError || serverError}
         reserveErrorSpace
       />
 

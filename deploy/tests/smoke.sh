@@ -28,7 +28,9 @@ values = dict(NODE_ENV="production", DATABASE_URL="postgresql://examuser:ci-only
 Path(os.environ["SERVER_ENV_FILE"]).write_text("\n".join(f"{k}={v}" for k,v in values.items()) + "\n")
 PY
 dc config --quiet
-dc up -d --wait postgres redis
+dc up -d --wait postgres redis redis-replica
+# The replica is a read-only standby; it must actually follow the primary.
+dc exec -T redis-replica sh -c 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli info replication | grep -q "^role:slave"'
 dc run --rm migrate
 dc up -d --wait --wait-timeout 180 api web
 curl --fail --silent --cacert "$TLS_DIR/fullchain.pem" https://localhost/api/health | grep -q '"status":"ok"'

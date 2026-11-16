@@ -4,7 +4,7 @@ import {
   apiRequest,
   apiMultipartRequest,
   ApiError,
-  API_BASE_URL,
+  buildApiUrl,
   getAuthToken,
 } from '../lib/apiClient';
 
@@ -160,7 +160,7 @@ export async function downloadBankQuestionTemplate(): Promise<void> {
 
   let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}/banks/import-template`, {
+    response = await fetch(buildApiUrl('/banks/import-template'), {
       headers,
       credentials: 'include',
     });

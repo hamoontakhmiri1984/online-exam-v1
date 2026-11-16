@@ -1,3 +1,4 @@
+import { notifySaveError } from '../../../components/Toast/Toast';
 import { useState } from 'react';
 import { Plus, X, Save } from 'lucide-react';
 import { ICON_NAMES, resolveIcon, DEFAULT_ICON_NAME } from '../../../constants/iconRegistry';
@@ -32,6 +33,7 @@ function readPillars(data: Record<string, unknown>): Pillar[] {
 }
 
 function AboutSectionForm({ initialData, saving, onSave }: AboutSectionFormProps) {
+  const [formError, setFormError] = useState('');
   const [title, setTitle] = useState(() => readString(initialData, 'title'));
   const [description, setDescription] = useState(() =>
     readString(initialData, 'description')
@@ -48,7 +50,13 @@ function AboutSectionForm({ initialData, saving, onSave }: AboutSectionFormProps
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    await onSave({
+    if (!title.trim() || !description.trim() || pillars.some(p => !p.title.trim() || !p.description.trim())) {
+      setFormError('عنوان، متن و اطلاعات تمام ستون‌های افزوده‌شده الزامی است.');
+      notifySaveError('عنوان، متن و اطلاعات تمام ستون‌های افزوده‌شده الزامی است.');
+      return;
+    }
+    setFormError('');
+    const saved = await onSave({
       title: title.trim(),
       description: description.trim(),
       pillars: pillars.map((p) => ({
@@ -57,10 +65,12 @@ function AboutSectionForm({ initialData, saving, onSave }: AboutSectionFormProps
         description: p.description.trim(),
       })),
     });
+    if (!saved) setFormError('ذخیره انجام نشد؛ لطفاً دوباره تلاش کنید.');
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+      {formError && <p role="alert" className="form-inline-error">{formError}</p>}
       <div className="flex flex-col gap-1.5">
         <label className={labelClass}>عنوان</label>
         <input

@@ -19,7 +19,6 @@ function UsageRow({
 }) {
   const percent =
     limit === null ? 0 : Math.min(100, (used / Math.max(limit, 1)) * 100);
-  const isNearLimit = limit !== null && used >= limit;
 
   return (
     <div>
@@ -29,11 +28,7 @@ function UsageRow({
           {label}
         </span>
         <span
-          className={`font-medium ${
-            isNearLimit
-              ? 'text-danger-600 dark:text-danger-400'
-              : 'text-gray-500 dark:text-gray-400'
-          }`}
+          className="font-medium text-violet-700 dark:text-violet-200"
         >
           {used.toLocaleString('fa-IR')} / {formatLimit(limit)}
         </span>
@@ -41,9 +36,7 @@ function UsageRow({
       {limit !== null && (
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
           <div
-            className={`h-full rounded-full transition-all ${
-              isNearLimit ? 'bg-danger-500' : 'bg-brand-500'
-            }`}
+            className="ui-plan-progress h-full rounded-full transition-all"
             style={{ width: `${percent}%` }}
           />
         </div>

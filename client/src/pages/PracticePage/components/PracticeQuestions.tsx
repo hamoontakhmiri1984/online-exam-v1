@@ -1,3 +1,4 @@
+import Spinner from '../../../components/Spinner/Spinner';
 import { useState } from "react";
 import {
   getPracticeQuestions,
@@ -9,7 +10,8 @@ import ListPagination from "../../../components/ListPagination/ListPagination";
 import Difficulty from "../../../components/QuestionDifficultyBadge/QuestionDifficultyBadge";
 import PracticeAnswerCard from "./PracticeAnswerCard";
 import PracticeHistory from "./PracticeHistory";
-import { input, panel, secondary } from "../practiceUi";
+import { panel, secondary } from "../practiceUi";
+import UiSelect from "../../../components/UiSelect";
 export default function PracticeQuestions({
   practiceId,
   learner,
@@ -32,9 +34,9 @@ export default function PracticeQuestions({
         <div className="mb-4 grid gap-3 sm:grid-cols-2">
           <label className="text-sm">
             سطح سؤال
-            <select
+            <UiSelect
               aria-label="سطح سؤال"
-              className={`${input} mt-2`}
+              className="mt-2 w-full"
               value={filters.difficulty ?? ""}
               onChange={(e) =>
                 setFilters((f) => ({
@@ -49,14 +51,14 @@ export default function PracticeQuestions({
               <option value="Easy">آسان</option>
               <option value="Medium">متوسط</option>
               <option value="Hard">سخت</option>
-            </select>
+            </UiSelect>
           </label>
           {learner && (
             <label className="text-sm">
               وضعیت تمرین
-              <select
+              <UiSelect
                 aria-label="وضعیت تمرین"
-                className={`${input} mt-2`}
+                className="mt-2 w-full"
                 value={filters.progress}
                 onChange={(e) =>
                   setFilters((f) => ({
@@ -68,7 +70,7 @@ export default function PracticeQuestions({
                 <option value="all">همهٔ سؤال‌ها</option>
                 <option value="unanswered">هنوز پاسخ نداده‌ام</option>
                 <option value="mistakes">قبلاً اشتباه پاسخ داده‌ام</option>
-              </select>
+              </UiSelect>
             </label>
           )}
         </div>
@@ -82,9 +84,7 @@ export default function PracticeQuestions({
           </button>
         </div>
       ) : list.loading ? (
-        <p role="status" className="p-8 text-center">
-          در حال دریافت سؤال‌ها…
-        </p>
+        <Spinner label="در حال دریافت سؤال‌ها…" />
       ) : !active ? (
         <p className={`${panel} text-center`}>سؤالی با این فیلتر پیدا نشد.</p>
       ) : (

@@ -61,7 +61,7 @@ function Navbar() {
             type="button"
             onClick={toggleTheme}
             aria-label={isDark ? 'حالت روشن' : 'حالت شب'}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition duration-300 hover:rotate-45 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition duration-300 hover:bg-violet-50 hover:border-violet-300 hover:text-violet-700 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-violet-500/15"
           >
             {isDark ? <Sun size={16} /> : <Moon size={16} />}
           </button>
@@ -71,13 +71,13 @@ function Navbar() {
           >
             <LogIn
               size={15}
-              className="transition-transform duration-300 group-hover:-translate-x-0.5"
+              className="transition-transform duration-300 group-hover:text-violet-600"
             />
             ورود
           </button>
           <button
             onClick={() => navigate('/signup')}
-            className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition duration-300 hover:-translate-y-0.5 hover:bg-brand-700 hover:shadow-lg hover:shadow-brand-600/40"
+            className="ui-primary-gradient rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition duration-300 hover:bg-brand-700 hover:shadow-lg hover:shadow-brand-600/40"
           >
             ثبت‌نام رایگان
           </button>
@@ -136,7 +136,7 @@ function Navbar() {
             </button>
             <button
               onClick={() => navigate('/signup')}
-              className="flex-1 rounded-xl bg-brand-600 py-2 text-sm font-semibold text-white"
+              className="ui-primary-gradient flex-1 rounded-xl py-2 text-sm font-semibold text-white"
             >
               ثبت‌نام رایگان
             </button>

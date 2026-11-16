@@ -2,7 +2,11 @@ import { useEffect, useSyncExternalStore } from 'react';
 
 const CHANGE_EVENT = 'app-theme-change';
 function snapshot() {
-  return typeof window !== 'undefined' && window.localStorage.getItem('theme') === 'dark';
+  try {
+    return typeof window !== 'undefined' && window.localStorage.getItem('theme') === 'dark';
+  } catch {
+    return false;
+  }
 }
 function subscribe(listener: () => void) {
   window.addEventListener('storage', listener);
@@ -21,7 +25,11 @@ function useTheme() {
   }, [isDark]);
   function toggleTheme() {
     const next = !snapshot();
-    window.localStorage.setItem('theme', next ? 'dark' : 'light');
+    try {
+      window.localStorage.setItem('theme', next ? 'dark' : 'light');
+    } catch {
+      // Storage is optional; the page must remain interactive.
+    }
     document.documentElement.classList.toggle('dark', next);
     window.dispatchEvent(new Event(CHANGE_EVENT));
   }

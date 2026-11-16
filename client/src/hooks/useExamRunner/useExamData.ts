@@ -40,9 +40,9 @@ function useExamData(examId: string, hasStarted: boolean) {
         setError(null);
         setLoading(false);
 
-        const notStartedYet =
-          examData !== null && new Date(examData.date).getTime() > Date.now();
-        if (count === 0 && notStartedYet) {
+        // Keep polling while questions are unreleased, including just after
+        // scheduledAt, so the countdown can unlock the exam without refresh.
+        if (examData !== null && count === 0 && !hasStarted) {
           timeoutId = setTimeout(tick, POLL_INTERVAL_MS);
         }
       } catch {
@@ -59,7 +59,7 @@ function useExamData(examId: string, hasStarted: boolean) {
       cancelled = true;
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [fetchData, retryToken]);
+  }, [fetchData, retryToken, hasStarted]);
 
   useEffect(() => {
     if (!hasStarted) return;

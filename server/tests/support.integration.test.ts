@@ -41,6 +41,7 @@ after(async () => {
     });
   if (ready) {
     for (const id of ids) await revokeSession(id);
+    await prisma.group.deleteMany({ where: { instructorId: { in: ids } } });
     await prisma.user.deleteMany({ where: { id: { in: ids } } });
   }
   await prisma.$disconnect();
@@ -147,4 +148,176 @@ test('remote assistant requires explicit consent before any provider call', asyn
   } finally {
     process.env.ASSISTANT_PROVIDER = 'local';
   }
+});
+
+test('ticketing separates student and instructor requests, provides unique tracking codes and restricts admin inbox', async (t) => {
+  if (!ready) return unavailable(t, 'PostgreSQL/Redis unavailable');
+  const student = await user('Student');
+  const instructor = await user('Instructor');
+  const outsider = await user('Instructor');
+  const admin = await user('SuperAdmin');
+  const [studentId, instructorId] = ids.slice(-4);
+  await prisma.group.create({
+    data: {
+      name: 'کلاس آزمون',
+      category: 'آموزشی',
+      joinCode: randomUUID(),
+      instructorId,
+      students: { connect: { id: studentId } },
+    },
+  });
+  assert.equal(
+    (
+      await request('/tickets', student, {
+        subject: 'بدون مدرس',
+        category: 'Account',
+        priority: 'Normal',
+        body: 'نباید بدون مدرس ثبت شود.',
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await request('/tickets', student, {
+        subject: 'مدرس بی‌ربط',
+        category: 'Account',
+        priority: 'Normal',
+        body: 'نباید به مدرس غریبه ارجاع شود.',
+        assignedInstructorId: ids.at(-2),
+      })
+    ).status,
+    400,
+  );
+  const availableTeachers = (await (
+    await request('/student/instructors', student)
+  ).json()) as Array<{ id: string }>;
+  assert.deepEqual(
+    availableTeachers.map((row) => row.id),
+    [instructorId],
+  );
+
+  const studentResponse = await request('/tickets', student, {
+    subject: 'مشکل ورود دانشجو',
+    category: 'Account',
+    priority: 'Normal',
+    body: 'امکان مشاهده نتایج را ندارم.',
+    assignedInstructorId: instructorId,
+  });
+  assert.equal(studentResponse.status, 201);
+  const studentTicket = (await studentResponse.json()) as {
+    id: string;
+    trackingCode: string;
+    status: string;
+  };
+  assert.match(studentTicket.trackingCode, /^TK-[A-Z0-9-]+$/);
+  assert.equal(studentTicket.status, 'Open');
+
+  const instructorResponse = await request('/tickets', instructor, {
+    subject: 'خطای بانک سوال',
+    category: 'Exams',
+    priority: 'High',
+    body: 'در ایجاد سوال جدید با خطا مواجه شدم.',
+  });
+  assert.equal(instructorResponse.status, 201);
+  const instructorTicket = (await instructorResponse.json()) as {
+    id: string;
+    trackingCode: string;
+  };
+  assert.notEqual(studentTicket.trackingCode, instructorTicket.trackingCode);
+
+  assert.equal(
+    (await request(`/tickets/${studentTicket.id}`, outsider)).status,
+    404,
+  );
+  assert.equal(
+    (await request(`/tickets/${studentTicket.id}`, instructor)).status,
+    200,
+  );
+  assert.equal((await request('/assigned/tickets', outsider)).status, 200);
+  const teacherInbox = (await (
+    await request('/assigned/tickets', instructor)
+  ).json()) as Array<{ id: string }>;
+  assert.ok(teacherInbox.some((item) => item.id === studentTicket.id));
+  assert.equal((await request('/assigned/tickets', student)).status, 403);
+  assert.equal(
+    (await request(`/tickets/${studentTicket.id}`, admin)).status,
+    404,
+  );
+  assert.equal(
+    (await request(`/tickets/${instructorTicket.id}`, student)).status,
+    404,
+  );
+  assert.equal(
+    (await request(`/tickets/${instructorTicket.id}`, admin)).status,
+    200,
+  );
+  assert.equal(
+    (await request(`/tickets/${instructorTicket.id}/messages`, admin)).status,
+    200,
+  );
+  const teacherReply = await request(
+    `/tickets/${studentTicket.id}/messages`,
+    instructor,
+    {
+      body: 'تیکت شما بررسی شد.',
+      clientId: randomUUID(),
+    },
+  );
+  assert.equal(teacherReply.status, 201);
+  const studentMessages = (await (
+    await request(`/tickets/${studentTicket.id}/messages`, student)
+  ).json()) as Array<{ body: string; fromStaff: boolean }>;
+  assert.ok(
+    studentMessages.some(
+      (message) => message.body === 'تیکت شما بررسی شد.' && message.fromStaff,
+    ),
+  );
+
+  const mine = (await (
+    await request('/mine/tickets', instructor)
+  ).json()) as Array<{ id: string }>;
+  assert.ok(mine.some((ticket) => ticket.id === instructorTicket.id));
+  assert.ok(!mine.some((ticket) => ticket.id === studentTicket.id));
+
+  const adminsInstructors = (await (
+    await request('/instructors', admin)
+  ).json()) as Array<{ id: string; ticketCount: number }>;
+  assert.ok(adminsInstructors.some((row) => row.ticketCount > 0));
+  assert.equal((await request('/instructors', student)).status, 403);
+  const instructorDetail = await request(
+    `/tickets/${instructorTicket.id}/messages`,
+    admin,
+    {
+      body: 'مشکل را بررسی می‌کنیم.',
+      clientId: randomUUID(),
+    },
+  );
+  assert.equal(instructorDetail.status, 201);
+  assert.equal(
+    (
+      await request(`/tickets/${studentTicket.id}/messages`, admin, {
+        body: 'نباید مجاز باشد',
+        clientId: randomUUID(),
+      })
+    ).status,
+    404,
+  );
+
+  const updated = await request(
+    `/tickets/${instructorTicket.id}`,
+    instructor,
+    { status: 'Closed' },
+    'PATCH',
+  );
+  assert.equal(updated.status, 200);
+  assert.equal(
+    (
+      await request(`/tickets/${instructorTicket.id}/messages`, instructor, {
+        body: 'تیکت بسته است',
+        clientId: randomUUID(),
+      })
+    ).status,
+    400,
+  );
 });

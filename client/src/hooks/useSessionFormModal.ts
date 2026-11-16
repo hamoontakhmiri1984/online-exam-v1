@@ -51,6 +51,7 @@ function useSessionFormModal({
     setIsUploading(false);
     setAttachments([]);
     setIsUploadingAttachment(false);
+    setValidationError(null);
     setIsOpen(true);
   }
 
@@ -154,7 +155,11 @@ function useSessionFormModal({
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (!groupId || !category || isSubmitting) return;
+    if (isSubmitting) return;
+    if (!groupId || !category) {
+      setValidationError('اطلاعات گروه یا دسته‌بندی آماده نیست؛ صفحه را دوباره باز کنید.');
+      return;
+    }
 
     if (isUploading) {
       setValidationError('صبر کن تا آپلود ویدیو تموم بشه');
@@ -208,6 +213,9 @@ function useSessionFormModal({
       saved = editingId
         ? await updateItem(editingId, sessionData)
         : await addItem(sessionData);
+      if (!saved) setValidationError('ثبت جلسه انجام نشد. پیام خطای سرور را بررسی کنید و دوباره تلاش کنید.');
+    } catch (err) {
+      setValidationError(err instanceof Error ? err.message : 'ذخیره جلسه با خطا مواجه شد.');
     } finally {
       setIsSubmitting(false);
     }

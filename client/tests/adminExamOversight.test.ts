@@ -26,7 +26,7 @@ test('senior navigation emphasizes supervision and hides student/teacher activit
   assert.equal(roleLabel.SuperAdmin, 'کاربر ارشد');
   const entries = navigationItems.filter(item => item.roles.includes('SuperAdmin'));
   for (const path of ['/practice', '/question-banks', '/groups', '/lessons', '/my-results']) assert.ok(!entries.some(item => item.to === path));
-  for (const path of ['/dashboard', '/exams', '/instructors', '/reports']) assert.ok(entries.some(item => item.to === path));
+  for (const path of ['/workspace', '/exams', '/instructors', '/reports']) assert.ok(entries.some(item => item.to === path));
 });
 
 test('oversight search combines teacher/title with status and retains unnamed teachers', async () => {

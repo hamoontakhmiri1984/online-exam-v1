@@ -6,9 +6,6 @@ COPY package.json package-lock.json ./
 COPY server/package.json server/package.json
 COPY client/package.json client/package.json
 COPY server/prisma server/prisma
-COPY vendor/ vendor/
-COPY scripts/prepare-vendor.cjs scripts/prepare-vendor.cjs
-RUN node scripts/prepare-vendor.cjs
 RUN npm ci --workspace server --include-workspace-root
 COPY server/ server/
 RUN npm run build -w server

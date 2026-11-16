@@ -22,6 +22,15 @@ let base: string;
 const userIds: string[] = [];
 const examIds: string[] = [];
 const groupIds: string[] = [];
+const defaultClientIds = new Map<string, string>();
+function defaultClientId(examId: string): string {
+  let id = defaultClientIds.get(examId);
+  if (!id) {
+    id = randomUUID();
+    defaultClientIds.set(examId, id);
+  }
+  return id;
+}
 before(async () => {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -110,12 +119,16 @@ async function request(
   token?: string,
   method = 'GET',
   body?: unknown,
+  clientId?: string,
 ) {
   const response = await fetch(`${base}/exams/${examId}/${path}`, {
     method,
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(token
+        ? { 'X-Exam-Client': clientId ?? defaultClientId(examId) }
+        : {}),
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
@@ -252,6 +265,61 @@ test('HTTP permissions and answer key: guest, unrelated users, owner, admin, act
     (await request(f.exam.id, 'attempts/me', f.student.accessToken)).body
       .answers,
     undefined,
+  );
+});
+test('server refuses a second exam browser while allowing the original browser to resume', async (t) => {
+  if (!ready) return unavailable(t, 'PostgreSQL/Redis unavailable');
+  const f = await fixture();
+  const a = randomUUID();
+  const b = randomUUID();
+  const token = f.student.accessToken;
+  assert.equal(
+    (await request(f.exam.id, 'attempts/start', token, 'POST', {}, a)).status,
+    201,
+  );
+  assert.equal(
+    (await request(f.exam.id, 'attempts/start', token, 'POST', {}, a)).status,
+    200,
+  );
+  assert.equal(
+    (await request(f.exam.id, 'attempts/start', token, 'POST', {}, b)).status,
+    409,
+  );
+  assert.equal(
+    (await request(f.exam.id, 'attempts/me', token, 'GET', undefined, b))
+      .status,
+    409,
+  );
+  assert.equal(
+    (
+      await request(
+        f.exam.id,
+        'attempts/answers',
+        token,
+        'PATCH',
+        { answers: {}, revision: 1 },
+        b,
+      )
+    ).status,
+    409,
+  );
+  assert.equal(
+    (
+      await request(
+        f.exam.id,
+        'attempts/events',
+        token,
+        'POST',
+        { type: 'TAB_HIDDEN' },
+        a,
+      )
+    ).status,
+    201,
+  );
+  assert.equal(
+    (await request(f.exam.id, 'attempts/me', token, 'GET', undefined, a))
+      .status,
+    200,
   );
 });
 

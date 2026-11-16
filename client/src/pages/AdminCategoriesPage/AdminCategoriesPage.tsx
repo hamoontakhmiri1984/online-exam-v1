@@ -1,3 +1,4 @@
+import UiSelect from '../../components/UiSelect';
 import PageHeader from '../../components/PageHeader/PageHeader';
 import FilterBar, { controlClass } from '../../components/AdminUI/FilterBar';
 import StatusBadge from '../../components/StatusBadge/StatusBadge';
@@ -37,6 +38,8 @@ function CategoryRow({
   onApprove,
   onDelete,
   onRename,
+  selected,
+  onSelect,
 }: {
   category: CategoryOption;
   showActions: boolean;
@@ -44,6 +47,8 @@ function CategoryRow({
   onApprove: (id: string) => void;
   onDelete: (id: string) => void;
   onRename: (id: string, name: string) => Promise<boolean>;
+  selected: boolean;
+  onSelect: () => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [draftName, setDraftName] = useState(category.name);
@@ -55,8 +60,8 @@ function CategoryRow({
   }
 
   return (
-    <tr className="border-b border-gray-100 dark:border-gray-800 text-gray-700 dark:text-gray-200 transition duration-200 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-      <td className="py-3">
+    <tr tabIndex={0} aria-selected={selected} onClick={(event) => { if (!(event.target as HTMLElement).closest("button,input,select")) onSelect(); }} onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onSelect(); } }} className="cursor-pointer border-b border-gray-100 dark:border-gray-800 text-gray-700 dark:text-gray-200 transition duration-200 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+      <td className="px-3 py-3.5">
         {isEditing ? (
           <form onSubmit={submitRename} className="flex gap-2">
             <input
@@ -69,7 +74,7 @@ function CategoryRow({
             <button
               type="submit"
               disabled={isActioning || !draftName.trim()}
-              className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700 transition disabled:cursor-not-allowed disabled:opacity-50"
+              className="ui-action-save rounded-lg px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700 transition disabled:cursor-not-allowed disabled:opacity-50"
             >
               ذخیره
             </button>
@@ -88,7 +93,7 @@ function CategoryRow({
           category.name
         )}
       </td>
-      <td className="py-3 text-gray-400 dark:text-gray-500">
+      <td className="px-3 py-3.5 text-gray-400 dark:text-gray-500">
         <StatusBadge tone={category.status === 'Pending' ? 'warning' : 'success'}>{category.status === 'Pending' ? 'در انتظار تأیید' : 'تأییدشده'}</StatusBadge>
       </td>
       {showActions && (
@@ -99,7 +104,7 @@ function CategoryRow({
                 <button
                   onClick={() => onApprove(category.id)}
                   disabled={isActioning}
-                  className="rounded-lg bg-success-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-success-500 transition disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex h-10 min-w-28 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300 transition disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span className="inline-flex items-center gap-1">
                     <CheckCircle2 size={14} />
@@ -110,7 +115,7 @@ function CategoryRow({
               <button
                 onClick={() => setIsEditing(true)}
                 disabled={isActioning}
-                className="rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-10 min-w-28 items-center justify-center rounded-xl border border-violet-200 bg-violet-50/60 px-3 text-xs font-semibold text-violet-700 hover:bg-violet-100 dark:border-violet-400/25 dark:bg-violet-400/10 dark:text-violet-200 transition disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <span className="inline-flex items-center gap-1">
                   <Pencil size={14} />
@@ -120,7 +125,7 @@ function CategoryRow({
               <button
                 onClick={() => onDelete(category.id)}
                 disabled={isActioning}
-                className="rounded-lg bg-danger-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-danger-700 transition disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-10 min-w-28 items-center justify-center rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-500/20 dark:text-rose-300 transition disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <span className="inline-flex items-center gap-1">
                   <XCircle size={14} />
@@ -152,6 +157,7 @@ function AdminCategoriesPage() {
   } = useAdminCategories();
 
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [search, setSearch] = useState('');
   const [order, setOrder] = useState('asc');
@@ -210,7 +216,7 @@ function AdminCategoriesPage() {
         </form>
       )}
 
-      <FilterBar><input aria-label="جستجوی دسته‌بندی" type="search" placeholder="جستجو" value={search} onChange={e => setSearch(e.target.value)} className={controlClass} /><select aria-label="ترتیب دسته‌بندی‌ها" value={order} onChange={e => setOrder(e.target.value)} className={controlClass}><option value="asc">نام: صعودی</option><option value="desc">نام: نزولی</option></select></FilterBar>
+      <FilterBar><input aria-label="جستجوی دسته‌بندی" type="search" placeholder="جستجو" value={search} onChange={e => setSearch(e.target.value)} className={controlClass} /><UiSelect aria-label="ترتیب دسته‌بندی‌ها" value={order} onChange={e => setOrder(e.target.value)} className="min-w-44"><option value="asc">نام: صعودی</option><option value="desc">نام: نزولی</option></UiSelect></FilterBar>
       <div className="flex gap-2 mb-4">
         {TABS.map((t) => (
           <button
@@ -218,7 +224,7 @@ function AdminCategoriesPage() {
             onClick={() => setTab(t.value)}
             className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
               tab === t.value
-                ? 'bg-brand-600 text-white'
+                ? 'ui-purple-gradient text-white'
                 : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-800'
             }`}
           >
@@ -227,7 +233,7 @@ function AdminCategoriesPage() {
         ))}
       </div>
 
-      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
+      <div className="ui-admin-table overflow-hidden rounded-2xl border border-violet-200/50 bg-white/85 shadow-sm dark:border-violet-400/15 dark:bg-gray-900/85">
         {loading ? (
           <Spinner />
         ) : visible.length === 0 ? (
@@ -241,7 +247,7 @@ function AdminCategoriesPage() {
             <table className="w-full min-w-125 text-right text-sm">
               <thead>
                 <tr className="text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
-                  <th className="py-2">نام</th>
+                  <th className="px-3 py-3">نام</th>
                   <th className="py-2">وضعیت</th>
                   <th className="py-2"></th>
                 </tr>
@@ -256,6 +262,8 @@ function AdminCategoriesPage() {
                     onApprove={handleApprove}
                     onDelete={handleDelete}
                     onRename={handleRename}
+                    selected={selectedCategoryId === category.id}
+                    onSelect={() => setSelectedCategoryId(category.id)}
                   />
                 ))}
               </tbody>

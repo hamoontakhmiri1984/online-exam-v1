@@ -68,3 +68,63 @@ for (const dark of [false, true]) test(`login accessibility: ${dark ? 'dark' : '
   const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
   expect(result.violations).toEqual([]);
 });
+
+const adminUser = {
+  id: 'admin',
+  role: 'SuperAdmin',
+  name: 'کاربر ارشد',
+  onboardingCompleted: true,
+};
+
+test('password login opens the admin workspace during a pending refresh', async ({ page }) => {
+  let releaseRefresh!: () => void;
+  const pendingRefresh = new Promise<void>(resolve => { releaseRefresh = resolve; });
+  await page.route('http://127.0.0.1:4109/**', async route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/auth/refresh') {
+      await pendingRefresh;
+      // The client aborts this request when the password is submitted.
+      await route.fulfill({ status: 401, json: { error: 'نشست موجود نیست' } }).catch(() => {});
+    } else if (path === '/auth/entry') {
+      await route.fulfill({ json: { identifier: 'admin@example.test', next: 'password' } });
+    } else if (path === '/auth/login/password') {
+      await route.fulfill({ json: { accessToken: 'new-login-token', user: adminUser } });
+    } else if (path === '/auth/me') {
+      await route.fulfill({ json: adminUser });
+    } else {
+      await route.fulfill({ status: 503, json: { error: 'سرویس موقتاً در دسترس نیست' } });
+    }
+  });
+
+  try {
+    const refreshStarted = page.waitForRequest(request => request.url().endsWith('/auth/refresh'));
+    await page.goto('/login');
+    await refreshStarted;
+    await page.locator('#login-identifier').fill('admin@example.test');
+    await page.getByRole('button', { name: 'ادامه', exact: true }).click();
+    await page.locator('#login-password').fill('ExamplePassword123');
+    await page.getByRole('button', { name: 'ورود', exact: true }).click();
+    await expect(page).toHaveURL(/\/workspace$/);
+    await expect(page.getByRole('heading', { name: adminUser.name })).toBeVisible();
+  } finally {
+    releaseRefresh();
+  }
+});
+
+test('automatic session recovery opens the workspace after a temporary outage', async ({ page }) => {
+  let attempts = 0;
+  await page.route('http://127.0.0.1:4109/**', async route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/auth/refresh' && ++attempts > 4) {
+      await route.fulfill({ json: { accessToken: 'restored-token' } });
+    } else if (path === '/auth/me') {
+      await route.fulfill({ json: adminUser });
+    } else {
+      await route.fulfill({ status: 503, json: { error: 'سرویس موقتاً در دسترس نیست' } });
+    }
+  });
+
+  await page.goto('/workspace');
+  await expect(page.getByRole('heading', { name: 'در حال اتصال مجدد…' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: adminUser.name })).toBeVisible({ timeout: 12_000 });
+});

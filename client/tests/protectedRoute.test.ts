@@ -54,7 +54,14 @@ test('مسیر محافظت‌شده هنگام unavailable پیام و دکمه
 test('دکمه تلاش مجدد به retrySession وصل است', () => {
   let calls = 0;
   const tree = SessionUnavailable({ onRetry: () => { calls += 1; } }) as any;
-  const button = [].concat(tree.props.children).find((c: any) => c?.type === 'button') as any;
+  const findButton = (node: any): any => {
+    if (Array.isArray(node)) return node.map(findButton).find(Boolean);
+    if (!node || typeof node !== 'object') return null;
+    if (node.type === 'button') return node;
+    return findButton(node.props?.children);
+  };
+  const button = findButton(tree);
+  assert.ok(button, 'reconnect button exists');
   button.props.onClick();
   assert.equal(calls, 1);
 });

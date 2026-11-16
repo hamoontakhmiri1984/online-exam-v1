@@ -1,3 +1,4 @@
+import { notifySaveError } from '../../../components/Toast/Toast';
 import { useState } from 'react';
 import { Save } from 'lucide-react';
 
@@ -17,16 +18,25 @@ function readString(data: Record<string, unknown>, key: string, fallback = ''): 
 }
 
 function NewsSectionForm({ initialData, saving, onSave }: NewsSectionFormProps) {
+  const [formError, setFormError] = useState('');
   const [title, setTitle] = useState(() => readString(initialData, 'title'));
   const [subtitle, setSubtitle] = useState(() => readString(initialData, 'subtitle'));
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    await onSave({ title: title.trim(), subtitle: subtitle.trim() });
+    if (!title.trim() || !subtitle.trim()) {
+      setFormError('عنوان و زیرعنوان این بخش الزامی است.');
+      notifySaveError('عنوان و زیرعنوان این بخش الزامی است.');
+      return;
+    }
+    setFormError('');
+    const saved = await onSave({ title: title.trim(), subtitle: subtitle.trim() });
+    if (!saved) setFormError('ذخیره انجام نشد؛ دوباره تلاش کنید.');
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+      {formError && <p role="alert" className="form-inline-error">{formError}</p>}
       <p className="rounded-xl bg-gray-50 px-4 py-3 text-xs leading-6 text-gray-500 dark:bg-gray-800/60 dark:text-gray-400">
         کارت‌های خودِ اخبار از جدیدترین پست‌های بخشِ «بلاگ» میان - این بخش
         فقط عنوان و زیرعنوانِ بالای اون بخش رو کنترل می‌کنه.

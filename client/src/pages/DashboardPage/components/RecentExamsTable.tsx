@@ -1,3 +1,4 @@
+import { toPersianDigits } from '../../../utils/persianDigits';
 import type { Exam } from '../../../api/examApi';
 import { formatExamDateTime } from '../../../utils/formatDate';
 
@@ -11,7 +12,7 @@ function RecentExamsTable({
   getParticipantCount,
 }: RecentExamsTableProps) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <section className="glass-panel overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
       <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5 dark:border-gray-800">
         <div>
           <h2 className="font-semibold text-gray-900 dark:text-white">
@@ -50,10 +51,10 @@ function RecentExamsTable({
                 className="border-b border-gray-100 last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition duration-200"
               >
                 <td className="px-6 py-4 font-medium text-gray-800 dark:text-gray-200">
-                  {exam.title}
+                  {toPersianDigits(exam.title)}
                 </td>
                 <td className="px-6 py-4 text-gray-500 dark:text-gray-400">
-                  {formatExamDateTime(exam.date)}
+                  {toPersianDigits(formatExamDateTime(exam.date))}
                 </td>
                 <td className="px-6 py-4 text-gray-500 dark:text-gray-400">
                   {getParticipantCount(exam.id).toLocaleString('fa-IR')}

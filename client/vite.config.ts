@@ -14,6 +14,17 @@ export default defineConfig({
         target: apiTarget,
         changeOrigin: true,
         ws: true,
+        // Vite's proxy types do not expose cookiePathRewrite; adjust Set-Cookie
+        // through the supported configure hook instead.
+        configure: (proxy) => {
+          proxy.on('proxyRes', (proxyRes) => {
+            const cookies = proxyRes.headers['set-cookie'];
+            if (!cookies) return;
+            proxyRes.headers['set-cookie'] = cookies.map((cookie) =>
+              cookie.replace(/(\bPath=)\/auth(?=;|$)/i, '$1/__api/auth'),
+            );
+          });
+        },
         rewrite: (path) => path.replace(/^\/__api/, ''),
       },
     },

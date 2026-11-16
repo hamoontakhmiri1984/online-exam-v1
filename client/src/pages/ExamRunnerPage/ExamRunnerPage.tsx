@@ -7,6 +7,7 @@ import useExamRunner from '../../hooks/useExamRunner';
 import { useExamGuard } from '../../context/ExamGuardContext';
 import { formatExamDateTime } from '../../utils/formatDate';
 import IntroScreen from './components/IntroScreen';
+import ScheduledExamCountdown, { useScheduledCountdown } from './components/ScheduledExamCountdown';
 import QuestionScreen from './components/QuestionScreen';
 import ReviewScreen from './components/ReviewScreen';
 import ResultScreen from './components/ResultScreen';
@@ -51,6 +52,7 @@ function ExamRunnerPage() {
   } = useExamRunner(examId ?? '');
 
   const { setExamActive } = useExamGuard();
+  const waitingSeconds = useScheduledCountdown(exam?.date ?? '');
 
   useEffect(() => {
     setExamActive(hasStarted && !isFinished);
@@ -67,6 +69,18 @@ function ExamRunnerPage() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasStarted, isFinished]);
+
+  useEffect(() => {
+    if (!hasStarted || isFinished || !examId) return;
+    // Visibility changes are evidence for instructor review, never proof of cheating.
+    function onVisibilityChange() {
+      if (document.visibilityState === 'hidden') {
+        void recordAttemptEvent(examId!, 'TAB_HIDDEN').catch(() => undefined);
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [examId, hasStarted, isFinished]);
 
   const wasFullscreenRef = useRef(false);
   const currentExamId = examId;
@@ -172,17 +186,27 @@ function ExamRunnerPage() {
     );
   }
 
-  // Before scheduledAt, a zero count can mean questions have not been released yet.
+  // Question counts may remain hidden until the scheduled release time.
   if (!exam || questionCount === 0) {
-    const notStartedYet = exam && new Date(exam.date).getTime() > Date.now();
     return (
       <AppLayout title="آزمون">
-        <div className="rounded-2xl bg-white p-8 text-center text-gray-500 shadow-sm dark:bg-gray-900 dark:text-gray-400">
-          {notStartedYet
-            ? `این آزمون هنوز شروع نشده. زمان شروع: ${formatExamDateTime(
-                exam!.date
-              )}`
-            : 'این آزمون یافت نشد یا هنوز سوالی برایش ثبت نشده.'}
+        <div className="mx-auto max-w-lg rounded-2xl border border-violet-200/60 bg-white/90 p-7 text-center shadow-sm dark:border-violet-400/20 dark:bg-gray-900/90">
+          <h2 className="mb-3 text-lg font-bold text-slate-800 dark:text-white">
+            {exam ? exam.title : 'آزمون یافت نشد'}
+          </h2>
+          {exam && waitingSeconds > 0 ? (
+            <>
+              <p className="mb-4 text-sm leading-7 text-slate-500 dark:text-slate-400">
+                این آزمون هنوز شروع نشده است. زمان برگزاری: {formatExamDateTime(exam.date)}
+              </p>
+              <ScheduledExamCountdown scheduledAt={exam.date} />
+            </>
+          ) : (
+            <p className="text-sm leading-7 text-slate-500 dark:text-slate-400">
+              {exam ? 'در حال بررسی انتشار سؤال‌های آزمون…' : 'این آزمون یافت نشد یا دسترسی به آن ندارید.'}
+            </p>
+          )}
+          {exam && <button type="button" onClick={retryLoadData} className="mt-5 rounded-xl border border-violet-200 px-4 py-2 text-sm font-semibold text-violet-700 dark:border-violet-400/30 dark:text-violet-200">بررسی مجدد</button>}
         </div>
       </AppLayout>
     );

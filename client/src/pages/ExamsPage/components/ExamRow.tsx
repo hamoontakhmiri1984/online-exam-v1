@@ -14,6 +14,7 @@ type ExamRowProps = {
   canManage: boolean;
   isObserver?: boolean;
   canTake?: boolean;
+  hasFinished?: boolean;
   selected?: boolean;
   onSelect?: () => void;
   participantCount: number;
@@ -50,6 +51,7 @@ function ExamRow({
   canManage,
   isObserver = false,
   canTake = false,
+  hasFinished = false,
   selected = false,
   onSelect,
   participantCount,
@@ -79,10 +81,10 @@ function ExamRow({
       className={`border-b border-gray-100 dark:border-gray-800 text-gray-700 dark:text-gray-200 transition-colors duration-150 motion-reduce:transition-none
         ${onSelect ? 'cursor-pointer focus-visible:outline-2 focus-visible:outline-brand-500 focus-visible:-outline-offset-2' : ''}
         ${selected && onSelect
-          ? 'bg-brand-50 dark:bg-brand-950/50 hover:bg-brand-100 dark:hover:bg-brand-950/70'
-          : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}
+          ? 'bg-violet-100/80 dark:bg-violet-700/25 hover:bg-violet-100 dark:hover:bg-violet-700/30 ring-1 ring-inset ring-violet-300/35'
+          : 'hover:bg-violet-50/70 dark:hover:bg-violet-900/20'}`}
     >
-      <td className="py-3">{exam.title}</td>
+      <td className="px-3 py-4">{exam.title}</td>
       {isObserver && <td className="py-3">{exam.instructor?.name?.trim() || exam.instructor?.username || 'مدرس بدون نام'}</td>}
       <td className="py-3">{exam.category}</td>
       <td className="py-3">{formatExamDateTime(exam.date)}</td>
@@ -97,63 +99,32 @@ function ExamRow({
         </span>
       </td>
       <td className="py-3">
-        <div className="flex items-center gap-2">
-
-          {canTake && exam.status !== 'draft' && (
-            <button
-              onClick={() => onTake(exam)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-success-500/10 hover:text-success-600 dark:text-gray-400 dark:hover:bg-success-500/15 dark:hover:text-success-500 transition"
-              title="شروع آزمون"
-            >
-              <PlayCircle size={16} />
-            </button>
-          )}
-          {isObserver && (
-            <button onClick={() => onOpenQuestions(exam)} className="cursor-pointer rounded-lg px-3 py-2 text-brand-600 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-950/40">مشاهده سؤال‌ها</button>
-          )}
-          {canManage && (
+        <div className="flex min-w-max items-center justify-end gap-1.5" aria-label="عملیات آزمون">
+          {canManage ? (
             <>
-              <button
-                onClick={() => onOpenQuestions(exam)}
-                className="flex h-9 items-center justify-center gap-2 rounded-lg px-3 text-gray-500 hover:bg-accent-500/10 hover:text-accent-600 dark:text-gray-400 dark:hover:bg-accent-500/15 dark:hover:text-accent-500 transition"
-                title="سوال‌های آزمون"
-              >
-                <ListChecks size={16} />
-                سؤال‌ها
+              <button type="button" onClick={() => onOpenQuestions(exam)}
+                className="inline-flex h-9 w-22 items-center justify-center gap-1 rounded-lg text-xs font-semibold text-violet-700 transition hover:bg-violet-100 dark:text-violet-200 dark:hover:bg-violet-500/15"
+                title="سؤال‌های آزمون"><ListChecks size={16}/> سؤال‌ها</button>
+              <button type="button" onClick={() => exam.status === 'draft' ? onPublish(exam) : onUnpublish(exam)}
+                disabled={exam.status === 'completed'}
+                aria-label={exam.status === 'draft' ? 'انتشار آزمون' : 'لغو انتشار'}
+                title={exam.status === 'completed' ? 'آزمون پایان یافته و امکان تغییر انتشار ندارد' : exam.status === 'draft' ? 'انتشار آزمون' : 'لغو انتشار'}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-violet-600 transition hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-25 dark:text-violet-300 dark:hover:bg-violet-500/15">
+                {exam.status === 'draft' ? <UploadCloud size={16}/> : <Undo2 size={16}/>}
               </button>
-              {exam.status === 'draft' && (
-                <button
-                  onClick={() => onPublish(exam)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-brand-50 hover:text-brand-600 dark:text-gray-400 dark:hover:bg-brand-950/40 dark:hover:text-brand-400 transition"
-                  title="انتشار آزمون"
-                >
-                  <UploadCloud size={16} />
-                </button>
-              )}
-              {exam.status === 'upcoming' && (
-                <button
-                  onClick={() => onUnpublish(exam)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-accent-500/10 hover:text-accent-600 dark:text-gray-400 dark:hover:bg-accent-500/15 dark:hover:text-accent-500 transition"
-                  title="لغو انتشار (برگردوندن به پیش‌نویس)"
-                >
-                  <Undo2 size={16} />
-                </button>
-              )}
-              <button
-                onClick={() => onEdit(exam)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-brand-50 hover:text-brand-600 dark:text-gray-400 dark:hover:bg-brand-950/40 dark:hover:text-brand-400 transition"
-                title="ویرایش"
-              >
-                <Pencil size={16} />
-              </button>
-              <button
-                onClick={() => onDelete(exam)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-danger-50 hover:text-danger-600 dark:text-gray-400 dark:hover:bg-danger-950/40 dark:hover:text-danger-400 transition"
-                title="حذف"
-              >
-                <Trash2 size={16} />
-              </button>
+              <button type="button" onClick={() => onEdit(exam)} title="ویرایش" aria-label="ویرایش آزمون"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition hover:bg-violet-100 hover:text-violet-700 dark:text-gray-400 dark:hover:bg-violet-500/15"><Pencil size={16}/></button>
+              <button type="button" onClick={() => onDelete(exam)} title="حذف" aria-label="حذف آزمون"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition hover:bg-rose-50 hover:text-rose-600 dark:text-gray-400 dark:hover:bg-rose-500/10"><Trash2 size={16}/></button>
             </>
+          ) : isObserver ? (
+            <button type="button" onClick={() => onOpenQuestions(exam)}
+              className="inline-flex h-9 w-29 items-center justify-center rounded-lg text-xs font-semibold text-violet-600 transition hover:bg-violet-50 dark:text-violet-300 dark:hover:bg-violet-500/10"><ListChecks size={16}/> مشاهده سؤال‌ها</button>
+          ) : (
+            <button type="button" onClick={() => onTake(exam)}
+              disabled={!canTake || hasFinished || exam.status === 'draft' || exam.status === 'completed'}
+              title={hasFinished ? 'این آزمون را قبلاً به پایان رسانده‌اید' : exam.status === 'draft' ? 'آزمون هنوز منتشر نشده' : exam.status === 'completed' ? 'آزمون پایان یافته' : 'شروع آزمون'}
+              className="inline-flex h-9 min-w-28 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-emerald-300 dark:hover:bg-emerald-500/10"><PlayCircle size={16}/>{hasFinished ? 'انجام‌شده' : 'شروع آزمون'}</button>
           )}
         </div>
       </td>

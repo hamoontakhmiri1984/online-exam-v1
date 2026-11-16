@@ -8,6 +8,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 import useTheme from '../../hooks/useTheme';
+import { toPersianDigits } from '../../utils/persianDigits';
 
 export type TodayExamPoint = {
   label: string;
@@ -23,7 +24,7 @@ function TodayExamsChart({ data }: TodayExamsChartProps) {
 
   const gridColor = isDark ? '#1f2937' : '#f3f4f6';
   const textColor = isDark ? '#9ca3af' : '#6b7280';
-  const barColor = '#e08a04';
+  const barColor = isDark ? '#38bdf8' : '#7366e9';
 
   const CustomYAxisTick = ({
     x = 0,
@@ -50,7 +51,7 @@ function TodayExamsChart({ data }: TodayExamsChartProps) {
   };
 
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <div className="glass-panel rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
       <div className="mb-5">
         <h2 className="font-semibold text-gray-900 dark:text-white">
           پرشرکت‌کننده‌ترین آزمون‌ها
@@ -68,7 +69,7 @@ function TodayExamsChart({ data }: TodayExamsChartProps) {
       ) : (
         <ResponsiveContainer width="100%" height={220}>
           <BarChart
-            data={data}
+            data={data.map(point => ({ ...point, label: toPersianDigits(point.label) }))}
             layout="vertical"
             margin={{
               top: 0,
@@ -120,6 +121,7 @@ function TodayExamsChart({ data }: TodayExamsChartProps) {
             />
 
             <Bar
+              isAnimationActive={false}
               dataKey="participants"
               fill={barColor}
               radius={[0, 8, 8, 0]}

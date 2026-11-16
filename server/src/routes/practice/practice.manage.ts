@@ -117,3 +117,27 @@ export async function setPracticeStatus(
     });
   });
 }
+
+/**
+ * Delete an instructor's practice only when no student has submitted an
+ * answer. Historical attempts must never disappear as a side effect of CRUD.
+ */
+export async function deletePractice(id: string, owner: string) {
+  return prisma.$transaction(async (db) => {
+    await db.$queryRaw`SELECT id FROM practice_sets WHERE id = ${id} FOR UPDATE`;
+    const practice = await db.practiceSet.findFirst({
+      where: { id, instructorId: owner },
+      select: { id: true },
+    });
+    if (!practice) throw notFound('تمرین پیدا نشد یا متعلق به شما نیست.');
+    const attempts = await db.practiceAttempt.count({
+      where: { question: { practiceId: id } },
+    });
+    if (attempts > 0) {
+      throw conflict(
+        'برای حفظ پاسخ‌ها و سوابق دانشجویان، حذف این تمرین ممکن نیست. می‌توانید دسترسی آن را متوقف کنید.',
+      );
+    }
+    await db.practiceSet.delete({ where: { id } });
+  });
+}

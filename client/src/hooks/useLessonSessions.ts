@@ -7,6 +7,7 @@ import {
   type LessonSession,
 } from '../api/lessonApi';
 import { ApiError } from '../lib/apiClient';
+import { notifySaveSuccess } from '../components/Toast/Toast';
 
 type SessionInput = Omit<LessonSession, 'id'>;
 
@@ -67,6 +68,7 @@ function useLessonSessions({ groupId, enabled }: UseLessonSessionsParams) {
     try {
       const created = await addSession(input);
       setSessions((prev) => [...prev, created]);
+      notifySaveSuccess('جلسه جدید با موفقیت ثبت شد');
       return created;
     } catch (err) {
       setError(errorMessageOf(err, 'ذخیره جلسه با خطا مواجه شد'));
@@ -83,6 +85,7 @@ function useLessonSessions({ groupId, enabled }: UseLessonSessionsParams) {
     try {
       const updated = await updateSession(id, input);
       setSessions((prev) => prev.map((s) => (s.id === id ? updated : s)));
+      notifySaveSuccess('تغییرات جلسه با موفقیت ذخیره شد');
       return updated;
     } catch (err) {
       setError(errorMessageOf(err, 'ذخیره جلسه با خطا مواجه شد'));

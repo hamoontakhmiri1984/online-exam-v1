@@ -1,3 +1,4 @@
+import { notifySaveError } from '../../../components/Toast/Toast';
 import { useState } from 'react';
 import { Plus, X, Save } from 'lucide-react';
 import { ICON_NAMES, resolveIcon, DEFAULT_ICON_NAME } from '../../../constants/iconRegistry';
@@ -32,6 +33,7 @@ function readItems(data: Record<string, unknown>): FeatureItem[] {
 }
 
 function FeaturesSectionForm({ initialData, saving, onSave }: FeaturesSectionFormProps) {
+  const [formError, setFormError] = useState('');
   const [title, setTitle] = useState(() => readString(initialData, 'title'));
   const [subtitle, setSubtitle] = useState(() => readString(initialData, 'subtitle'));
   const [items, setItems] = useState<FeatureItem[]>(() => readItems(initialData));
@@ -46,7 +48,13 @@ function FeaturesSectionForm({ initialData, saving, onSave }: FeaturesSectionFor
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    await onSave({
+    if (!title.trim() || !subtitle.trim() || items.some(p => !p.title.trim() || !p.description.trim())) {
+      setFormError('عنوان، زیرعنوان و مشخصات تمام امکانات افزوده‌شده الزامی است.');
+      notifySaveError('عنوان، زیرعنوان و مشخصات تمام امکانات افزوده‌شده الزامی است.');
+      return;
+    }
+    setFormError('');
+    const saved = await onSave({
       title: title.trim(),
       subtitle: subtitle.trim(),
       items: items.map((it) => ({
@@ -55,10 +63,12 @@ function FeaturesSectionForm({ initialData, saving, onSave }: FeaturesSectionFor
         description: it.description.trim(),
       })),
     });
+    if (!saved) setFormError('ذخیره انجام نشد؛ لطفاً دوباره تلاش کنید.');
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+      {formError && <p role="alert" className="form-inline-error">{formError}</p>}
       <div className="flex flex-col gap-1.5">
         <label className={labelClass}>عنوان</label>
         <input

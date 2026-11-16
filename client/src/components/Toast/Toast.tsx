@@ -1,12 +1,5 @@
-import { useRef, useState } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
-import {
-  AlertTriangle,
-  TimerOff,
-  CheckCircle2,
-  X,
-  type LucideIcon,
-} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { AlertTriangle, TimerOff, CheckCircle2, X, type LucideIcon } from 'lucide-react';
 
 interface ToastProps {
   message: string;
@@ -16,66 +9,86 @@ interface ToastProps {
   onDismiss: () => void;
 }
 
-function ToastNotification({
-  message,
-  tone = 'warning',
-  duration = 4500,
-  icon,
-  onDismiss,
-}: ToastProps) {
-  const [closing, setClosing] = useState(false);
+function ToastNotification({ message, tone = 'warning', duration = 3000, icon, onDismiss }: ToastProps) {
+  const [show, setShow] = useState(false);
   const dismissed = useRef(false);
-  const reduceMotion = useReducedMotion();
-  const lifetime = Number.isFinite(duration) ? Math.max(0, duration) : 4500;
-  const toneStyles =
-    tone === 'danger'
-      ? 'bg-danger-600 shadow-danger-600/30'
-      : tone === 'success'
-      ? 'bg-success-600 shadow-success-600/30'
-      : 'bg-accent-500 shadow-accent-500/30';
+  const hasShown = useRef(false);
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
+  const lifetime = Number.isFinite(duration) ? Math.max(0, duration) : 3000;
+  const exitDuration = 650;
+  const progressDuration = Math.max(0, lifetime - exitDuration);
+  const toneStyles = tone === 'danger' ? 'toast-danger' : tone === 'success' ? 'toast-success' : 'toast-warning';
   const Icon = icon ?? (tone === 'danger' ? TimerOff : tone === 'success' ? CheckCircle2 : AlertTriangle);
 
+  useEffect(() => {
+    // Add the 'show' class after the initial hidden frame so CSS transitions
+    // handle both mounting and dismissing without JS-driven opacity changes.
+    const frame = window.requestAnimationFrame(() => setShow(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
+    if (lifetime === 0) return;
+    const timer = window.setTimeout(() => setShow(false), progressDuration);
+    return () => window.clearTimeout(timer);
+  }, [lifetime, progressDuration]);
+
+  useEffect(() => {
+    if (show) {
+      hasShown.current = true;
+      return;
+    }
+    if (!hasShown.current) return;
+    const timer = window.setTimeout(() => {
+      if (!dismissed.current) {
+        dismissed.current = true;
+        onDismissRef.current();
+      }
+    }, exitDuration);
+    return () => window.clearTimeout(timer);
+  }, [show]);
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: reduceMotion ? 0 : 12 }}
-      animate={{ opacity: closing ? 0 : 1, y: closing && !reduceMotion ? 12 : 0 }}
-      transition={{ duration: reduceMotion ? 0 : 0.2 }}
-      onAnimationComplete={() => {
-        if (closing && !dismissed.current) {
-          dismissed.current = true;
-          onDismiss();
-        }
-      }}
-      className={`fixed bottom-6 left-4 right-4 z-50 overflow-hidden rounded-2xl text-sm font-semibold text-white shadow-xl sm:left-6 sm:right-auto sm:max-w-md ${toneStyles}`}
+    <div
+      className={`site-toast site-toast-css fixed bottom-6 left-4 right-4 z-50 overflow-hidden rounded-2xl text-sm font-semibold shadow-xl sm:left-6 sm:right-auto sm:w-[min(420px,calc(100%-3rem))] ${toneStyles} ${show ? 'show' : ''}`}
       dir="rtl"
     >
       <div className="flex items-start gap-2.5 px-4 py-3">
-        <Icon size={18} className="mt-1 shrink-0" aria-hidden="true" />
+        {tone !== 'danger' && <Icon size={18} className="mt-1 shrink-0" aria-hidden="true" />}
         <p className="min-w-0 flex-1 break-words leading-6" role={tone === 'danger' ? 'alert' : 'status'}>{message}</p>
         <button
           type="button"
           aria-label="بستن اعلان"
-          onClick={() => setClosing(true)}
-          disabled={closing}
+          onClick={() => setShow(false)}
+          disabled={!show}
           className="-mt-1 -me-1 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-default"
         >
           <X size={18} aria-hidden="true" />
         </button>
       </div>
-      <div className="h-1 bg-white/20" aria-hidden="true">
-        <motion.div
-          className="h-full origin-right bg-white/90"
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: 1 }}
-          transition={{ duration: lifetime / 1000, ease: 'linear' }}
-          onAnimationComplete={() => setClosing(true)}
-        />
-      </div>
-    </motion.div>
+      {lifetime > 0 && (
+        <div className="site-toast-track toast-timer-track" aria-hidden="true">
+          <div
+            className="toast-timer-fill"
+            style={{ animation: `toastTimerFill ${progressDuration}ms linear forwards` }}
+          />
+        </div>
+      )}
+    </div>
   );
 }
 
 export default function Toast(props: ToastProps) {
-  // A new message receives its full lifetime; unrelated parent renders do not restart it.
   return <ToastNotification key={`${props.tone}:${props.duration}:${props.message}`} {...props} />;
+}
+
+/** Emit only after the server confirms a successful save. */
+export function notifySaveSuccess(message = 'تغییرات با موفقیت ذخیره شد') {
+  window.dispatchEvent(new CustomEvent<string>('app:save-success', { detail: message }));
+}
+
+/** Emit a save error for the global bottom-left notification. */
+export function notifySaveError(message: string) {
+  window.dispatchEvent(new CustomEvent<string>('app:save-error', { detail: message }));
 }

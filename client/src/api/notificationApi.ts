@@ -43,3 +43,7 @@ export function markAllNotificationsRead(ids: string[]): void {
 export function deleteNotification(id: string): Promise<void> {
   return apiRequest<void>(`/notifications/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
+
+export function dismissAllNotifications(): Promise<void> {
+  return apiRequest<void>('/notifications/dismiss-all', { method: 'DELETE' });
+}

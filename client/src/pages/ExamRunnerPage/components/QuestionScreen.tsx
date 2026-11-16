@@ -4,7 +4,6 @@ import type { Exam } from '../../../api/examApi';
 import type { Question } from '../../../api/questionApi';
 import TimerBadge from './TimerBadge';
 import ExamWarnings from './ExamWarnings';
-import SaveStatusBadge from './SaveStatusBadge';
 import type { AutosaveStatus } from '../../../hooks/useExamRunner/useExamAutosave';
 
 interface QuestionScreenProps {
@@ -33,8 +32,6 @@ function QuestionScreen({
   isLastQuestion,
   answers,
   timeLeft,
-  saveStatus,
-  onRetrySave,
   activeWarning,
   onDismissWarning,
   onSelectAnswer,
@@ -54,7 +51,6 @@ function QuestionScreen({
             {questions.length.toLocaleString('fa-IR')}
           </span>
           <div className="flex items-center gap-3">
-            <SaveStatusBadge status={saveStatus} onRetry={onRetrySave} />
             <TimerBadge timeLeft={timeLeft} />
           </div>
         </div>

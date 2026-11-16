@@ -20,7 +20,7 @@ router.get(
         OR: [{ userId: sub }, { userId: null, targetRoles: { has: role } }],
       },
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      take: 1000,
     });
 
     const broadcastIds = notifications
@@ -42,6 +42,35 @@ router.get(
         ),
       ),
     );
+  }),
+);
+
+// Dismiss every notification visible to this user, never for other recipients.
+router.delete(
+  '/dismiss-all',
+  asyncHandler(async (req, res) => {
+    const { sub, role } = req.user!;
+    const visible = await prisma.notification.findMany({
+      where: {
+        reads: { none: { userId: sub, dismissedAt: { not: null } } },
+        OR: [{ userId: sub }, { userId: null, targetRoles: { has: role } }],
+      },
+      select: { id: true },
+    });
+    const ids = visible.map((item) => item.id);
+    if (ids.length) {
+      await prisma.$transaction(async (tx) => {
+        await tx.notificationRead.createMany({
+          data: ids.map((notificationId) => ({ userId: sub, notificationId })),
+          skipDuplicates: true,
+        });
+        await tx.notificationRead.updateMany({
+          where: { userId: sub, notificationId: { in: ids } },
+          data: { dismissedAt: new Date() },
+        });
+      });
+    }
+    res.status(204).end();
   }),
 );
 

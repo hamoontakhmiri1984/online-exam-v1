@@ -8,6 +8,7 @@ import {
   isStudentInExamGroups,
 } from '../../lib/examAccess';
 import { lockExamForShare } from '../../lib/examLock';
+import { requireExamClientLease } from '../../lib/examClientLease';
 import { getExamWindowEndMs } from '../../lib/examTiming';
 import {
   FINISH_GRACE_MS,
@@ -55,7 +56,13 @@ router.post(
 
     const attempt = await prisma.examAttempt.findUnique({
       where: { examId_studentId: { examId: exam.id, studentId: sub } },
-      select: { id: true, finishedAt: true, expiresAt: true },
+      select: {
+        id: true,
+        examId: true,
+        studentId: true,
+        finishedAt: true,
+        expiresAt: true,
+      },
     });
     if (!attempt) throw notFound('هنوز این آزمون رو شروع نکردی');
     if (attempt.finishedAt) throw conflict('این آزمون قبلاً ثبت شده');
@@ -63,6 +70,7 @@ router.post(
       throw conflict('زمان این آزمون تموم شده');
     }
 
+    await requireExamClientLease(req, attempt);
     await prisma.examAttemptEvent.create({
       data: { attemptId: attempt.id, type: parsed.data.type },
     });
@@ -101,7 +109,8 @@ router.post(
         await finalizeExpiredAttempts({ examId: exam.id, studentId: sub });
         throw conflict('قبلاً تو این آزمون شرکت کردی');
       }
-      // Re-entry preserves the original start and deadline.
+      // The same tab can refresh/resume; a different tab cannot take over.
+      await requireExamClientLease(req, existing);
       return res.json({
         startedAt: existing.startedAt.toISOString(),
         expiresAt: existing.expiresAt.toISOString(),
@@ -156,6 +165,7 @@ router.post(
         });
       });
 
+      await requireExamClientLease(req, attempt);
       res.status(201).json({
         startedAt: attempt.startedAt.toISOString(),
         expiresAt: attempt.expiresAt.toISOString(),
@@ -172,6 +182,7 @@ router.post(
           where: { examId_studentId: { examId: exam.id, studentId: sub } },
         });
         if (winner) {
+          await requireExamClientLease(req, winner);
           return res.json({
             startedAt: winner.startedAt.toISOString(),
             expiresAt: winner.expiresAt.toISOString(),
@@ -210,6 +221,7 @@ router.post(
       return res.json(serializeAttempt(existing));
     }
 
+    await requireExamClientLease(req, existing);
     const now = new Date();
     const endedByTimeout = now.getTime() >= existing.expiresAt.getTime();
     const finishedAt = endedByTimeout ? existing.expiresAt : now;
@@ -267,6 +279,7 @@ router.patch(
       throw conflict('زمان این آزمون تموم شده');
     }
 
+    await requireExamClientLease(req, existing);
     // Persist only newer revisions on unfinished attempts within the deadline.
     const { answers, revision } = parsed.data;
     const count = await prisma.$executeRaw`

@@ -8,6 +8,7 @@ import { notFound, forbidden } from '../../lib/errors';
 import { pagedResult, parsePaging } from '../../lib/adminPaging';
 
 import { serializeAttempt } from './examAttempts.service';
+import { requireExamClientLease } from '../../lib/examClientLease';
 
 const router = Router({ mergeParams: true });
 router.use(requireAuth);
@@ -131,6 +132,7 @@ router.get(
       where: { examId: exam.id, studentId: sub },
     });
     if (!attempt) throw notFound('هنوز تو این آزمون شرکت نکردی');
+    if (!attempt.finishedAt) await requireExamClientLease(req, attempt, false);
 
     // Unfinished attempts always return saved answers for re-entry, regardless of allowReview.
     if (attempt.finishedAt && !exam.allowReview) {

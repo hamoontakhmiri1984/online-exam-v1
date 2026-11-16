@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
+import UiSelect from '../UiSelect';
 import useCategories from '../../hooks/useCategories';
 
 type CategorySelectProps = {
@@ -84,7 +85,8 @@ function CategorySelect({ value, onChange, label }: CategorySelectProps) {
           </button>
         </div>
       ) : (
-        <select
+        <div className="relative w-full">
+        <UiSelect
           value={value}
           onChange={(e) => {
             if (e.target.value === '__add__') {
@@ -93,7 +95,7 @@ function CategorySelect({ value, onChange, label }: CategorySelectProps) {
             }
             onChange(e.target.value);
           }}
-          className={inputClassName}
+          className="w-full"
         >
           <option value="">
             {loading ? 'در حال بارگذاری...' : 'انتخاب کنید'}
@@ -107,7 +109,8 @@ function CategorySelect({ value, onChange, label }: CategorySelectProps) {
             </option>
           ))}
           <option value="__add__">+ افزودنِ دسته‌بندیِ جدید</option>
-        </select>
+        </UiSelect>
+        </div>
       )}
     </div>
   );

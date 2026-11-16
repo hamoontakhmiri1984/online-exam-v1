@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import UiSelect from '../../components/UiSelect';
 import { Link } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout/AppLayout';
 import PageHeader from '../../components/PageHeader/PageHeader';
@@ -18,6 +19,7 @@ const statuses = {
   Rejected: 'ردشده',
 };
 export default function AdminInstructorsPage() {
+  const [selectedInstructorId, setSelectedInstructorId] = useState<string | null>(null);
   const [status, setStatus] = useState('');
   const [order, setOrder] = useState('newest');
   const list = usePagedList(
@@ -31,11 +33,12 @@ export default function AdminInstructorsPage() {
         description="مشخصات، وضعیت و محتوای هر مدرس در یک نمای مستقل"
       />
       <FilterBar>
-        <select
+        <div className="relative min-w-48 flex-1 sm:flex-none">
+        <UiSelect
           aria-label="وضعیت مدرس"
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          className={controlClass}
+          className={`${controlClass} w-full min-h-11`}
         >
           <option value="">وضعیت: بدون فیلتر</option>
           {Object.entries(statuses).map(([value, label]) => (
@@ -43,22 +46,27 @@ export default function AdminInstructorsPage() {
               {label}
             </option>
           ))}
-        </select>
-        <select
+        </UiSelect>
+        </div>
+        <div className="relative min-w-40 flex-1 sm:flex-none">
+        <UiSelect
           aria-label="ترتیب مدرس‌ها"
           value={order}
           onChange={(e) => setOrder(e.target.value)}
-          className={controlClass}
+          className={`${controlClass} w-full min-h-11`}
         >
           <option value="newest">جدیدترین</option>
           <option value="oldest">قدیمی‌ترین</option>
           <option value="name">نام مدرس</option>
-        </select>
+        </UiSelect>
+        </div>
       </FilterBar>
       <ListPagination {...list} maxSearchLength={100} />
       <LoadError message={list.error} retry={list.reload} />
       <DataTable
         items={list.items}
+        selectedId={selectedInstructorId}
+        onSelect={(item) => setSelectedInstructorId(item.id)}
         loading={list.loading}
         columns={[
           {

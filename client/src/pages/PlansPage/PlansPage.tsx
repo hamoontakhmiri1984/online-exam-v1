@@ -170,6 +170,7 @@ function PlansPage() {
 
   return (
     <AppLayout title="پکیج من">
+      <div className="glass-plans-page">
       {toast && (
         <Toast
           message={toast.message}
@@ -214,6 +215,7 @@ function PlansPage() {
           <PaymentHistoryCard payments={payments} />
         </>
       )}
+      </div>
     </AppLayout>
   );
 }

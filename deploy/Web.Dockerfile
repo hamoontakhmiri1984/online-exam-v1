@@ -3,9 +3,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY client/package.json client/package.json
 COPY server/package.json server/package.json
-COPY vendor/ vendor/
-COPY scripts/prepare-vendor.cjs scripts/prepare-vendor.cjs
-RUN node scripts/prepare-vendor.cjs && npm ci --workspace client --ignore-scripts
+RUN npm ci --workspace client --ignore-scripts
 COPY client/ client/
 ENV VITE_API_BASE_URL=/api
 ENV VITE_SOCKET_URL=

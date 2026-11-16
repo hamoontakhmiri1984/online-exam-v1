@@ -1,12 +1,19 @@
-function Spinner() {
+type SpinnerProps = { label?: string; compact?: boolean };
+
+export default function Spinner({ label = 'در حال بارگذاری…', compact = false }: SpinnerProps) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-16">
-      <div className="h-10 w-10 rounded-full border-4 border-gray-200 border-t-brand-600 animate-spin dark:border-gray-700 dark:border-t-brand-500" />
-      <span className="text-sm text-gray-400 dark:text-gray-500">
-        در حال بارگذاری...
+    <div
+      className={`site-loading ${compact ? 'site-loading-compact' : ''}`}
+      role="status"
+      aria-live="polite"
+      aria-label={label}
+      dir="rtl"
+    >
+      <span className="site-loading-spinner" aria-hidden="true">
+        <span className="site-loading-spinner-ring" />
+        <span className="site-loading-spinner-core" />
       </span>
+      <span className="sr-only">{label}</span>
     </div>
   );
 }
-
-export default Spinner;

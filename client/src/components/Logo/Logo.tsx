@@ -19,7 +19,7 @@ function Logo({ size = 'md', showText = true, className = '' }: LogoProps) {
   return (
     <div className={`group flex items-center gap-2.5 ${className}`}>
       <div
-        className={`flex ${s.box} shrink-0 items-center justify-center rounded-xl bg-brand-600 shadow-sm shadow-brand-600/30 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}
+        className={`flex ${s.box} shrink-0 items-center justify-center rounded-xl bg-brand-600 shadow-sm shadow-brand-600/30 transition-transform duration-300 `}
       >
         <svg
           width={s.icon}

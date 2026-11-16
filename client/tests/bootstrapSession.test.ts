@@ -1,6 +1,6 @@
 import test, { beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { bootstrapSession, clearSession, getCurrentUser, setCurrentUser } from '../src/api/auth/auth.session';
+import { applySession, bootstrapSession, clearSession, getCurrentUser, setCurrentUser } from '../src/api/auth/auth.session';
 import { getAuthToken, setAuthToken } from '../src/lib/apiClient';
 import { resolveAccess } from '../src/components/ProtectedRoute/resolveAccess';
 
@@ -66,3 +66,20 @@ for (const status of [401, 403]) {
     assert.equal(getCurrentUser(), null); assert.equal(getAuthToken(), null);
   });
 }
+
+
+test('an old bootstrap 401 cannot clear a newer SuperAdmin login', async () => {
+  const admin = { ...user, id: 'admin', role: 'SuperAdmin' as const };
+  let completeRefresh!: (value: Response) => void;
+  globalThis.fetch = (() => new Promise<Response>(resolve => {
+    completeRefresh = resolve;
+  })) as typeof fetch;
+
+  const pending = bootstrapSession();
+  applySession(admin, 'login-token', { hydrate: false });
+  completeRefresh(response(401));
+
+  assert.deepEqual(await pending, { status: 'authenticated', user: admin });
+  assert.equal(getCurrentUser(), admin);
+  assert.equal(getAuthToken(), 'login-token');
+});

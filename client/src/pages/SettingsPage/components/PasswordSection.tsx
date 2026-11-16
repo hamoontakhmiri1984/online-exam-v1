@@ -108,15 +108,6 @@ function PasswordSection() {
             </p>
           )}
 
-          {serverError && (
-            <p
-              role="alert"
-              className="rounded-lg border border-danger-100 bg-danger-50 px-3 py-2 text-sm text-danger-600 dark:border-danger-900 dark:bg-danger-950/40 dark:text-danger-400"
-            >
-              {serverError}
-            </p>
-          )}
-
           {hasPassword && (
             <PasswordField
               floatingLabel
@@ -130,11 +121,14 @@ function PasswordSection() {
               onChange={(e) => {
                 setCurrentPassword(e.target.value);
                 if (errors.current) setErrors((c) => ({ ...c, current: undefined }));
+                if (serverError) setServerError('');
               }}
-              error={errors.current}
+              error={errors.current || serverError}
               reserveErrorSpace
             />
           )}
+
+          {!hasPassword && serverError && <p role="alert" className="text-xs font-medium text-rose-600 dark:text-rose-300">{serverError}</p>}
 
           <PasswordField
             floatingLabel

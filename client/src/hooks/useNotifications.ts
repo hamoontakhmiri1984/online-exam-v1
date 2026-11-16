@@ -3,6 +3,7 @@ import { getCurrentUser } from '../api/authApi';
 import {
   getNotificationsForUser,
   deleteNotification,
+  dismissAllNotifications,
   markNotificationRead,
   markAllNotificationsRead,
   type Notification,
@@ -14,6 +15,7 @@ function useNotifications() {
   const [loading, setLoading] = useState<boolean>(true);
 
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletingAll, setDeletingAll] = useState(false);
   const [deletingIds, setDeletingIds] = useState<string[]>([]);
   const removedIds = useRef(new Set<string>());
   const pendingDeletes = useRef(new Set<string>());
@@ -80,6 +82,25 @@ function useNotifications() {
     }
   }
 
+  async function removeAllNotifications(): Promise<boolean> {
+    if (deletingAll || notifications.length === 0) return false;
+    setDeletingAll(true);
+    setDeleteError(null);
+    const userId = currentUser?.id;
+    try {
+      await dismissAllNotifications();
+      if (owner.current !== userId) return false;
+      notifications.forEach(item => removedIds.current.add(item.id));
+      setNotifications([]);
+      return true;
+    } catch {
+      if (owner.current === userId) setDeleteError('پاک‌کردن همه اعلان‌ها انجام نشد؛ دوباره تلاش کنید.');
+      return false;
+    } finally {
+      if (owner.current === userId) setDeletingAll(false);
+    }
+  }
+
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   function markOneRead(id: string) {
@@ -104,7 +125,7 @@ function useNotifications() {
     markOneRead,
     markAllRead,
     refresh: load,
-    removeNotification, deleteError, deletingIds,
+    removeNotification, removeAllNotifications, deletingAll, deleteError, deletingIds,
   };
 }
 

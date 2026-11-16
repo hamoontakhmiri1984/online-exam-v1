@@ -15,6 +15,7 @@ import {
 } from './practice/practice.validation';
 import {
   createPractice,
+  deletePractice,
   setPracticeStatus,
   updatePractice,
 } from './practice/practice.manage';
@@ -78,6 +79,14 @@ router.put(
         parse(updatePracticeSchema, req.body),
       ),
     );
+  }),
+);
+router.delete(
+  '/:id',
+  requireRole('Instructor'),
+  asyncHandler(async (req, res) => {
+    await deletePractice(req.params.id, req.user!.sub);
+    res.status(204).end();
   }),
 );
 router.post(

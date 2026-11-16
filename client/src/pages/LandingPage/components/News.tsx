@@ -129,8 +129,7 @@ function News({ data }: NewsProps) {
       {hasRealPosts && (
         <motion.div
           className="mt-10 flex justify-center"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
+          initial={false}
           viewport={{ once: true }}
           transition={{ delay: 0.2 }}
         >

@@ -27,7 +27,7 @@ function PaymentHistoryCard({ payments }: { payments: PaymentRecord[] }) {
   if (payments.length === 0) return null;
 
   return (
-    <div className="mb-8 max-w-2xl rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <div className="mb-8 w-full rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
       <div className="mb-4 flex items-center gap-2.5">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/40 dark:text-brand-400">
           <Receipt size={18} />

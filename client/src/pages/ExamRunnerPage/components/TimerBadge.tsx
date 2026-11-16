@@ -3,8 +3,8 @@ import { Clock } from 'lucide-react';
 const CRITICAL_THRESHOLD_SECONDS = 60;
 
 function formatTime(totalSeconds: number): string {
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
+  const minutes = Math.floor(Math.max(0, totalSeconds) / 60);
+  const seconds = Math.max(0, totalSeconds) % 60;
   const pad = (n: number) =>
     n.toLocaleString('fa-IR', { minimumIntegerDigits: 2 });
   return `${pad(minutes)}:${pad(seconds)}`;
@@ -19,14 +19,14 @@ function TimerBadge({ timeLeft }: TimerBadgeProps) {
 
   return (
     <div
-      className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold ${
+      className={`inline-flex h-11 w-32 shrink-0 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-bold shadow-sm transition-colors ${
         isCritical
-          ? 'bg-danger-50 text-danger-600 dark:bg-danger-950/40 dark:text-danger-400'
-          : 'bg-brand-50 text-brand-600 dark:bg-brand-950/40 dark:text-brand-400'
+          ? 'border-rose-200/70 bg-rose-50/90 text-rose-600 dark:border-rose-400/25 dark:bg-rose-950/40 dark:text-rose-300'
+          : 'border-violet-200/70 bg-white/80 text-violet-700 dark:border-violet-400/25 dark:bg-violet-500/10 dark:text-violet-200'
       }`}
     >
-      <Clock size={16} />
-      {formatTime(timeLeft)}
+      <Clock size={17} className="shrink-0 opacity-75" />
+      <span dir="ltr" className="min-w-[5.8ch] whitespace-nowrap text-center text-[15px] font-extrabold tabular-nums tracking-wide">{formatTime(timeLeft)}</span>
     </div>
   );
 }

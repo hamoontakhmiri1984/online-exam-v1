@@ -121,6 +121,48 @@ test('apiRequest: refresh با 429/5xx/شبکه => 503 بدون logout', async (
   }
 });
 
+test('a password login 401 preserves the credential error and captcha flag', async () => {
+  const body = { error: 'شناسه یا رمز اشتباهه', captchaRequired: true };
+  install((c) => (isRefresh(c) ? json(403, {}) : json(401, body)));
+  await assert.rejects(
+    apiRequest('/auth/login/password', { method: 'POST' }),
+    (error: unknown) =>
+      error instanceof ApiError && error.status === 401 &&
+      error.message === body.error &&
+      (error.body as typeof body).captchaRequired === true,
+  );
+  assert.equal(refreshCalls(), 0);
+});
+
+test('a new credential request cancels an older session refresh', async () => {
+  install(c => {
+    if (!isRefresh(c)) return json(200, { accessToken: 'new-login' });
+    const signal = c.init.signal!;
+    return new Promise<Response>((_resolve, reject) => {
+      signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+    });
+  });
+  const refresh = refreshSession();
+  assert.deepEqual(
+    await apiRequest('/auth/login/password', { method: 'POST' }),
+    { accessToken: 'new-login' },
+  );
+  assert.deepEqual(await refresh, { status: 'unavailable' });
+  assert.equal(refreshCalls(), 1);
+});
+
+test('a timed out password request returns a retryable message', async ({ mock }) => {
+  mock.method(AbortSignal, 'timeout', () => AbortSignal.abort());
+  install(c => {
+    assert.equal(c.init.signal?.aborted, true);
+    return c.init.signal?.reason;
+  });
+  await assert.rejects(
+    apiRequest('/auth/login/password', { method: 'POST' }),
+    (error: unknown) => error instanceof ApiError && error.status === 504,
+  );
+});
+
 // ---------------------------------------------------------------------------
 // multipart
 // ---------------------------------------------------------------------------
@@ -282,6 +324,16 @@ test('service URL maps the paired forwarded API URL to the same-origin proxy', (
   );
 });
 
+test('service URL maps a stale Codespaces API to the active same-origin proxy', () => {
+  assert.equal(
+    resolveServiceBaseUrl('https://old-codespace-4000.app.github.dev', {
+      hostname: 'quiet-river-5173.app.github.dev',
+      protocol: 'https:',
+    }),
+    '',
+  );
+});
+
 test('service URL preserves an explicit non-local API URL', () => {
   assert.equal(
     resolveServiceBaseUrl('https://api.example.com', {
@@ -317,4 +369,13 @@ test('API paths keep explicitly configured local or external origins', () => {
     buildApiUrl('/auth/refresh', 'https://api.example.com'),
     'https://api.example.com/auth/refresh',
   );
+});
+
+
+test('Codespaces: production-style /api config must use the Vite proxy', () => {
+  const location = { hostname: 'quiet-river-5173.app.github.dev', protocol: 'https:' };
+  assert.equal(resolveServiceBaseUrl('/api', location), '');
+  assert.equal(resolveServiceBaseUrl('/api/', location), '');
+  assert.equal(resolveServiceBaseUrl('/__api', location), '');
+  assert.equal(buildApiUrl('/auth/login/password', resolveServiceBaseUrl('/api', location)), '/__api/auth/login/password');
 });

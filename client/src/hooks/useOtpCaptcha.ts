@@ -11,6 +11,11 @@ export function useOtpCaptcha() {
   // Refresh the one-use captcha after every send attempt.
   const afterRequest = useCallback(
     (result: { status: string; captchaRequired?: boolean }) => {
+      if (result.status === 'sent') {
+        setRequired(false);
+        setCaptcha(null);
+        return;
+      }
       if (result.status === 'error' && result.captchaRequired) {
         setRequired(true);
       }

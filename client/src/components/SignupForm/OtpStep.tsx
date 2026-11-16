@@ -97,7 +97,7 @@ function OtpStep({
         />
       </div>
 
-      {captchaSlot}
+      {cooldown === 0 ? captchaSlot : null}
 
       <button
         type="button"

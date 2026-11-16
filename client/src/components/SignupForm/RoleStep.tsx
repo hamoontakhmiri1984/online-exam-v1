@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Check } from 'lucide-react';
+import { Check, GraduationCap, Presentation } from 'lucide-react';
 
 import Button from '../Button/Button';
 import type { AccountRole } from './signup.types';
@@ -16,19 +16,19 @@ type Props = {
 
 const ROLE_OPTIONS: {
   value: AccountRole;
-  icon: string;
+  icon: typeof GraduationCap;
   title: string;
   description: string;
 }[] = [
   {
     value: 'Instructor',
-    icon: '👨‍🏫',
+    icon: Presentation,
     title: 'من مدرس هستم',
     description: 'کلاس و آزمون مدیریت می‌کنم',
   },
   {
     value: 'Student',
-    icon: '🎓',
+    icon: GraduationCap,
     title: 'من دانشجو هستم',
     description: 'شرکت در کلاس‌ها و آزمون‌ها',
   },
@@ -53,6 +53,7 @@ function RoleStep({
         <div className="grid grid-cols-2 gap-3">
           {ROLE_OPTIONS.map((option) => {
             const selected = role === option.value;
+            const Icon = option.icon;
 
             return (
               <button
@@ -60,10 +61,10 @@ function RoleStep({
                 type="button"
                 aria-pressed={selected}
                 onClick={() => onRoleChange(option.value)}
-                className={`relative flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 px-3 py-4 text-center transition ${
+                className={`relative flex min-h-36 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border px-3 py-5 text-center transition-colors ${
                   selected
-                    ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/30'
-                    : 'border-gray-200 hover:border-gray-300 dark:border-gray-600 dark:hover:border-gray-500'
+                    ? 'border-violet-500 bg-violet-50/70 ring-2 ring-violet-500/10 dark:bg-violet-500/15'
+                    : 'border-gray-200 bg-white/70 hover:border-violet-300 dark:border-gray-600 dark:bg-white/5 dark:hover:border-violet-400'
                 }`}
               >
                 {selected && (
@@ -72,7 +73,7 @@ function RoleStep({
                   </span>
                 )}
 
-                <span className="text-2xl">{option.icon}</span>
+                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-violet-500/10 text-violet-600 dark:text-violet-300"><Icon size={25} strokeWidth={1.8}/></span>
 
                 <span className="text-sm font-bold text-gray-800 dark:text-white">
                   {option.title}

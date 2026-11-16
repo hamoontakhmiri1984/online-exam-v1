@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "prisma generate && prisma migrate deploy",
     "dev": "node --watch --require ts-node/register/transpile-only src/server.ts",
     "build": "tsc",
     "test": "node scripts/run-tests.cjs",
@@ -41,7 +42,7 @@
     "redis": "^6.2.1",
     "sharp": "0.35.5",
     "socket.io": "^4.8.0",
-    "xlsx": "file:../vendor/xlsx-0.20.3.tgz",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^4.6.7"
   },
   "devDependencies": {

@@ -80,7 +80,10 @@ async function withPracticeApi(t, prisma, run) {
         body: body === undefined ? undefined : JSON.stringify(body),
       },
     );
-    return { status: response.status, body: await response.json() };
+    return {
+      status: response.status,
+      body: response.status === 204 ? null : await response.json(),
+    };
   };
   return run(request);
 }

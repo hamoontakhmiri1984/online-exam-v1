@@ -1,3 +1,4 @@
+import UiSelect from '../../components/UiSelect';
 import { useState } from 'react';
 import AppLayout from '../../components/AppLayout/AppLayout';
 import PageHeader from '../../components/PageHeader/PageHeader';
@@ -50,16 +51,18 @@ export default function AdminStudentsPage() {
             حذف فیلتر
           </button>
         )}
-        <select
+        <div className="relative inline-flex items-center">
+        <UiSelect
           aria-label="ترتیب دانشجویان"
-          className={controlClass}
+          className="min-w-44"
           value={order}
           onChange={(e) => setOrder(e.target.value)}
         >
           <option value="newest">جدیدترین</option>
           <option value="oldest">قدیمی‌ترین</option>
           <option value="name">نام دانشجو</option>
-        </select>
+        </UiSelect>
+        </div>
       </FilterBar>
       <ListPagination {...list} maxSearchLength={100} />
       <LoadError message={list.error} retry={list.reload} />

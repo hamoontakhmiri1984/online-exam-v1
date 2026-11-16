@@ -12,11 +12,11 @@ type EmptyStateProps = {
 
 function EmptyState({ icon: Icon, title, description, action }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
-      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300">
+    <div className="mx-auto flex max-w-xl flex-col items-center justify-center rounded-3xl border border-dashed border-violet-200/70 bg-gradient-to-b from-violet-50/70 to-white/40 px-6 py-14 text-center dark:border-violet-400/20 dark:from-violet-500/10 dark:to-transparent">
+      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300">
         <Icon size={26} />
       </div>
-      <h3 className="font-semibold text-gray-900 dark:text-white">{title}</h3>
+      <h3 className="text-lg font-bold text-gray-900 dark:text-white">{title}</h3>
       {description && (
         <p className="mt-2 max-w-md text-sm leading-6 text-gray-500 dark:text-gray-400">
           {description}

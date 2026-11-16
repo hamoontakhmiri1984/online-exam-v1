@@ -1,3 +1,4 @@
+import '../../glass-theme.css';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Newspaper } from 'lucide-react';
@@ -12,7 +13,7 @@ import useSiteContent from '../../hooks/useSiteContent';
 function BlogPage() {
   const [posts, setPosts] = useState<BlogPostSummary[] | null>(null);
   const [error, setError] = useState(false);
-  const sections = useSiteContent();
+  const { sections } = useSiteContent();
 
   useEffect(() => {
     let cancelled = false;
@@ -44,7 +45,9 @@ function BlogPage() {
 
         {posts === null && !error ? (
           <Spinner />
-        ) : error || posts?.length === 0 ? (
+        ) : error ? (
+          <EmptyState icon={Newspaper} title="دریافت بلاگ ناموفق بود" description="اتصال سرور را بررسی کنید و صفحه را دوباره باز کنید." />
+        ) : posts?.length === 0 ? (
           <EmptyState
             icon={Newspaper}
             title="فعلاً پستی منتشر نشده"

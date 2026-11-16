@@ -1,14 +1,16 @@
 import { useEffect, useRef } from 'react';
+import { X } from 'lucide-react';
 
 type ModalProps = {
   isOpen: boolean;
   onClose: () => void;
   children: React.ReactNode;
   label?: string;
+  wide?: boolean;
 };
 
 // Backdrop clicks must not discard an unfinished form.
-function Modal({ isOpen, onClose, children, label = 'پنجرهٔ گفتگو' }: ModalProps) {
+function Modal({ isOpen, onClose, children, label = 'پنجرهٔ گفتگو', wide = false }: ModalProps) {
   const container = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
   close.current = onClose;
@@ -44,15 +46,15 @@ function Modal({ isOpen, onClose, children, label = 'پنجرهٔ گفتگو' }:
       aria-modal="true"
       className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50"
     >
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-md max-h-[calc(100vh-2rem)] overflow-y-auto p-6">
+      <div className={`w-full min-w-0 max-h-[calc(100dvh-2rem)] overflow-x-hidden overflow-y-auto rounded-2xl border border-violet-200/30 bg-white p-5 shadow-2xl dark:border-violet-400/15 dark:bg-gray-900 sm:p-6 ${wide ? "max-w-2xl" : "max-w-md"}`}>
         <div className="flex justify-end mb-2">
           <button
             type="button"
             onClick={onClose}
             aria-label="بستن"
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-violet-200/60 text-slate-400 outline-none transition hover:bg-violet-50 hover:text-violet-700 focus-visible:ring-2 focus-visible:ring-violet-400 dark:border-violet-400/20 dark:hover:bg-violet-500/10"
           >
-            ✕
+            <X size={18} />
           </button>
         </div>
         {children}

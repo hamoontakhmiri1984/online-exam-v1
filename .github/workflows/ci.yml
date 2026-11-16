@@ -56,7 +56,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: node scripts/prepare-vendor.cjs && npm ci
+        run: npm ci
 
       - name: Generate Prisma client
         run: npx prisma generate
@@ -76,23 +76,21 @@ jobs:
         run: npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
         working-directory: server
 
-      - name: Lint and check server formatting
-        run: npm run lint -w server && npm run format:check -w server
-
-      - name: Build server
-        run: npm run build -w server
-
+      # Build the client before unrelated server formatting checks, so UI regressions are visible.
       - name: Build client
         run: npm run build -w client
-
-      - name: Check initial client transfer budget
-        run: node scripts/check-client-budget.cjs
 
       - name: Lint client
         run: npm run lint -w client
 
       - name: Run client tests
         run: npm test -w client
+
+      - name: Build server
+        run: npm run build -w server
+
+      - name: Check initial client transfer budget
+        run: node scripts/check-client-budget.cjs
 
       - name: Install browser for UI checks
         run: npx playwright install --with-deps chromium
@@ -122,6 +120,9 @@ jobs:
         if: ${{ success() }}
         run: npm test -w server
 
+      - name: Lint and check server formatting
+        run: npm run lint -w server && npm run format:check -w server
+
   container-build:
     runs-on: ubuntu-latest
     steps:
@@ -145,7 +146,7 @@ jobs:
           docker compose config --quiet
       - name: Start fresh local services
         run: |
-          docker compose up -d postgres redis minio
+          docker compose up -d postgres redis redis-replica minio
           for attempt in $(seq 1 60); do
             if docker compose exec -T postgres sh -c 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"' && docker compose exec -T redis sh -c 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli ping' | grep -qx PONG; then break; fi
             sleep 2
@@ -153,6 +154,7 @@ jobs:
           docker compose exec -T postgres sh -c 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
           docker compose exec -T redis sh -c 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli ping' | grep -qx PONG
           docker compose exec -T redis redis-cli ping | grep -q NOAUTH
+          docker compose exec -T redis-replica sh -c 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli info replication | grep -q "^role:slave"'
           docker compose run --rm minio-init
       - name: Clean isolated smoke environment
         if: always()

@@ -78,8 +78,29 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+  # Replication alone is not automatic failover. Use Sentinel/managed Redis
+  # and update REDIS_URL explicitly before promoting this read-only standby.
+  redis-replica:
+    image: redis:7-alpine
+    restart: unless-stopped
+    depends_on:
+      redis: {condition: service_healthy}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set production Redis password}
+    command: ["sh", "-ec", 'exec redis-server --appendonly yes --replicaof redis 6379 --masterauth "$REDIS_PASSWORD" --requirepass "$REDIS_PASSWORD"']
+    volumes: ["redis-replica-data:/data"]
+    networks: [backend]
+    logging: *logging
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD-SHELL", 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli info replication | grep -q "^role:slave"']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
 networks:
   backend:
 volumes:
   postgres-data:
   redis-data:
+  redis-replica-data:

@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  getSiteContent,
+  getDraftSiteContent,
+  publishSiteContent,
+  resetSiteContentDraft,
   updateSiteContentSection,
   uploadSiteContentImage,
   type SiteContentMap,
   type SiteContentSection,
 } from '../api/cmsApi';
 import { ApiError } from '../lib/apiClient';
+import { notifySaveError, notifySaveSuccess } from '../components/Toast/Toast';
 
 function useAdminSiteContent() {
   const [sections, setSections] = useState<SiteContentMap | null>(null);
@@ -22,7 +25,7 @@ function useAdminSiteContent() {
 
   const load = useCallback(() => {
     setLoading(true);
-    getSiteContent()
+    getDraftSiteContent()
       .then((res) => setSections(res.sections))
       .catch(() => setError('دریافتِ محتوای فرود با خطا مواجه شد'))
       .finally(() => setLoading(false));
@@ -37,16 +40,64 @@ function useAdminSiteContent() {
     data: Record<string, unknown>
   ): Promise<boolean> {
     setSavingSection(section);
+    setError(null);
+    setSuccessMessage(null);
     try {
-      const res = await updateSiteContentSection(section, data);
-      setSections((prev) => (prev ? { ...prev, [section]: res.data } : prev));
-      setSuccessMessage('ذخیره شد');
+      const result = await updateSiteContentSection(section, data);
+      // Confirm the write response first; refreshing the draft is a separate request.
+      const stored = result.data;
+      const matches = Object.entries(data).every(([key, value]) =>
+        JSON.stringify(stored[key]) === JSON.stringify(value)
+      );
+      setSections(previous => previous ? { ...previous, [section]: stored } : previous);
+      if (!matches) {
+        const message = 'ذخیره تأیید نشد؛ پاسخ سرور با اطلاعات فرم متفاوت است.';
+        setError(message);
+        notifySaveError(message);
+        return false;
+      }
+      setError(null);
+      notifySaveSuccess('پیش‌نویس ذخیره شد؛ برای نمایش در سایت، انتشار را بزنید.');
       return true;
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'ذخیره‌سازی با خطا مواجه شد');
+      const message = err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'ذخیره‌سازی با خطا مواجه شد';
+      setError(message);
+      notifySaveError(message);
       return false;
     } finally {
       setSavingSection(null);
+    }
+  }
+
+  async function resetDraft(section: SiteContentSection): Promise<boolean> {
+    setSavingSection(section);
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      await resetSiteContentDraft(section);
+      const latest = await getDraftSiteContent();
+      setSections(latest.sections);
+      notifySaveSuccess('پیش‌نویس این بخش پاک شد؛ صفحه اصلی تغییری نکرد.');
+      return true;
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'پاک کردن پیش‌نویس انجام نشد.');
+      return false;
+    } finally {
+      setSavingSection(null);
+    }
+  }
+
+  const [publishing, setPublishing] = useState(false);
+  async function publish() {
+    setPublishing(true);
+    setError(null);
+    try {
+      const result = await publishSiteContent();
+      notifySaveSuccess(result.publishedCount ? 'محتوا با موفقیت در صفحه اصلی منتشر شد.' : 'تغییر تازه‌ای برای انتشار وجود ندارد.');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'انتشار انجام نشد؛ دوباره تلاش کنید.');
+    } finally {
+      setPublishing(false);
     }
   }
 
@@ -76,6 +127,9 @@ function useAdminSiteContent() {
     savingSection,
     uploadingSection,
     saveSection,
+    resetDraft,
+    publishing,
+    publish,
     uploadImage,
     refresh: load,
   };

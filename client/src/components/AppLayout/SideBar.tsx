@@ -115,7 +115,7 @@ function Sidebar({
               </button>
             </div>
 
-            <nav aria-label="منوی اصلی" className="flex flex-col gap-6 px-3 py-4">
+            <nav aria-label="منوی اصلی" className="flex flex-col gap-4 px-3 py-4">
               {sections.map((section, sectionIndex) => (
                 <div
                   key={section.group ?? 'main'}
@@ -126,7 +126,7 @@ function Sidebar({
                   className="flex flex-col gap-0.5"
                 >
                   {section.group && !isCollapsed && (
-                    <p className="px-3 pb-1.5 text-[11px] font-medium text-gray-600 dark:text-gray-400">
+                    <p className="mx-1 mb-2 mt-2 rounded-lg border-r-[3px] border-violet-400 bg-violet-50/75 px-3 py-2 text-[11px] font-bold text-violet-700 dark:bg-violet-400/10 dark:text-violet-200">
                       {navigationGroupLabel[section.group]}
                     </p>
                   )}
@@ -145,7 +145,7 @@ function Sidebar({
                       className={({ isActive }) =>
                         `flex items-center gap-3 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-brand-500 ${
                           isActive
-                            ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300'
+                            ? 'sidebar-selected-glass text-violet-800 dark:text-violet-100'
                             : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100'
                         } ${isCollapsed ? 'md:justify-center md:px-0' : ''}`
                       }

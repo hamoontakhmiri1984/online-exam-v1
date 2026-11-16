@@ -2,7 +2,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowRight, Save, Loader2, XCircle } from 'lucide-react';
 import AppLayout from '../../components/AppLayout/AppLayout';
 import Spinner from '../../components/Spinner/Spinner';
-import Toast from '../../components/Toast/Toast';
 import ToggleSwitch from '../../components/ToggleSwitch/ToggleSwitch';
 import MarkdownEditor from '../../components/MarkdownEditor/MarkdownEditor';
 import ImageUploadField from '../../components/ImageUploadField/ImageUploadField';
@@ -22,6 +21,7 @@ function AdminBlogPostEditorPage() {
     loading,
     error,
     clearError,
+    fieldErrors,
     saving,
     uploadingCover,
     title,
@@ -48,9 +48,7 @@ function AdminBlogPostEditorPage() {
 
   return (
     <AppLayout title={isEditMode ? 'ویرایشِ پست' : 'پستِ جدید'}>
-      {error && (
-        <Toast message={error} tone="danger" icon={XCircle} onDismiss={clearError} />
-      )}
+      {error && <div className="form-inline-error mb-4 flex items-center justify-between gap-3" role="alert"><span>{error}</span><button type="button" aria-label="بستن خطا" onClick={clearError}><XCircle size={17}/></button></div>}
 
       <button
         onClick={() => navigate('/blog-posts')}
@@ -65,28 +63,45 @@ function AdminBlogPostEditorPage() {
       ) : (
         <form
           onSubmit={onSubmit}
+          noValidate
           className="flex flex-col gap-6 rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900"
         >
+          {Object.keys(fieldErrors).length > 0 && (
+            <div role="alert" className="form-inline-error">
+              <p className="font-bold">پست ذخیره نشد. موارد زیر را اصلاح کنید:</p>
+              <ul className="mt-2 list-disc space-y-1 pr-5">
+                {Object.entries(fieldErrors).map(([field, message]) => <li key={field}>{message}</li>)}
+              </ul>
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <label className={labelClass}>عنوان</label>
               <input
                 value={title}
+                required
+                aria-invalid={!!fieldErrors.title}
+                aria-describedby={fieldErrors.title ? 'blog-title-error' : undefined}
                 onChange={(e) => setTitle(e.target.value)}
                 className={inputClass}
                 placeholder="عنوانِ پست"
               />
+              {fieldErrors.title && <p id="blog-title-error" role="alert" className="text-xs text-red-600 dark:text-red-400">{fieldErrors.title}</p>}
             </div>
 
             <div className="flex flex-col gap-1.5">
               <label className={labelClass}>اسلاگ (آدرس)</label>
               <input
                 value={slug}
+                required
+                aria-invalid={!!fieldErrors.slug}
+                aria-describedby={fieldErrors.slug ? 'blog-slug-error' : undefined}
                 onChange={(e) => setSlug(e.target.value)}
                 className={`${inputClass} font-mono ltr:text-left`}
                 dir="ltr"
                 placeholder="my-post-title"
               />
+              {fieldErrors.slug && <p id="blog-slug-error" role="alert" className="text-xs text-red-600 dark:text-red-400">{fieldErrors.slug}</p>}
             </div>
           </div>
 
@@ -94,11 +109,15 @@ function AdminBlogPostEditorPage() {
             <label className={labelClass}>خلاصه</label>
             <textarea
               value={excerpt}
+              required
+              aria-invalid={!!fieldErrors.excerpt}
+              aria-describedby={fieldErrors.excerpt ? 'blog-excerpt-error' : undefined}
               onChange={(e) => setExcerpt(e.target.value)}
               rows={2}
               className={`${inputClass} resize-y`}
               placeholder="چند خط برای کارتِ پیش‌نمایش و لیستِ بلاگ"
             />
+            {fieldErrors.excerpt && <p id="blog-excerpt-error" role="alert" className="text-xs text-red-600 dark:text-red-400">{fieldErrors.excerpt}</p>}
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -117,6 +136,7 @@ function AdminBlogPostEditorPage() {
           <div className="flex flex-col gap-1.5">
             <label className={labelClass}>محتوا</label>
             <MarkdownEditor value={contentMarkdown} onChange={setContentMarkdown} />
+            {fieldErrors.contentMarkdown && <p role="alert" className="text-xs text-red-600 dark:text-red-400">{fieldErrors.contentMarkdown}</p>}
           </div>
 
           <div className="flex items-center gap-3 border-t border-gray-100 pt-5 dark:border-gray-800">

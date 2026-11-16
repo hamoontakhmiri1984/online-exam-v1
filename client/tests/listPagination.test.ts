@@ -45,7 +45,19 @@ test('all group selectors and bank import APIs traverse later pages', async () =
   } finally { globalThis.fetch = originalFetch; }
 });
 
-test('pagination controls show total records and disable navigation at boundaries', async () => {
+// Inspect actual rendered element tree; pagination controls live inside a toolbar.
+type UiNode = { type?: unknown; props?: { children?: unknown; disabled?: boolean; onClick?: () => void; onChange?: (event: { target: { value: string } }) => void } };
+function findNodes(node: unknown, type: string): UiNode[] {
+  if (Array.isArray(node)) return node.flatMap(child => findNodes(child, type));
+  if (!node || typeof node !== 'object') return [];
+  const element = node as UiNode;
+  return [
+    ...(element.type === type ? [element] : []),
+    ...findNodes(element.props?.children, type),
+  ];
+}
+
+test('pagination controls show Persian totals and disable navigation at boundaries', async () => {
   const { createElement } = await import('react');
   const { renderToString } = await import('react-dom/server');
   const { default: ListPagination } = await import('../src/components/ListPagination/ListPagination');
@@ -53,18 +65,22 @@ test('pagination controls show total records and disable navigation at boundarie
     page: 2, pageSize: 25, total: 51, q: '', loading: false,
     setPage: () => {}, setSearch: () => {},
   }));
-  assert.match(html, /51/); assert.match(html, /صفحه/); assert.match(html, /از/);
+  assert.match(html, /۵۱/);
+  assert.match(html, /صفحه‌بندی/);
+  assert.match(html, /۲/);
   const tree = ListPagination({ page: 1, pageSize: 25, total: 26, loading: false, q: '', setPage: () => {}, setSearch: () => {} });
-  const buttons = tree.props.children.filter((child: { type: string }) => child.type === 'button');
-  assert.equal(buttons[0].props.disabled, true); assert.equal(buttons[1].props.disabled, false);
+  const buttons = findNodes(tree, 'button');
+  assert.equal(buttons.length, 2);
+  assert.equal(buttons[0].props?.disabled, true);
+  assert.equal(buttons[1].props?.disabled, false);
 });
 test('pagination actions request another page and forward the search text', async () => {
   const { default: ListPagination } = await import('../src/components/ListPagination/ListPagination');
   let page = 1; let q = '';
   const tree = ListPagination({ page: 1, pageSize: 25, total: 51, loading: false, q,
     setPage: value => { page = value; }, setSearch: value => { q = value; } });
-  const buttons = tree.props.children.filter((child: { type: string }) => child.type === 'button');
-  buttons[1].props.onClick(); assert.equal(page, 2);
-  const input = tree.props.children.find((child: { type: string }) => child.type === 'input');
-  input.props.onChange({ target: { value: 'Question 106' } }); assert.equal(q, 'Question 106');
+  const buttons = findNodes(tree, 'button');
+  buttons[1].props?.onClick?.(); assert.equal(page, 2);
+  const input = findNodes(tree, 'input')[0];
+  input.props?.onChange?.({ target: { value: 'Question 106' } }); assert.equal(q, 'Question 106');
 });

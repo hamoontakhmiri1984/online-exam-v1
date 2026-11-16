@@ -38,12 +38,15 @@ test('report filters reach the API and teacher directory is keyboard accessible'
   await page.goto('/reports');
   await expect(page.getByText('علی رضایی', { exact: true })).toBeVisible();
   const changed = page.waitForRequest(r => r.url().includes('/admin/reporting/attempts') && r.url().includes('order=oldest'));
-  await page.getByRole('combobox', { name: 'ترتیب نتایج' }).selectOption('oldest'); await changed;
+  await page.getByRole('combobox', { name: 'ترتیب نتایج' }).click();
+  await page.getByRole('option', { name: 'قدیمی‌ترین' }).click(); await changed;
   const ranged = page.waitForRequest(r => r.url().includes('/summary?days=7'));
-  await page.getByRole('combobox', { name: 'بازهٔ زمانی' }).selectOption('7'); await ranged;
+  await page.getByRole('combobox').filter({ hasText: '۳۰ روز اخیر' }).click();
+  await page.getByRole('option', { name: '۷ روز اخیر' }).click(); await ranged;
   await page.goto('/instructors');
   await expect(page.getByRole('link', { name: 'مریم احمدی' })).toBeVisible();
   const sorted = page.waitForRequest(r => r.url().includes('/admin/users/instructors') && r.url().includes('order=name'));
-  await page.getByRole('combobox', { name: 'ترتیب مدرس‌ها' }).selectOption('name'); await sorted;
+  await page.getByRole('combobox', { name: 'ترتیب مدرس‌ها' }).click();
+  await page.getByRole('option', { name: 'نام مدرس' }).click(); await sorted;
   await expect(page.getByText('teacher@example.test', { exact: true })).toBeVisible();
 });

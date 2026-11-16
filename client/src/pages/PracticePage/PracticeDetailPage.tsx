@@ -1,7 +1,12 @@
+import Spinner from '../../components/Spinner/Spinner';
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { Trash2 } from "lucide-react";
+import ConfirmDeleteModal from "../../components/Modal/ConfirmDeleteModal";
+import { notifySaveSuccess } from "../../components/Toast/Toast";
 import { getCurrentUser } from "../../api/authApi";
 import {
+  deletePractice,
   getPractice,
   setPracticeStatus,
   type Practice,
@@ -15,6 +20,24 @@ export default function PracticeDetailPage() {
   return <Detail key={practiceId} id={practiceId!} />;
 }
 function Detail({ id }: { id: string }) {
+  const navigate = useNavigate();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  async function remove() {
+    if (deleting) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await deletePractice(id);
+      notifySaveSuccess("تمرین با موفقیت حذف شد");
+      navigate("/practice", { replace: true });
+    } catch (error) {
+      setDeleteError(error instanceof ApiError ? error.message : "حذف تمرین ممکن نشد.");
+    } finally {
+      setDeleting(false);
+    }
+  }
   const role = getCurrentUser()?.role;
   const [practice, setPractice] = useState<Practice | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,7 +107,7 @@ function Detail({ id }: { id: string }) {
           </div>
         )}
         {loading ? (
-          <p role="status">در حال دریافت تمرین…</p>
+          <Spinner label="در حال دریافت تمرین…" />
         ) : (
           practice && (
             <>
@@ -124,6 +147,7 @@ function Detail({ id }: { id: string }) {
                       <Link to={`/practice/${id}/edit`} className={secondary}>
                         ویرایش مشخصات و دسترسی
                       </Link>
+                      <button type="button" onClick={() => { setDeleteError(""); setConfirmDelete(true); }} className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-200 px-4 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:border-rose-500/30 dark:text-rose-300 dark:hover:bg-rose-500/10"><Trash2 size={16}/> حذف تمرین</button>
                       <button
                         className={primary}
                         disabled={
@@ -152,6 +176,7 @@ function Detail({ id }: { id: string }) {
           )
         )}
       </div>
+      <ConfirmDeleteModal isOpen={confirmDelete} title="حذف تمرین" description={`تمرین «${practice?.title || ""}» حذف شود؟ اگر دانشجو پاسخی ثبت کرده باشد، حذف برای حفاظت از سابقه مجاز نیست و باید دسترسی را متوقف کنید.`} busy={deleting} error={deleteError} onConfirm={remove} onClose={() => { if (!deleting) setConfirmDelete(false); }}/>
     </AppLayout>
   );
 }

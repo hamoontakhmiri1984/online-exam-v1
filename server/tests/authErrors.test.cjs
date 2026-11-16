@@ -249,7 +249,10 @@ test('OTP diagnosis: unknown account has no code, login/reset for an existing ac
       },
       simulateOtpCreationCost: async () => {},
     },
-    'lib/otpAbuseGuard.ts': { assertOtpSendAllowed: async () => {} },
+    'lib/otpAbuseGuard.ts': {
+      assertOtpSendAllowed: async () => {},
+      rememberLoginOtpChallenge: async () => {},
+    },
     'services/otpSender.ts': {
       sendOtp: async () => {
         sent++;

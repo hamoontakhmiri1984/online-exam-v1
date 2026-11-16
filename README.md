@@ -1,5 +1,7 @@
 # سامانه آزمون آنلاین
 
+[English documentation](README.en.md)
+
 React/Vite + Express/Prisma + PostgreSQL، Redis و MinIO.
 
 ## توسعه در Codespaces
@@ -14,9 +16,8 @@ React/Vite + Express/Prisma + PostgreSQL، Redis و MinIO.
 
 ```bash
 node scripts/setup-local.cjs
-node scripts/prepare-vendor.cjs
 npm ci
-docker compose -p online-exam-v1 up -d postgres redis minio minio-init
+docker compose -p online-exam-v1 up -d postgres redis redis-replica minio minio-init
 cd server
 npx prisma migrate deploy
 npx prisma generate
@@ -28,7 +29,7 @@ bash scripts/start-codespace.sh
 
 ## عملیات و امنیت
 
-- قطع Redis عمداً مسیرهای احراز هویت و محدودکننده را با 503 متوقف می‌کند؛ محدودیت امنیتی دور زده نمی‌شود. فرمان‌های زمان قطعی صف نمی‌شوند.
+- قطع Redis عمداً مسیرهای احراز هویت و محدودکننده را با خطای HTTP 503 متوقف می‌کند؛ محدودیت امنیتی دور زده نمی‌شود. فرمان‌های زمان قطعی صف نمی‌شوند.
 - SIGINT/SIGTERM ابتدا پذیرش درخواست را متوقف می‌کند، سوکت‌ها را می‌بندد و حداکثر 10 ثانیه برای درخواست‌ها و کارهای فعال صبر می‌کند؛ سپس اتصال‌های Redis و Prisma بسته می‌شوند. رسیدن به مهلت با خروج ناموفق ثبت می‌شود.
 - خطای startup شامل علت واقعی (از جمله EADDRINUSE) است. لاگ‌های برنامه از logger ساخت‌یافتهٔ مشترک عبور می‌کنند؛ لاگ query خود Prisma و خروجی ابزارهای خط فرمان مستقل‌اند.
 - `/health` اتصال سرویس‌ها را می‌سنجد، نه تطابق تمام ستون‌های دیتابیس. موفق بودن آن جایگزین migration نیست.

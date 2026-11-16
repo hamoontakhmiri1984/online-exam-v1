@@ -21,13 +21,13 @@ export default function LogoutDialog({ open, onCancel, onConfirm }: Props) {
   return (
     <dialog ref={dialog} onCancel={(event) => { event.preventDefault(); onCancel(); }}
       aria-labelledby="logout-title" aria-describedby="logout-description"
-      className="fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-sm rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-xl backdrop:bg-black/50 dark:border-gray-700 dark:bg-gray-900 dark:text-white">
-      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950 dark:text-brand-300"><LogOut size={22} aria-hidden="true" /></div>
+      className="glass-logout-dialog fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-sm rounded-3xl border p-7 text-gray-900 backdrop:bg-slate-950/45 dark:text-white">
+      <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-violet-200/70 bg-violet-500/10 text-violet-700 dark:border-violet-300/20 dark:bg-violet-400/15 dark:text-violet-200"><LogOut size={22} aria-hidden="true" /></div>
       <h2 id="logout-title" className="text-lg font-bold">از حساب خارج می‌شوید؟</h2>
       <p id="logout-description" className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">برای استفاده دوباره از پنل، باید وارد حساب شوید.</p>
       <div className="mt-6 flex gap-3">
-        <button ref={cancel} type="button" onClick={onCancel} className="flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 dark:border-gray-600 dark:hover:bg-gray-800">انصراف</button>
-        <button type="button" onClick={onConfirm} className="flex-1 rounded-xl bg-brand-600 px-4 py-2.5 text-sm text-white transition-colors hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500">خروج از حساب</button>
+        <button ref={cancel} type="button" onClick={onCancel} className="glass-logout-cancel flex-1 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-violet-500">انصراف</button>
+        <button type="button" onClick={onConfirm} className="glass-logout-confirm flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-colors focus-visible:outline-2 focus-visible:outline-violet-500">خروج از حساب</button>
       </div>
     </dialog>
   );

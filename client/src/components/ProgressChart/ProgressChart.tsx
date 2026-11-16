@@ -8,6 +8,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 import useTheme from '../../hooks/useTheme';
+import { toPersianDigits } from '../../utils/persianDigits';
 
 export type ProgressPoint = {
   label: string;
@@ -23,10 +24,10 @@ function ProgressChart({ data }: ProgressChartProps) {
 
   const gridColor = isDark ? '#1f2937' : '#f3f4f6';
   const textColor = isDark ? '#9ca3af' : '#6b7280';
-  const lineColor = '#4f46c9';
+  const lineColor = isDark ? '#a78bfa' : '#7655e8';
 
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <div className="glass-panel rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
       <div className="mb-5">
         <h2 className="font-semibold text-gray-900 dark:text-white">
           روند پیشرفت میانگین نمرات
@@ -43,7 +44,7 @@ function ProgressChart({ data }: ProgressChartProps) {
       ) : (
         <ResponsiveContainer width="100%" height={220}>
           <AreaChart
-            data={data}
+            data={data.map(point => ({ ...point, label: toPersianDigits(point.label) }))}
             margin={{ top: 4, right: 4, left: -20, bottom: 0 }}
           >
             <defs>
@@ -89,10 +90,11 @@ function ProgressChart({ data }: ProgressChartProps) {
               formatter={(value) => Number(value).toLocaleString('fa-IR')}
             />
             <Area
+              isAnimationActive={false}
               type="monotone"
               dataKey="averageScore"
               stroke={lineColor}
-              strokeWidth={2.5}
+              strokeWidth={3}
               fill="url(#progressFill)"
               dot={{ r: 3, fill: lineColor, strokeWidth: 0 }}
               activeDot={{ r: 5 }}

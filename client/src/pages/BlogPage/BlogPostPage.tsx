@@ -1,3 +1,4 @@
+import '../../glass-theme.css';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
@@ -13,7 +14,7 @@ import useSiteContent from '../../hooks/useSiteContent';
 function BlogPostPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const sections = useSiteContent();
+  const { sections } = useSiteContent();
 
   const [post, setPost] = useState<BlogPostDetail | null>(null);
   const [notFound, setNotFound] = useState(false);

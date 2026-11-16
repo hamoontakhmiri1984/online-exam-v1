@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import ConfirmDeleteModal from '../../components/Modal/ConfirmDeleteModal';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, XCircle, Newspaper } from 'lucide-react';
 import AppLayout from '../../components/AppLayout/AppLayout';
@@ -6,15 +8,18 @@ import Toast from '../../components/Toast/Toast';
 import EmptyState from '../../components/EmptyState/EmptyState';
 import useAdminBlogPosts from '../../hooks/useAdminBlogPosts';
 import { formatExamDateTime } from '../../utils/formatDate';
+import { toPersianDigits } from '../../utils/persianDigits';
 
 function AdminBlogPostsPage() {
   const navigate = useNavigate();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const { posts, loading, error, clearError, deletingId, handleDelete } =
     useAdminBlogPosts();
 
-  async function onDelete(id: string, title: string) {
-    if (!window.confirm(`پستِ «${title}» حذف بشه؟ این کار برگشت‌ناپذیره.`)) return;
-    await handleDelete(id);
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    if (await handleDelete(deleteTarget.id)) setDeleteTarget(null);
   }
 
   return (
@@ -23,26 +28,19 @@ function AdminBlogPostsPage() {
         <Toast message={error} tone="danger" icon={XCircle} onDismiss={clearError} />
       )}
 
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold dark:text-white">پست‌های بلاگ</h1>
-        <button
-          onClick={() => navigate('/blog-posts/new')}
-          className="inline-flex items-center gap-1 rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700"
-        >
-          <Plus size={16} />
-          پستِ جدید
-        </button>
       </div>
 
-      <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
+      <div className={`${!loading && posts.length === 0 ? "mx-auto max-w-2xl bg-transparent p-0" : "ui-admin-table rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900"}`}>
         {loading ? (
           <Spinner />
         ) : posts.length === 0 ? (
           <EmptyState
             icon={Newspaper}
             title="هنوز پستی نیست"
-            description="اولین پستِ بلاگ رو بساز تا این‌جا لیست بشه."
-            action={{ label: 'پستِ جدید', onClick: () => navigate('/blog-posts/new') }}
+            description="با ساخت اولین پست، می‌توانید آن را به‌صورت پیش‌نویس نگه دارید یا منتشر کنید."
+            action={{ label: '+ پست جدید', onClick: () => navigate('/blog-posts/new') }}
           />
         ) : (
           <div className="overflow-x-auto">
@@ -59,6 +57,10 @@ function AdminBlogPostsPage() {
                 {posts.map((post) => (
                   <tr
                     key={post.id}
+                    tabIndex={0}
+                    aria-selected={selectedId === post.id}
+                    onClick={(event) => { if (!(event.target as HTMLElement).closest('button,a,input')) setSelectedId(post.id); }}
+                    onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); setSelectedId(post.id); } }}
                     className="border-b border-gray-100 text-gray-700 transition duration-200 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-200 dark:hover:bg-gray-800/50"
                   >
                     <td className="py-3">{post.title}</td>
@@ -74,7 +76,7 @@ function AdminBlogPostsPage() {
                       </span>
                     </td>
                     <td className="py-3 text-gray-400 dark:text-gray-500">
-                      {formatExamDateTime(post.createdAt)}
+                      {toPersianDigits(formatExamDateTime(post.createdAt))}
                     </td>
                     <td className="py-3">
                       <div className="flex gap-2">
@@ -89,7 +91,7 @@ function AdminBlogPostsPage() {
                           </span>
                         </button>
                         <button
-                          onClick={() => onDelete(post.id, post.title)}
+                          onClick={() => setDeleteTarget({ id: post.id, title: post.title })}
                           disabled={deletingId === post.id}
                           className="rounded-lg bg-danger-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-danger-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
@@ -106,7 +108,16 @@ function AdminBlogPostsPage() {
             </table>
           </div>
         )}
+        {!loading && posts.length > 0 && (
+          <div className="mt-4 flex justify-center rounded-xl bg-violet-50/25 px-4 py-4 dark:bg-violet-500/5">
+            <button type="button" onClick={() => navigate('/blog-posts/new')} className="ui-create-cta"><Plus size={17} /> پست جدید</button>
+          </div>
+        )}
       </div>
+      <ConfirmDeleteModal isOpen={!!deleteTarget} title="حذف پست بلاگ"
+        description={`پست «${deleteTarget?.title ?? ''}» حذف شود؟`}
+        busy={!!deletingId} error={error ?? undefined}
+        onConfirm={confirmDelete} onClose={() => { if (!deletingId) setDeleteTarget(null); }}/>
     </AppLayout>
   );
 }

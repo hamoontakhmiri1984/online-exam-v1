@@ -1,5 +1,29 @@
 import { apiRequest, ApiError } from '../lib/apiClient';
 
+
+const ephemeralClients = new Map<string, string>();
+
+// This identifier is scoped to one browser tab and one exam, persists across
+// refreshes, and is checked atomically against a Redis lease by the API.
+export function examClientHeaders(examId: string): Record<string, string> {
+  const key = `exam-client:v1:${examId}`;
+  let id = ephemeralClients.get(key);
+  try {
+    if (typeof window !== 'undefined') {
+      id = window.sessionStorage.getItem(key) ?? id;
+      if (!id) {
+        id = crypto.randomUUID();
+        window.sessionStorage.setItem(key, id);
+      }
+    }
+  } catch {
+    // Private browsing may deny storage; keep a tab-scoped memory fallback.
+  }
+  if (!id) id = crypto.randomUUID();
+  ephemeralClients.set(key, id);
+  return { 'X-Exam-Client': id };
+}
+
 export type ExamAttempt = {
   id: string;
   examId: string;
@@ -39,6 +63,7 @@ export type StartedAttempt = {
 export function startAttempt(examId: string): Promise<StartedAttempt> {
   return apiRequest<StartedAttempt>(`/exams/${examId}/attempts/start`, {
     method: 'POST',
+    headers: examClientHeaders(examId),
   });
 }
 
@@ -54,6 +79,7 @@ export function autosaveAnswers(
   return apiRequest<AutosaveResult>(`/exams/${examId}/attempts/answers`, {
     method: 'PATCH',
     body: { answers, revision },
+    headers: examClientHeaders(examId),
   });
 }
 
@@ -64,6 +90,7 @@ export function finishAttempt(
   return apiRequest<ExamAttempt>(`/exams/${examId}/attempts/finish`, {
     method: 'POST',
     body: { answers },
+    headers: examClientHeaders(examId),
   });
 }
 
@@ -74,6 +101,8 @@ export function recordAttemptEvent(
   return apiRequest<{ recorded: boolean }>(`/exams/${examId}/attempts/events`, {
     method: 'POST',
     body: { type },
+    headers: examClientHeaders(examId),
+    keepalive: true,
   });
 }
 
@@ -134,7 +163,7 @@ export async function getMyAttempt(
   examId: string
 ): Promise<ExamAttempt | undefined> {
   try {
-    return await apiRequest<ExamAttempt>(`/exams/${examId}/attempts/me`);
+    return await apiRequest<ExamAttempt>(`/exams/${examId}/attempts/me`, { headers: examClientHeaders(examId) });
   } catch (err) {
     if (err instanceof ApiError && (err.status === 404 || err.status === 403)) {
       return undefined;

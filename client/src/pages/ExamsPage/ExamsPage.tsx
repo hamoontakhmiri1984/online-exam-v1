@@ -27,6 +27,7 @@ import useExamFormModal from '../../hooks/useExamFormModal';
 import useInstructorPlanLimit from '../../hooks/useInstructorPlanLimit';
 import { getCurrentUser } from '../../api/authApi';
 import { getRemainingActiveExamQuota } from '../../api/subscriptionApi';
+import { getMyResultsHistory } from '../../api/examAttemptApi';
 import {
   getGroupsByInstructor,
   type Group,
@@ -40,6 +41,8 @@ function ExamsPage() {
     items: exams,
     loading,
     error,
+    writeError,
+    clearWriteError,
     clearError,
     addItem,
     updateItem,
@@ -68,6 +71,18 @@ function ExamsPage() {
   const isFiltered = isObserver && !!(search.trim() || statusFilter);
   const pageTitle = 'آزمون‌ها';
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
+  const [finishedExamIds, setFinishedExamIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (currentUser?.role !== 'Student') return;
+    let cancelled = false;
+    getMyResultsHistory().then((history) => {
+      if (!cancelled) setFinishedExamIds(new Set(history.map((item) => item.exam.id)));
+    }).catch(() => {
+      // Keep exam list usable if the results service is temporarily unavailable.
+    });
+    return () => { cancelled = true; };
+  }, [currentUser?.id, currentUser?.role]);
 
   const [availableGroups, setAvailableGroups] = useState<Group[]>([]);
 
@@ -128,7 +143,12 @@ function ExamsPage() {
   } });
 
   async function openAddModal() {
-    if (await planLimit.ensureAllowed()) form.openAdd();
+    if (await planLimit.ensureAllowed()) { clearWriteError(); form.openAdd(); }
+  }
+
+  function openEditModal(exam: Exam) {
+    clearWriteError();
+    form.openEdit(exam);
   }
 
   async function confirmDelete() {
@@ -170,19 +190,10 @@ function ExamsPage() {
           <div className="flex items-center justify-between mb-6">
             <div><h1 className="text-2xl font-bold dark:text-white">{pageTitle}</h1>
             {isObserver && <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">آزمون‌های ثبت‌شده توسط مدرس‌ها و میزان مشارکت دانشجویان؛ دسترسی فقط برای مشاهده است.</p>}</div>
-            {canManage && (
-              <button
-                onClick={openAddModal}
-                disabled={planLimit.checkingLimit}
-                className="bg-brand-600 text-white px-4 py-2 rounded-lg hover:bg-brand-700 transition disabled:opacity-60"
-              >
-                + آزمون جدید
-              </button>
-            )}
           </div>
 
           {isObserver && <ExamOversightFilters query={search} status={statusFilter} count={reportExams.length} onQuery={setSearch} onStatus={setStatusFilter} />}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-6">
+          <div className="ui-admin-table overflow-hidden rounded-2xl border border-violet-200/50 bg-white/90 shadow-sm dark:border-violet-400/15 dark:bg-gray-900/90">
             {reportExams.length === 0 ? (
               <EmptyState
                 icon={ClipboardList}
@@ -203,15 +214,15 @@ function ExamsPage() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-150 text-right text-sm">
-                  <thead>
-                    <tr className="text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
-                      <th className="py-2">عنوان</th>
-                      {isObserver && <th className="py-2">مدرس</th>}
-                      <th className="py-2">دسته‌بندی</th>
-                      <th className="py-2">تاریخ</th>
-                      {(canManage || isObserver) && <th className="py-2" title="تعداد دانشجویانی که آزمون را شروع کرده‌اند">شرکت‌کنندگان</th>}
-                      <th className="py-2">وضعیت</th>
-                      <th className="py-2"></th>
+                  <thead className="bg-gray-50 text-xs text-gray-500 dark:bg-gray-800/60 dark:text-gray-400">
+                    <tr>
+                      <th scope="col" className="whitespace-nowrap px-5 py-4 font-medium">عنوان</th>
+                      {isObserver && <th scope="col" className="whitespace-nowrap px-5 py-4 font-medium">مدرس</th>}
+                      <th scope="col" className="whitespace-nowrap px-5 py-4 font-medium">دسته‌بندی</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-4 font-medium">تاریخ</th>
+                      {(canManage || isObserver) && <th scope="col" className="whitespace-nowrap px-5 py-4 font-medium" title="تعداد دانشجویانی که آزمون را شروع کرده‌اند">شرکت‌کنندگان</th>}
+                      <th scope="col" className="whitespace-nowrap px-5 py-4 font-medium">وضعیت</th>
+                      <th scope="col" className="whitespace-nowrap px-5 py-4 font-medium"><span className="sr-only">عملیات</span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -222,14 +233,15 @@ function ExamsPage() {
                         canManage={canManage}
                         isObserver={isObserver}
                         selected={selectedExamId === exam.id}
-                        onSelect={isObserver ? () => setSelectedExamId(exam.id) : undefined}
+                        onSelect={() => setSelectedExamId(exam.id)}
                         canTake={currentUser?.role === 'Student'}
+                        hasFinished={finishedExamIds.has(exam.id)}
                         participantCount={exam.participants}
                         onTake={(e) => navigate(`/exams/${e.id}/take`)}
                         onOpenQuestions={(e) =>
                           navigate(`/exams/${e.id}/questions`)
                         }
-                        onEdit={form.openEdit}
+                        onEdit={openEditModal}
                         onDelete={setDeleteTarget}
                         onPublish={handlePublish}
                         onUnpublish={handleUnpublish}
@@ -239,6 +251,13 @@ function ExamsPage() {
                 </table>
               </div>
             )}
+            {canManage && reportExams.length > 0 && (
+              <div className="flex items-center justify-center bg-violet-50/20 px-5 py-4 dark:bg-violet-500/5">
+                <button type="button" onClick={openAddModal} disabled={planLimit.checkingLimit} className="ui-create-cta inline-flex min-h-12 w-full max-w-72 items-center justify-center rounded-xl px-8 text-sm font-bold shadow-md transition-shadow hover:shadow-lg disabled:opacity-50">
+                  + آزمون جدید
+                </button>
+              </div>
+            )}
           </div>
         </>
       )}
@@ -246,6 +265,7 @@ function ExamsPage() {
       <ExamFormModal
         isOpen={form.isOpen}
         isEditing={!!form.editingId}
+        isSubmitting={form.isSubmitting}
         title={form.title}
         onTitleChange={form.setTitle}
         category={form.category}
@@ -260,6 +280,8 @@ function ExamsPage() {
         onAllowReviewChange={() => form.setAllowReview((prev) => !prev)}
         availableGroups={availableGroups}
         groupIds={form.groupIds}
+        validationError={form.validationError}
+        saveError={writeError}
         onToggleGroup={form.toggleGroup}
         onSubmit={form.handleSubmit}
         onClose={form.close}

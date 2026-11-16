@@ -4,7 +4,7 @@ export default function LoginPage() {
   return (
     <AuthLayout
       title="ورود یا ثبت‌نام"
-      subtitle="به سامانه آزمون آنلاین خوش آمدید"
+      subtitle="با شماره موبایل یا ایمیل، امن و سریع وارد شوید"
       footer={null}
     >
       <LoginForm />
