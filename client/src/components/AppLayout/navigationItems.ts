@@ -15,20 +15,23 @@ import {
   BookOpenCheck,
   Layout,
   Newspaper,
+  Headphones,
+  History,
+  Wallet,
   type LucideIcon,
 } from 'lucide-react';
 
 import type { Role } from '../../api/authApi';
-import { ALL_ROLES } from '../../constants/roles';
 
 
-export type NavigationGroupId = 'users' | 'content' | 'finance' | 'system';
+export type NavigationGroupId = 'requests' | 'education' | 'content' | 'finance' | 'system';
 
 export const navigationGroupLabel: Record<NavigationGroupId, string> = {
-  users: 'کاربران',
-  content: 'محتوا',
-  finance: 'مالی',
-  system: 'سیستم',
+  requests: 'درخواست‌ها و رسیدگی',
+  education: 'مدیریت آموزشی',
+  content: 'مدیریت محتوا',
+  finance: 'امور مالی',
+  system: 'مدیریت سامانه',
 };
 
 export type NavigationItem = {
@@ -48,6 +51,7 @@ export const navigationItems: NavigationItem[] = [
     icon: LayoutDashboard,
     roles: ['Instructor', 'SuperAdmin'],
   },
+  { label: 'گزارش‌ها', to: '/reports', icon: BarChart3, roles: ['SuperAdmin'] },
   {
     label: 'داشبورد',
     to: '/dashboard',
@@ -65,7 +69,7 @@ export const navigationItems: NavigationItem[] = [
     adminLabel: 'آزمون‌ها',
     to: '/exams',
     icon: FileText,
-    roles: ALL_ROLES,
+    roles: ['Instructor', 'Student'],
   },
   {
     label: 'بانک سؤال',
@@ -109,73 +113,19 @@ export const navigationItems: NavigationItem[] = [
     icon: CreditCard,
     roles: ['Instructor'],
   },
-  {
-    label: 'مدرس‌ها',
-    to: '/instructors',
-    icon: GraduationCap,
-    roles: ['SuperAdmin'],
-    group: 'users',
-  },
-  {
-    label: 'دانشجویان',
-    to: '/instructor-students',
-    icon: Users,
-    roles: ['SuperAdmin'],
-    group: 'users',
-  },
-  {
-    label: 'تایید مدرس‌ها',
-    to: '/instructor-approvals',
-    icon: ShieldCheck,
-    roles: ['SuperAdmin'],
-    group: 'users',
-  },
-  {
-    label: 'تأیید گروه‌ها',
-    to: '/group-approvals',
-    icon: ShieldCheck,
-    roles: ['SuperAdmin'],
-    group: 'users',
-  },
-  {
-    label: 'دسته‌بندی‌ها',
-    to: '/categories',
-    icon: Tags,
-    roles: ['SuperAdmin'],
-    group: 'content',
-  },
-  {
-    label: 'محتوای فرود',
-    to: '/site-content',
-    icon: Layout,
-    roles: ['SuperAdmin'],
-    group: 'content',
-  },
-  {
-    label: 'بلاگ',
-    to: '/blog-posts',
-    icon: Newspaper,
-    roles: ['SuperAdmin'],
-    group: 'content',
-  },
+  { label: 'تأیید مدرس‌ها', to: '/instructor-approvals', icon: ShieldCheck, roles: ['SuperAdmin'], group: 'requests' },
+  { label: 'تأیید گروه‌ها', to: '/group-approvals', icon: ShieldCheck, roles: ['SuperAdmin'], group: 'requests' },
+  { label: 'پشتیبانی', to: '/support', icon: Headphones, roles: ['SuperAdmin'], group: 'requests' },
+  { label: 'مدرس‌ها', to: '/instructors', icon: GraduationCap, roles: ['SuperAdmin'], group: 'education' },
+  { label: 'دانشجویان', to: '/instructor-students', icon: Users, roles: ['SuperAdmin'], group: 'education' },
+  { label: 'آزمون‌ها', to: '/exams', icon: FileText, roles: ['SuperAdmin'], group: 'education' },
+  { label: 'دسته‌بندی‌ها', to: '/categories', icon: Tags, roles: ['SuperAdmin'], group: 'content' },
+  { label: 'محتواها', to: '/blog-posts', icon: Newspaper, roles: ['SuperAdmin'], group: 'content' },
+  { label: 'محتوای فرود', to: '/site-content', icon: Layout, roles: ['SuperAdmin'], group: 'content' },
   { label: 'اشتراک‌ها', to: '/subscriptions', icon: CreditCard, roles: ['SuperAdmin'], group: 'finance' },
-  { label: 'پرداخت‌ها', to: '/payments', icon: CreditCard, roles: ['SuperAdmin'], group: 'finance' },
-  { label: 'رویدادها', to: '/admin-events', icon: ShieldCheck, roles: ['SuperAdmin'], group: 'system' },
-  {
-    label: 'گزارش‌ها',
-    to: '/reports',
-    icon: BarChart3,
-    roles: ['SuperAdmin'],
-    group: 'finance',
-  },
-  {
-    label: 'تنظیمات',
-    to: '/settings',
-    icon: Settings,
-    roles: ['SuperAdmin'],
-    group: 'system',
-  },
-  { label: 'پشتیبانی', to: '/support', icon: Users, roles: ['SuperAdmin'], group: 'system' },
+  { label: 'پرداخت‌ها', to: '/payments', icon: Wallet, roles: ['SuperAdmin'], group: 'finance' },
+  { label: 'رویدادها', to: '/admin-events', icon: History, roles: ['SuperAdmin'], group: 'system' },
+  { label: 'تنظیمات', to: '/settings', icon: Settings, roles: ['SuperAdmin'], group: 'system' },
 ];
 
 export const roleLabel: Record<Role, string> = {

@@ -1,5 +1,6 @@
 import Spinner from '../../../components/Spinner/Spinner';
 import { useState } from "react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import {
   getPracticeQuestions,
   type PracticeFilters,
@@ -10,7 +11,7 @@ import ListPagination from "../../../components/ListPagination/ListPagination";
 import Difficulty from "../../../components/QuestionDifficultyBadge/QuestionDifficultyBadge";
 import PracticeAnswerCard from "./PracticeAnswerCard";
 import PracticeHistory from "./PracticeHistory";
-import { panel, secondary } from "../practiceUi";
+import { panel, primary, secondary } from "../practiceUi";
 import UiSelect from "../../../components/UiSelect";
 export default function PracticeQuestions({
   practiceId,
@@ -20,14 +21,62 @@ export default function PracticeQuestions({
   learner: boolean;
 }) {
   const [filters, setFilters] = useState<PracticeFilters>({ progress: "all" });
-  const [activeId, setActiveId] = useState("");
+  const [selection, setSelection] = useState({ page: 1, index: 0 });
   const [history, setHistory] = useState<PracticeQuestion | null>(null);
   const list = usePagedList(
     (query) => getPracticeQuestions(practiceId, query, filters),
     JSON.stringify([practiceId, filters]),
   );
-  const active = list.items.find((q) => q.id === activeId) ?? list.items[0];
-  const position = list.items.findIndex((q) => q.id === active?.id);
+  const position = selection.page === list.page
+    ? Math.max(0, Math.min(selection.index, list.items.length - 1))
+    : 0;
+  const active = list.items[position];
+  const questionNumber = (list.page - 1) * list.pageSize + position + 1;
+
+  function selectQuestion(page: number, index: number) {
+    setSelection({ page, index });
+    if (page !== list.page) list.setPage(page);
+  }
+
+  function moveQuestion(step: -1 | 1) {
+    const index = position + step;
+    if (index < 0) selectQuestion(list.page - 1, list.pageSize - 1);
+    else if (index >= list.items.length) selectQuestion(list.page + 1, 0);
+    else selectQuestion(list.page, index);
+  }
+
+  const navigation = (
+    <nav
+      aria-label="حرکت بین سؤال‌ها"
+      className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-violet-100 pt-4 dark:border-violet-400/20"
+    >
+      <span className="whitespace-nowrap text-xs text-gray-600 dark:text-gray-300 sm:text-sm" aria-live="polite">
+        سؤال {questionNumber.toLocaleString("fa-IR")} از {list.total.toLocaleString("fa-IR")}
+      </span>
+      <div className="ms-auto inline-flex items-center gap-2">
+        <button
+          type="button"
+          aria-label="سؤال قبلی"
+          className={`${secondary} min-h-11 px-2 text-brand-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 sm:px-4`}
+          disabled={questionNumber <= 1}
+          onClick={() => moveQuestion(-1)}
+        >
+          <ArrowRight size={15} aria-hidden="true" />
+          قبلی
+        </button>
+        <button
+          type="button"
+          aria-label="سؤال بعدی"
+          className={`${primary} ui-primary-gradient min-h-11 px-2 sm:px-4`}
+          disabled={questionNumber >= list.total}
+          onClick={() => moveQuestion(1)}
+        >
+          بعدی
+          <ArrowLeft size={15} aria-hidden="true" />
+        </button>
+      </div>
+    </nav>
+  );
   return (
     <div className="space-y-5">
       <section className={panel}>
@@ -38,14 +87,15 @@ export default function PracticeQuestions({
               aria-label="سطح سؤال"
               className="mt-2 w-full"
               value={filters.difficulty ?? ""}
-              onChange={(e) =>
+              onChange={(e) => {
+                setSelection({ page: 1, index: 0 });
                 setFilters((f) => ({
                   ...f,
                   difficulty:
                     (e.target.value as PracticeFilters["difficulty"]) ||
                     undefined,
-                }))
-              }
+                }));
+              }}
             >
               <option value="">همهٔ سطح‌ها</option>
               <option value="Easy">آسان</option>
@@ -60,12 +110,13 @@ export default function PracticeQuestions({
                 aria-label="وضعیت تمرین"
                 className="mt-2 w-full"
                 value={filters.progress}
-                onChange={(e) =>
+                onChange={(e) => {
+                  setSelection({ page: 1, index: 0 });
                   setFilters((f) => ({
                     ...f,
                     progress: e.target.value as PracticeFilters["progress"],
-                  }))
-                }
+                  }));
+                }}
               >
                 <option value="all">همهٔ سؤال‌ها</option>
                 <option value="unanswered">هنوز پاسخ نداده‌ام</option>
@@ -74,7 +125,14 @@ export default function PracticeQuestions({
             </label>
           )}
         </div>
-        <ListPagination {...list} />
+        <ListPagination
+          {...list}
+          setPage={page => selectQuestion(page, 0)}
+          setSearch={query => {
+            setSelection({ page: 1, index: 0 });
+            list.setSearch(query);
+          }}
+        />
       </section>
       {list.error ? (
         <div role="alert" className={panel}>
@@ -89,7 +147,7 @@ export default function PracticeQuestions({
         <p className={`${panel} text-center`}>سؤالی با این فیلتر پیدا نشد.</p>
       ) : (
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_220px]">
-          <div className="min-w-0 space-y-4">
+          <article className={`${panel} min-w-0`}>
             {learner ? (
               <PracticeAnswerCard
                 key={active.id}
@@ -101,7 +159,7 @@ export default function PracticeQuestions({
                 }
               />
             ) : (
-              <article className={panel}>
+              <>
                 <Difficulty difficulty={active.difficulty} />
                 <h2 className="my-5 text-lg font-bold leading-8">
                   {active.text}
@@ -117,37 +175,19 @@ export default function PracticeQuestions({
                     </li>
                   ))}
                 </ol>
-              </article>
+              </>
             )}
-            <nav
-              aria-label="حرکت بین سؤال‌ها"
-              className="flex justify-between gap-3"
-            >
-              <button
-                className={secondary}
-                disabled={position <= 0}
-                onClick={() => setActiveId(list.items[position - 1].id)}
-              >
-                سؤال قبلی
-              </button>
-              <button
-                className={secondary}
-                disabled={position >= list.items.length - 1}
-                onClick={() => setActiveId(list.items[position + 1].id)}
-              >
-                سؤال بعدی
-              </button>
-            </nav>
-          </div>
+            {navigation}
+          </article>
           <aside className={panel}>
             <h2 className="mb-4 text-sm font-bold">سؤال‌های این صفحه</h2>
             <div className="grid grid-cols-5 gap-2 lg:grid-cols-4">
-              {list.items.map((q) => (
+              {list.items.map((q, index) => (
                 <button
                   key={q.id}
                   aria-label={`رفتن به سؤال ${q.position + 1}`}
                   aria-current={q.id === active.id ? "step" : undefined}
-                  onClick={() => setActiveId(q.id)}
+                  onClick={() => selectQuestion(list.page, index)}
                   className={`rounded-lg border py-2 text-sm ${q.id === active.id ? "border-brand-600 bg-brand-600 text-white" : "border-gray-200 dark:border-gray-700"}`}
                 >
                   {(q.position + 1).toLocaleString("fa-IR")}

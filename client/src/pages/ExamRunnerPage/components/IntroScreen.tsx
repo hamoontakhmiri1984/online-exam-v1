@@ -1,3 +1,4 @@
+import PanelBack from '../../../components/PanelBack/PanelBack';
 import { useState } from 'react';
 import {
   Clock,
@@ -5,7 +6,6 @@ import {
   Ban,
   ListChecks,
   ShieldAlert,
-  ArrowRight,
 } from 'lucide-react';
 import AppLayout from '../../../components/AppLayout/AppLayout';
 import Modal from '../../../components/Modal/Modal';
@@ -53,16 +53,10 @@ function IntroScreen({
   return (
     <AppLayout title={exam.title}>
       <div className="mx-auto max-w-lg">
-        <button
-          onClick={onBack}
-          className="mb-4 flex items-center gap-1.5 text-sm font-medium text-gray-500 transition hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-        >
-          <ArrowRight size={16} />
-          بازگشت به لیست آزمون‌ها
-        </button>
+        <PanelBack onClick={onBack} label="بازگشت به لیست آزمون‌ها" className="mb-4" />
 
         <div className="rounded-2xl bg-white p-8 shadow-sm dark:bg-gray-900">
-          <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-600/15 dark:text-brand-400">
+          <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 text-brand-ink dark:bg-brand-600/15">
             <ListChecks size={22} />
           </div>
 
@@ -98,7 +92,7 @@ function IntroScreen({
             <li className="flex items-start gap-2.5 text-sm text-gray-600 dark:text-gray-300">
               <Clock
                 size={16}
-                className="mt-0.5 shrink-0 text-brand-600 dark:text-brand-400"
+                className="mt-0.5 shrink-0 text-brand-ink"
               />
               با شروع آزمون، تایمر فعال می‌شه و دیگه متوقف نمی‌شه.
             </li>
@@ -126,7 +120,7 @@ function IntroScreen({
             <li className="flex items-start gap-2.5 text-sm text-gray-600 dark:text-gray-300">
               <ShieldAlert
                 size={16}
-                className="mt-0.5 shrink-0 text-brand-600 dark:text-brand-400"
+                className="mt-0.5 shrink-0 text-brand-ink"
               />
               آزمون تلاش می‌کند در حالت تمام‌صفحه اجرا شود. می‌توانی خروج از آن را در مرورگر انجام بدهی؛ این رویداد ثبت می‌شود.
             </li>

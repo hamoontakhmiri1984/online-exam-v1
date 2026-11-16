@@ -39,7 +39,7 @@ function ImportQuestionsModal({
 
       <button
         onClick={downloadQuestionTemplate}
-        className="mb-4 flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 transition"
+        className="mb-4 flex items-center gap-1.5 text-sm font-medium text-brand-ink hover:text-brand-ink transition"
       >
         <Download size={16} />
         دانلود قالب نمونه

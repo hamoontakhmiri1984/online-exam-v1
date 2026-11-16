@@ -13,7 +13,6 @@ import {
 import AppLayout from '../../components/AppLayout/AppLayout';
 import Spinner from '../../components/Spinner/Spinner';
 import Toast from '../../components/Toast/Toast';
-import EmptyState from '../../components/EmptyState/EmptyState';
 import useAdminCategories, {
   type CategoryTab,
 } from '../../hooks/useAdminCategories';
@@ -115,7 +114,7 @@ function CategoryRow({
               <button
                 onClick={() => setIsEditing(true)}
                 disabled={isActioning}
-                className="inline-flex h-10 min-w-28 items-center justify-center rounded-xl border border-violet-200 bg-violet-50/60 px-3 text-xs font-semibold text-violet-700 hover:bg-violet-100 dark:border-violet-400/25 dark:bg-violet-400/10 dark:text-violet-200 transition disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-10 min-w-28 items-center justify-center rounded-xl border border-violet-200 bg-violet-50/60 px-3 text-xs font-semibold text-brand-ink hover:bg-violet-100 dark:border-violet-400/25 dark:bg-violet-400/10 transition disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <span className="inline-flex items-center gap-1">
                   <Pencil size={14} />
@@ -217,7 +216,7 @@ function AdminCategoriesPage() {
       )}
 
       <FilterBar><input aria-label="جستجوی دسته‌بندی" type="search" placeholder="جستجو" value={search} onChange={e => setSearch(e.target.value)} className={controlClass} /><UiSelect aria-label="ترتیب دسته‌بندی‌ها" value={order} onChange={e => setOrder(e.target.value)} className="min-w-44"><option value="asc">نام: صعودی</option><option value="desc">نام: نزولی</option></UiSelect></FilterBar>
-      <div className="flex gap-2 mb-4">
+      <div className="mb-4 flex flex-wrap gap-2">
         {TABS.map((t) => (
           <button
             key={t.value}
@@ -233,16 +232,22 @@ function AdminCategoriesPage() {
         ))}
       </div>
 
-      <div className="ui-admin-table overflow-hidden rounded-2xl border border-violet-200/50 bg-white/85 shadow-sm dark:border-violet-400/15 dark:bg-gray-900/85">
-        {loading ? (
-          <Spinner />
-        ) : visible.length === 0 ? (
-          <EmptyState
-            icon={Tags}
-            title="دسته‌بندی‌ای پیدا نشد"
-            description={search ? 'دسته‌بندی متناسب با جستجو وجود ندارد.' : EMPTY_STATE_TEXT[tab]}
-          />
-        ) : (
+      {loading ? (
+        <Spinner />
+      ) : visible.length === 0 ? (
+        <div className="flex min-h-44 flex-col items-center justify-center gap-2.5 px-4 py-6 text-center">
+          <div className="grid size-11 place-items-center rounded-full border border-brand-200 text-brand-600 dark:border-brand-400/40 dark:text-brand-300">
+            <Tags size={22} aria-hidden="true" />
+          </div>
+          <h2 className="text-base font-bold text-gray-900 dark:text-white">
+            دسته‌بندی‌ای پیدا نشد
+          </h2>
+          <p className="max-w-md text-sm leading-6 text-gray-600 dark:text-gray-300">
+            {search ? 'دسته‌بندی متناسب با جستجو وجود ندارد.' : EMPTY_STATE_TEXT[tab]}
+          </p>
+        </div>
+      ) : (
+        <div className="ui-admin-table overflow-hidden rounded-2xl border border-violet-200/50 bg-white/85 shadow-sm dark:border-violet-400/15 dark:bg-gray-900/85">
           <div className="overflow-x-auto">
             <table className="w-full min-w-125 text-right text-sm">
               <thead>
@@ -269,8 +274,8 @@ function AdminCategoriesPage() {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

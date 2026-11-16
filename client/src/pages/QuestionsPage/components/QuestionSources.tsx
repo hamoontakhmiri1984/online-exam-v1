@@ -1,4 +1,5 @@
-import { BookOpen, FileSpreadsheet, PenLine } from 'lucide-react';
+import { BookOpen, PenLine } from 'lucide-react';
+import ExcelImportButton from '../../../components/ExcelImportButton/ExcelImportButton';
 
 type Props = {
   onManual: () => void;
@@ -22,7 +23,6 @@ export default function QuestionSources({
     {
       title: 'ورود از اکسل',
       description: 'قالب را بگیرید و چند سؤال را یک‌جا اضافه کنید.',
-      icon: FileSpreadsheet,
       action: onExcel,
     },
     {
@@ -34,7 +34,9 @@ export default function QuestionSources({
   ];
   return (
     <div className="grid gap-3 md:grid-cols-3" aria-label="روش افزودن سؤال">
-      {sources.map(({ title, description, icon: Icon, action }, index) => (
+      {sources.map(({ title, description, icon: Icon, action }, index) => !Icon ? (
+        <ExcelImportButton key={title} description={description} onClick={action} disabled={disabled} />
+      ) : (
         <button
           key={title}
           type="button"

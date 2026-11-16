@@ -17,7 +17,7 @@ export default function ListPagination({ page, pageSize, total, loading, q, setP
       </div>
       {total > 0 && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-xl bg-violet-50 px-3 py-2 font-medium text-violet-700 dark:bg-violet-500/10 dark:text-violet-200" aria-live="polite">
+          <span className="rounded-xl bg-violet-50 px-3 py-2 font-medium text-brand-ink dark:bg-violet-500/10" aria-live="polite">
             {total.toLocaleString('fa-IR')} مورد
           </span>
           {pages > 1 && (

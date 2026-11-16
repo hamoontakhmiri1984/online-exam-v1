@@ -1,5 +1,10 @@
 @import 'tailwindcss';
+@import './brand-purple.css';
 @custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --color-brand-ink: var(--ui-brand-ink);
+}
 
 @theme {
   --color-brand-50: #f2f1fc;
@@ -233,49 +238,138 @@ input[type="checkbox"], input[type="radio"]:checked {
 @keyframes site-loader-spin {
   to { transform: rotate(360deg); }
 }
-@keyframes site-loader-breathe {
-  0%, 100% { transform: scale(.88); opacity: .7; }
-  50% { transform: scale(1); opacity: 1; }
-}
 .site-loading {
+  --site-loader-accent: #7550cf;
+  --site-loader-highlight: #b394eb;
+  --site-loader-track: #eee7fc;
+  --site-loader-ring-width: 3px;
+  --site-loader-caption: #443765;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 13px;
   min-height: 145px;
   padding: 24px 16px;
 }
-.site-loading-compact { min-height: 72px; padding: 12px; }
+
+.dark .site-loading {
+  --site-loader-accent: #bb9bf7;
+  --site-loader-highlight: #dec3ff;
+  --site-loader-track: #42345e;
+  --site-loader-caption: #ece5ff;
+}
+
+.site-loading.site-loading-compact {
+  --site-loader-ring-width: 2px;
+  min-height: 72px;
+  padding: 12px;
+}
+
 .site-loading-spinner {
   position: relative;
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: 58px;
+  height: 58px;
 }
+
 .site-loading-compact .site-loading-spinner { width: 32px; height: 32px; }
-.site-loading-spinner-ring {
+
+.site-loading-spinner-ring,
+.site-loading-spinner-ring-inner {
   position: absolute;
   inset: 0;
+  margin: auto;
+  border: var(--site-loader-ring-width) solid var(--site-loader-track);
   border-radius: 50%;
-  border: 3px solid rgba(139, 92, 246, .13);
-  border-top-color: #7c3aed;
-  border-right-color: #a78bfa;
-  box-shadow: 0 0 22px rgba(124, 58, 237, .1);
-  animation: site-loader-spin .85s linear infinite;
 }
+
+.site-loading-spinner-ring {
+  border-block-start-color: var(--site-loader-accent);
+  border-inline-end-color: var(--site-loader-accent);
+  animation: site-loader-spin 1.4s linear infinite;
+}
+
+.site-loading-spinner-ring-inner {
+  width: 72.4%;
+  height: 72.4%;
+  border-inline-start-color: var(--site-loader-highlight);
+  animation: site-loader-spin 1.9s linear infinite reverse;
+}
+
 .site-loading-spinner-core {
-  width: 12px;
-  height: 12px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #a78bfa, #6d28d9);
-  box-shadow: 0 0 12px rgba(124, 58, 237, .32);
-  animation: site-loader-breathe 1.4s ease-in-out infinite;
+  background: var(--site-loader-accent);
 }
-.dark .site-loading-spinner-ring {
-  border-color: rgba(172, 147, 249, .15);
-  border-top-color: #c4b5fd;
-  border-right-color: #8b5cf6;
+
+.site-loading-compact .site-loading-spinner-core { width: 5px; height: 5px; }
+
+.site-loading-caption {
+  color: var(--site-loader-caption);
+  font-size: .875rem;
+  font-weight: 500;
 }
+
 @media (prefers-reduced-motion: reduce) {
-  .site-loading-spinner-ring, .site-loading-spinner-core { animation-duration: 3s; }
+  .site-loading-spinner-ring,
+  .site-loading-spinner-ring-inner { animation: none; }
+}
+
+.panel-scrollbar {
+  scrollbar-gutter: stable;
+}
+
+@media (forced-colors: none) {
+  .panel-scrollbar {
+    --panel-thumb: light-dark(#9c94a7, #857b92);
+    --panel-thumb-active: light-dark(#746982, #b0a2bf);
+    --panel-thumb-color: var(--panel-thumb);
+    scrollbar-width: thin;
+    scrollbar-color: var(--panel-thumb-color) transparent;
+  }
+
+  .panel-scrollbar:is(:hover, :focus-within) {
+    --panel-thumb-color: var(--panel-thumb-active);
+  }
+
+  @supports selector(::-webkit-scrollbar) {
+    .panel-scrollbar {
+      scrollbar-width: auto;
+      scrollbar-color: auto;
+    }
+
+    .panel-scrollbar::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .panel-scrollbar::-webkit-scrollbar-track:vertical {
+      background: transparent;
+    }
+
+    .panel-scrollbar::-webkit-scrollbar-thumb:vertical {
+      border: 1px solid transparent;
+      border-radius: 999px;
+      background: var(--panel-thumb-color) padding-box;
+    }
+  }
+}
+
+/* Keep more sidebar links visible on short screens. */
+@media (max-height: 850px) {
+  .glass-app-shell .sidebar-navigation {
+    gap: 0.25rem;
+  }
+  .glass-app-shell .sidebar-navigation a {
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+  }
+  .glass-app-shell .sidebar-navigation [role="group"] > p {
+    margin-top: 0.25rem;
+    margin-bottom: 0.25rem;
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+  }
 }

@@ -18,9 +18,14 @@ function practiceMemory() {
       students: ['outsider'],
     },
   ];
+  const banks = [
+    { id: 'bank-a', instructorId: 'teacher-a' },
+    { id: 'bank-b', instructorId: 'teacher-b' },
+  ];
   const source = [
     {
       id: 'qa',
+      bankId: 'bank-a',
       bank: { instructorId: 'teacher-a' },
       text: 'Source A',
       options: ['One', 'Two'],
@@ -29,6 +34,7 @@ function practiceMemory() {
     },
     {
       id: 'qb',
+      bankId: 'bank-b',
       bank: { instructorId: 'teacher-b' },
       text: 'Source B',
       options: ['One', 'Two'],
@@ -48,7 +54,9 @@ function practiceMemory() {
         (v && typeof v === 'object'
           ? v.in
             ? v.in.includes(x[k])
-            : v.contains
+            : v.notIn
+              ? !v.notIn.includes(x[k])
+              : v.contains
               ? x[k].includes(v.contains)
               : true
           : x[k] === v),
@@ -138,15 +146,18 @@ function practiceMemory() {
     group: {
       count: async ({ where }) => groups.filter((g) => basic(g, where)).length,
     },
+    questionBank: {
+      count: async ({ where }) => banks.filter(bank => basic(bank, where)).length,
+    },
     question: {
-      findMany: async ({ where }) =>
+      findMany: async ({ where, select }) =>
         source
           .filter(
             (q) =>
               basic(q, where) &&
               q.bank.instructorId === where.bank.instructorId,
           )
-          .map(copy),
+          .map(q => select ? Object.fromEntries(Object.keys(select).map(k => [k, q[k]])) : copy(q)),
     },
     practiceSet: {
       async create({ data }) {
@@ -180,10 +191,10 @@ function practiceMemory() {
           args,
         ).map(expand),
       count: async ({ where }) => sets.filter((p) => setMatch(p, where)).length,
-      async update({ where, data }) {
+      async update({ where, data, select }) {
         const p = sets.find((p) => p.id === where.id);
         Object.assign(p, data);
-        return { id: p.id };
+        return Object.fromEntries(Object.keys(select).map(k => [k, p[k]]));
       },
     },
     practiceSetGroup: {
@@ -246,6 +257,6 @@ function practiceMemory() {
         attempts.filter((a) => basic(a, where)).length,
     },
   };
-  return { db, sets, groups, source, questions, attempts };
+  return { db, sets, groups, banks, source, questions, attempts };
 }
 module.exports = { practiceMemory };

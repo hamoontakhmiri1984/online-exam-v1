@@ -20,23 +20,25 @@ test('SuperAdmin menu is split into ordered groups under small headings', () => 
   const sections = groupNavigationItems(forRole('SuperAdmin'));
   assert.deepEqual(
     sections.map((s) => s.group),
-    [undefined, 'users', 'content', 'finance', 'system']
+    [undefined, 'requests', 'education', 'content', 'finance', 'system']
   );
   assert.deepEqual(
     sections.map((s) => s.items.map((i) => i.to)),
     [
-      ['/workspace', '/exams'],
-      ['/instructors', '/instructor-students', '/instructor-approvals', '/group-approvals'],
-      ['/categories', '/site-content', '/blog-posts'],
-      ['/subscriptions', '/payments', '/reports'],
-      ['/admin-events', '/settings', '/support'],
+      ['/workspace', '/reports'],
+      ['/instructor-approvals', '/group-approvals', '/support'],
+      ['/instructors', '/instructor-students', '/exams'],
+      ['/categories', '/blog-posts', '/site-content'],
+      ['/subscriptions', '/payments'],
+      ['/admin-events', '/settings'],
     ]
   );
   assert.deepEqual(navigationGroupLabel, {
-    users: 'کاربران',
-    content: 'محتوا',
-    finance: 'مالی',
-    system: 'سیستم',
+    requests: 'درخواست‌ها و رسیدگی',
+    education: 'مدیریت آموزشی',
+    content: 'مدیریت محتوا',
+    finance: 'امور مالی',
+    system: 'مدیریت سامانه',
   });
 });
 

@@ -103,7 +103,7 @@ function OtpStep({
         type="button"
         onClick={onResend}
         disabled={cooldown > 0 || resending || loading}
-        className="mx-auto cursor-pointer text-xs text-brand-600 hover:underline disabled:cursor-not-allowed disabled:text-gray-400 disabled:no-underline dark:text-brand-400"
+        className="mx-auto cursor-pointer text-xs text-brand-ink hover:underline disabled:cursor-not-allowed disabled:text-gray-400 disabled:no-underline"
       >
         {resending
           ? 'در حال ارسال مجدد...'
@@ -123,7 +123,7 @@ function OtpStep({
         type="button"
         onClick={onBack}
         disabled={loading || resending}
-        className="cursor-pointer text-xs text-brand-600 hover:underline disabled:cursor-not-allowed disabled:opacity-50 dark:text-brand-400"
+        className="cursor-pointer text-xs text-brand-ink hover:underline disabled:cursor-not-allowed disabled:opacity-50"
       >
         بازگشت و اصلاح اطلاعات
       </button>

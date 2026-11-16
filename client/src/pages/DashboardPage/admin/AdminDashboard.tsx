@@ -30,7 +30,7 @@ const fa = (n: number) => n.toLocaleString('fa-IR');
 const panel =
   'glass-admin-panel overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900';
 const linkBtn =
-  'inline-flex items-center rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-brand-500 dark:border-gray-700 dark:text-gray-200 dark:hover:border-brand-500/50 dark:hover:bg-brand-500/10 dark:hover:text-brand-300';
+  'inline-flex items-center rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-ink focus-visible:outline-2 focus-visible:outline-brand-500 dark:border-gray-700 dark:text-gray-200 dark:hover:border-brand-500/50 dark:hover:bg-brand-500/10 dark:hover:text-brand-ink';
 
 const status: Record<AdminExamState, { label: string; chip: string; dot: string }> = {
   draft: {
@@ -40,7 +40,7 @@ const status: Record<AdminExamState, { label: string; chip: string; dot: string 
   },
   upcoming: {
     label: 'پیش‌رو',
-    chip: 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300',
+    chip: 'bg-brand-50 text-brand-ink dark:bg-brand-500/15',
     dot: 'bg-brand-500',
   },
   completed: {
@@ -76,7 +76,7 @@ function QueueRow({
     <li className="flex items-center gap-3 px-5 py-3.5">
       <span
         aria-hidden
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-semibold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-semibold text-brand-ink dark:bg-brand-500/15"
       >
         {title.trim()[0] ?? '؟'}
       </span>
@@ -132,7 +132,7 @@ function Queue({
           </ul>
           <Link
             to={to}
-            className="flex items-center justify-between border-t border-gray-100 px-5 py-3 text-sm font-medium text-brand-600 transition hover:bg-gray-50 dark:border-gray-800 dark:text-brand-300 dark:hover:bg-gray-800/50"
+            className="flex items-center justify-between border-t border-gray-100 px-5 py-3 text-sm font-medium text-brand-ink transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50"
           >
             بررسی درخواست‌ها
             <ChevronLeft size={16} />
@@ -335,7 +335,7 @@ export default function AdminDashboard() {
           {loading ? 'در حال به‌روزرسانی اطلاعات…' : updatedAt ? `آخرین به‌روزرسانی: ${updatedAt.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}` : 'نمای کلی سامانه'}
         </p>
         <button type="button" onClick={() => refetch()} disabled={loading} className={`${linkBtn} gap-2 disabled:cursor-wait disabled:opacity-50`}>
-          <RotateCw size={14} className={loading ? 'animate-spin motion-reduce:animate-none' : ''} />به‌روزرسانی
+          <RotateCw size={14} className={loading ? 'animate-spin motion-reduce:animate-none' : ''} />بارگذاری مجدد
         </button>
       </div>
       {error && data && <p role="alert" className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">به‌روزرسانی انجام نشد؛ اطلاعات قبلی نمایش داده می‌شود.</p>}
@@ -347,7 +347,7 @@ export default function AdminDashboard() {
       ) : data ? (
         <motion.div initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0 : 0.2 }} aria-busy={loading}>
           <Content data={data} />
-          <div className="mt-8"><ReportOverview /><h2 className="mb-4 text-lg font-semibold dark:text-white">رویدادهای مدیریتی</h2><EventsList compact /><Link to="/admin-events" className="mt-3 inline-block text-sm text-brand-600 dark:text-brand-400">مشاهدهٔ سوابق رویدادها</Link></div>
+          <div className="mt-8"><ReportOverview /><h2 className="mb-4 text-lg font-semibold dark:text-white">رویدادهای مدیریتی</h2><EventsList compact /><Link to="/admin-events" className="mt-3 inline-block text-sm text-brand-ink">مشاهدهٔ سوابق رویدادها</Link></div>
         </motion.div>
       ) : (
         <div className={`${panel} flex flex-col items-center gap-3 px-5 py-12`}>

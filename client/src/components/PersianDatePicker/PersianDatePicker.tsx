@@ -222,7 +222,7 @@ function PersianDatePicker({ value, onChange, label }: PersianDatePickerProps) {
             <button
               type="button"
               onClick={handleToday}
-              className="mt-2 w-full rounded-lg py-1.5 text-xs font-medium text-brand-600 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-gray-700"
+              className="mt-2 w-full rounded-lg py-1.5 text-xs font-medium text-brand-ink hover:bg-brand-50 dark:hover:bg-gray-700"
             >
               امروز
             </button>

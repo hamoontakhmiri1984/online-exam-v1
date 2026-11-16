@@ -201,6 +201,31 @@ router.post(
   }),
 );
 router.get(
+  '/inbox/tickets',
+  requireRole('SuperAdmin'),
+  asyncHandler(async (req, res) => {
+    const page = z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(10000)
+      .parse(req.query.page ?? 0);
+    const status = z.literal('Open').optional().parse(req.query.status);
+    const pageSize = 50;
+    const rows = await prisma.supportTicket.findMany({
+      where: { user: { role: 'Instructor' }, status },
+      orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+      skip: page * pageSize,
+      take: pageSize + 1,
+      include: { user: { select: { id: true, name: true, username: true } } },
+    });
+    res.json({
+      items: rows.slice(0, pageSize),
+      hasMore: rows.length > pageSize,
+    });
+  }),
+);
+router.get(
   '/instructors',
   requireRole('SuperAdmin'),
   asyncHandler(async (_req, res) => {

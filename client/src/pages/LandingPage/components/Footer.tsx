@@ -93,7 +93,7 @@ function Footer({ data }: FooterProps) {
                       rel="noopener noreferrer"
                       aria-label={social.platform}
                       title={social.platform}
-                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-600 dark:border-gray-700 dark:text-gray-400 dark:hover:border-brand-900 dark:hover:bg-brand-950/40 dark:hover:text-brand-400"
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-ink dark:border-gray-700 dark:text-gray-400 dark:hover:border-brand-900 dark:hover:bg-brand-950/40 dark:hover:text-brand-ink"
                     >
                       <Icon size={16} />
                     </a>
@@ -108,7 +108,7 @@ function Footer({ data }: FooterProps) {
               <a
                 key={`${link.href}-${index}`}
                 href={link.href}
-                className="text-xs font-medium text-gray-500 transition hover:text-brand-600 dark:text-gray-400 dark:hover:text-white"
+                className="text-xs font-medium text-gray-500 transition hover:text-brand-ink dark:text-gray-400 dark:hover:text-white"
               >
                 {link.label}
               </a>

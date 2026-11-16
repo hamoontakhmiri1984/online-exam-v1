@@ -1,11 +1,13 @@
 import { Menu, Sun, Moon } from 'lucide-react';
 import NotificationsPanel from './NotificationsPanel';
+import SiteHomeButton from './SiteHomeButton';
 
 type HeaderProps = {
   title: string;
   isDark: boolean;
   onToggleTheme: () => void;
   onOpenSidebar: () => void;
+  onGoHome: () => void;
 };
 
 function Header({
@@ -13,6 +15,7 @@ function Header({
   isDark,
   onToggleTheme,
   onOpenSidebar,
+  onGoHome,
 }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-gray-200/60 bg-white/80 px-4 py-3.5 backdrop-blur-md dark:border-white/5 dark:bg-gray-900/80 md:px-10">
@@ -31,7 +34,8 @@ function Header({
         </span>
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1.5">
+        <SiteHomeButton onClick={onGoHome} />
         <button
           type="button"
           aria-label={isDark ? 'فعال کردن حالت روشن' : 'فعال کردن حالت تاریک'}

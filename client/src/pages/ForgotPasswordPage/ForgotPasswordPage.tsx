@@ -14,7 +14,7 @@ function ForgotPasswordPage() {
           رمزت یادت اومد؟{' '}
           <button
             onClick={() => navigate('/login')}
-            className="font-bold text-brand-600 hover:underline dark:text-brand-400"
+            className="font-bold text-brand-ink hover:underline"
           >
             وارد شو
           </button>

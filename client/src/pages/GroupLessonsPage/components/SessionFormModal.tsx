@@ -116,7 +116,7 @@ function SessionFormModal({
               aria-pressed={videoType === 'link'}
               className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition ${
                 videoType === 'link'
-                  ? 'border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300'
+                  ? 'border-brand-500 bg-brand-50 text-brand-ink dark:bg-brand-950/40'
                   : 'border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400'
               }`}
             >
@@ -129,7 +129,7 @@ function SessionFormModal({
               aria-pressed={videoType === 'upload'}
               className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition ${
                 videoType === 'upload'
-                  ? 'border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300'
+                  ? 'border-brand-500 bg-brand-50 text-brand-ink dark:bg-brand-950/40'
                   : 'border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400'
               }`}
             >
@@ -191,7 +191,7 @@ function SessionFormModal({
                 >
                   <FileText
                     size={16}
-                    className="shrink-0 text-brand-600 dark:text-brand-400"
+                    className="shrink-0 text-brand-ink"
                   />
                   <span className="flex-1 truncate text-gray-700 dark:text-gray-200">
                     {file.fileName}

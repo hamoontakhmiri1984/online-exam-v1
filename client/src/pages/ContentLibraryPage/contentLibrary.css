@@ -1,0 +1,43 @@
+/* Content management search: style the glass frame, not the nested input. */
+.glass-app-shell .content-library-search {
+  transition: border-color 240ms ease, box-shadow 240ms ease, background-color 240ms ease;
+}
+
+.glass-app-shell .content-library-search:hover {
+  border-color: rgba(167, 139, 250, 0.7);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.06);
+}
+
+.glass-app-shell .content-library-search:focus-within {
+  border-color: rgba(139, 92, 246, 0.8);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.14);
+}
+
+.dark .glass-app-shell .content-library-search:hover {
+  border-color: rgba(167, 139, 250, 0.45);
+  box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.07);
+}
+
+.dark .glass-app-shell .content-library-search:focus-within {
+  border-color: rgba(167, 139, 250, 0.7);
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.14);
+}
+
+/* Override global input focus/hover glows, including their !important rules. */
+.glass-app-shell .content-library-search input[type="search"],
+.glass-app-shell .content-library-search input[type="search"]:hover,
+.glass-app-shell .content-library-search input[type="search"]:focus,
+.glass-app-shell .content-library-search input[type="search"]:focus-visible {
+  border: 0 !important;
+  outline: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  background: transparent !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-app-shell .content-library-search {
+    transition: none;
+  }
+}

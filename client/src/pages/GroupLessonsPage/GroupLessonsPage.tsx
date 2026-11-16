@@ -1,6 +1,7 @@
+import PanelBack from '../../components/PanelBack/PanelBack';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowRight, Plus, XCircle, AlertTriangle, Video } from 'lucide-react';
+import { Plus, XCircle, AlertTriangle, Video } from 'lucide-react';
 import AppLayout from '../../components/AppLayout/AppLayout';
 import Spinner from '../../components/Spinner/Spinner';
 import Toast from '../../components/Toast/Toast';
@@ -109,14 +110,7 @@ function GroupLessonsPage() {
         />
       )}
 
-      <button
-        type="button"
-        onClick={() => navigate('/lessons')}
-        className="mb-4 flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400 transition"
-      >
-        <ArrowRight size={16} />
-        بازگشت به درس‌ها
-      </button>
+      <PanelBack onClick={() => navigate('/lessons')} label="بازگشت به درس‌ها" className="mb-4" />
 
       {groupLoading ? (
         <Spinner />

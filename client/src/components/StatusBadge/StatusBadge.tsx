@@ -8,7 +8,7 @@ const toneClass: Record<StatusTone, { chip: string; dot: string }> = {
     dot: 'bg-gray-400',
   },
   info: {
-    chip: 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300',
+    chip: 'bg-brand-50 text-brand-ink dark:bg-brand-500/15',
     dot: 'bg-brand-500',
   },
   success: {

@@ -1,3 +1,4 @@
+import PanelBack from '../../../components/PanelBack/PanelBack';
 import { CheckCircle2 } from 'lucide-react';
 import AppLayout from '../../../components/AppLayout/AppLayout';
 import type { Exam } from '../../../api/examApi';
@@ -97,12 +98,7 @@ function ReviewScreen({
         </div>
 
         <div className="flex items-center justify-between gap-3">
-          <button
-            onClick={onBackToCurrent}
-            className="rounded-xl border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-          >
-            بازگشت به آزمون
-          </button>
+          <PanelBack onClick={onBackToCurrent} label="بازگشت به آزمون" />
           <button
             onClick={onFinish}
             className="flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-medium text-white transition hover:brightness-95"

@@ -24,7 +24,7 @@ const NOTIFICATION_STYLES: Record<
   info: {
     Icon: Info,
     iconBg:
-      'bg-brand-50 text-brand-600 dark:bg-brand-600/15 dark:text-brand-400',
+      'bg-brand-50 text-brand-ink dark:bg-brand-600/15',
   },
   people: {
     Icon: UsersIcon,
@@ -94,7 +94,7 @@ function NotificationsPanel() {
         aria-expanded={isOpen}
         aria-haspopup="true"
         onClick={togglePanel}
-        className={`relative flex h-10 w-10 items-center justify-center rounded-xl border transition-colors ${unreadCount ? "border-violet-300/60 bg-violet-100 text-violet-700 shadow-sm shadow-violet-300/20 dark:border-violet-400/40 dark:bg-violet-500/20 dark:text-violet-200" : "border-transparent text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/10"}`}
+        className={`relative flex h-10 w-10 items-center justify-center rounded-xl border transition-colors ${unreadCount ? "border-violet-300/60 bg-violet-100 text-brand-ink shadow-sm shadow-violet-300/20 dark:border-violet-400/40 dark:bg-violet-500/20" : "border-transparent text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/10"}`}
       >
         {unreadCount ? <BellRing size={21} strokeWidth={2.2} /> : <Bell size={19} strokeWidth={1.9} />}
 
@@ -122,7 +122,7 @@ function NotificationsPanel() {
           className="absolute left-0 top-full z-50 mt-2 w-90 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-violet-200/50 bg-white/95 shadow-xl shadow-violet-950/10 backdrop-blur-xl dark:border-violet-400/20 dark:bg-gray-900/95"
         >
           <div className="flex items-center justify-between border-b border-violet-100/70 px-4 py-3.5 dark:border-violet-400/15">
-            <h3 className="flex flex-wrap items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">اعلان‌ها <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-[11px] text-violet-700 dark:bg-violet-500/15 dark:text-violet-200">{unreadCount.toLocaleString('fa-IR')} خوانده‌نشده</span></h3>
+            <h3 className="flex flex-wrap items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">اعلان‌ها <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-[11px] text-brand-ink dark:bg-violet-500/15">{unreadCount.toLocaleString('fa-IR')} خوانده‌نشده</span></h3>
 
 
           </div>
@@ -196,10 +196,10 @@ function NotificationsPanel() {
             )}
           </div>
           <div className="flex items-center justify-between gap-2 border-t border-violet-100/70 bg-violet-50/25 px-3 py-2.5 dark:border-violet-400/15 dark:bg-violet-500/5">
-            <button type="button" disabled={unreadCount === 0 || loading} onClick={markAllRead} className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-violet-700 hover:bg-violet-50 disabled:opacity-40 dark:text-violet-200 dark:hover:bg-violet-500/10"><CheckCheck size={15}/>خواندن همه</button>
+            <button type="button" disabled={unreadCount === 0 || loading} onClick={markAllRead} className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-brand-ink hover:bg-violet-50 disabled:opacity-40 dark:hover:bg-violet-500/10"><CheckCheck size={15}/>خواندن همه</button>
             <button type="button" disabled={!notifications.length || deletingAll || loading} onClick={() => setConfirmClear(true)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50 disabled:opacity-40 dark:text-rose-300 dark:hover:bg-rose-500/10"><Trash2 size={14}/>{deletingAll ? 'در حال پاک کردن…' : 'پاک کردن همه'}</button>
           </div>
-          <button type="button" onClick={() => { setIsOpen(false); navigate('/notifications'); }} className="flex w-full items-center justify-center gap-2 border-t border-violet-100/70 bg-transparent px-4 py-3 text-xs font-semibold text-violet-700 transition hover:bg-violet-50 dark:border-violet-400/15 dark:text-violet-200 dark:hover:bg-violet-500/10"><List size={17}/> مشاهده همه اعلان‌ها</button>
+          <button type="button" onClick={() => { setIsOpen(false); navigate('/notifications'); }} className="flex w-full items-center justify-center gap-2 border-t border-violet-100/70 bg-transparent px-4 py-3 text-xs font-semibold text-brand-ink transition hover:bg-violet-50 dark:border-violet-400/15 dark:hover:bg-violet-500/10"><List size={17}/> مشاهده همه اعلان‌ها</button>
         </div>
       )}
     </div>

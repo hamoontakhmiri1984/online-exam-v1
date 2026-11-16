@@ -13,7 +13,7 @@ import useSiteContent from '../../hooks/useSiteContent';
 import Spinner from '../../components/Spinner/Spinner';
 
 function LandingPage() {
-  const { sections, loading, error } = useSiteContent();
+  const { sections, hiddenSections, loading, error } = useSiteContent();
   const location = useLocation();
 
   useEffect(() => {
@@ -38,12 +38,12 @@ function LandingPage() {
         </main>
       ) : (
       <>
-      <Hero data={sections?.hero} />
-      <Features data={sections?.features} />
-      <News data={sections?.news} />
-      <About data={sections?.about} />
-      <Pricing data={sections?.pricing} />
-      <Footer data={sections?.footer} />
+      {!hiddenSections.includes('hero') && <Hero data={sections?.hero} />}
+      {!hiddenSections.includes('features') && <Features data={sections?.features} />}
+      {!hiddenSections.includes('news') && <News data={sections?.news} />}
+      {!hiddenSections.includes('about') && <About data={sections?.about} />}
+      {!hiddenSections.includes('pricing') && <Pricing data={sections?.pricing} />}
+      {!hiddenSections.includes('footer') && <Footer data={sections?.footer} />}
       </>
       )}
       <SupportWidget />

@@ -22,7 +22,7 @@ export default function LogoutDialog({ open, onCancel, onConfirm }: Props) {
     <dialog ref={dialog} onCancel={(event) => { event.preventDefault(); onCancel(); }}
       aria-labelledby="logout-title" aria-describedby="logout-description"
       className="glass-logout-dialog fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-sm rounded-3xl border p-7 text-gray-900 backdrop:bg-slate-950/45 dark:text-white">
-      <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-violet-200/70 bg-violet-500/10 text-violet-700 dark:border-violet-300/20 dark:bg-violet-400/15 dark:text-violet-200"><LogOut size={22} aria-hidden="true" /></div>
+      <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-violet-200/70 bg-violet-500/10 text-brand-ink dark:border-violet-300/20 dark:bg-violet-400/15"><LogOut size={22} aria-hidden="true" /></div>
       <h2 id="logout-title" className="text-lg font-bold">از حساب خارج می‌شوید؟</h2>
       <p id="logout-description" className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">برای استفاده دوباره از پنل، باید وارد حساب شوید.</p>
       <div className="mt-6 flex gap-3">

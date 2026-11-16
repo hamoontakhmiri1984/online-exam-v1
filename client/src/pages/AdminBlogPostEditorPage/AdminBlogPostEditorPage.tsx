@@ -1,5 +1,6 @@
+import PanelBack from '../../components/PanelBack/PanelBack';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowRight, Save, Loader2, XCircle } from 'lucide-react';
+import { Save, Loader2, XCircle } from 'lucide-react';
 import AppLayout from '../../components/AppLayout/AppLayout';
 import Spinner from '../../components/Spinner/Spinner';
 import ToggleSwitch from '../../components/ToggleSwitch/ToggleSwitch';
@@ -50,13 +51,7 @@ function AdminBlogPostEditorPage() {
     <AppLayout title={isEditMode ? 'ویرایشِ پست' : 'پستِ جدید'}>
       {error && <div className="form-inline-error mb-4 flex items-center justify-between gap-3" role="alert"><span>{error}</span><button type="button" aria-label="بستن خطا" onClick={clearError}><XCircle size={17}/></button></div>}
 
-      <button
-        onClick={() => navigate('/blog-posts')}
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 transition hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400"
-      >
-        <ArrowRight size={15} />
-        بازگشت به لیستِ پست‌ها
-      </button>
+      <PanelBack onClick={() => navigate('/blog-posts')} label="بازگشت به لیستِ پست‌ها" className="mb-4" />
 
       {loading ? (
         <Spinner />
@@ -66,18 +61,11 @@ function AdminBlogPostEditorPage() {
           noValidate
           className="flex flex-col gap-6 rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900"
         >
-          {Object.keys(fieldErrors).length > 0 && (
-            <div role="alert" className="form-inline-error">
-              <p className="font-bold">پست ذخیره نشد. موارد زیر را اصلاح کنید:</p>
-              <ul className="mt-2 list-disc space-y-1 pr-5">
-                {Object.entries(fieldErrors).map(([field, message]) => <li key={field}>{message}</li>)}
-              </ul>
-            </div>
-          )}
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <label className={labelClass}>عنوان</label>
+              <label htmlFor="blog-title" className={labelClass}>عنوان</label>
               <input
+                id="blog-title"
                 value={title}
                 required
                 aria-invalid={!!fieldErrors.title}
@@ -90,8 +78,9 @@ function AdminBlogPostEditorPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className={labelClass}>اسلاگ (آدرس)</label>
+              <label htmlFor="blog-slug" className={labelClass}>اسلاگ (آدرس)</label>
               <input
+                id="blog-slug"
                 value={slug}
                 required
                 aria-invalid={!!fieldErrors.slug}
@@ -106,15 +95,16 @@ function AdminBlogPostEditorPage() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>خلاصه</label>
+            <label htmlFor="blog-excerpt" className={labelClass}>خلاصه</label>
             <textarea
+              id="blog-excerpt"
               value={excerpt}
               required
               aria-invalid={!!fieldErrors.excerpt}
               aria-describedby={fieldErrors.excerpt ? 'blog-excerpt-error' : undefined}
               onChange={(e) => setExcerpt(e.target.value)}
               rows={2}
-              className={`${inputClass} resize-y`}
+              className={`${inputClass} resize-none`}
               placeholder="چند خط برای کارتِ پیش‌نمایش و لیستِ بلاگ"
             />
             {fieldErrors.excerpt && <p id="blog-excerpt-error" role="alert" className="text-xs text-red-600 dark:text-red-400">{fieldErrors.excerpt}</p>}
@@ -134,9 +124,8 @@ function AdminBlogPostEditorPage() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>محتوا</label>
-            <MarkdownEditor value={contentMarkdown} onChange={setContentMarkdown} />
-            {fieldErrors.contentMarkdown && <p role="alert" className="text-xs text-red-600 dark:text-red-400">{fieldErrors.contentMarkdown}</p>}
+            <label htmlFor="blog-content" className={labelClass}>محتوا</label>
+            <MarkdownEditor id="blog-content" value={contentMarkdown} onChange={setContentMarkdown} error={fieldErrors.contentMarkdown} />
           </div>
 
           <div className="flex items-center gap-3 border-t border-gray-100 pt-5 dark:border-gray-800">

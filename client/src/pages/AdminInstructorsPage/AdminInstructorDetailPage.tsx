@@ -1,5 +1,6 @@
+import PanelBack from '../../components/PanelBack/PanelBack';
 import { useEffect, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout/AppLayout';
 import ListPagination from '../../components/ListPagination/ListPagination';
 import Spinner from '../../components/Spinner/Spinner';
@@ -33,7 +34,7 @@ export default function AdminInstructorDetailPage() {
   const name = profile?.name || profile?.username || profile?.email || instructorId;
   return (
     <AppLayout title="اطلاعات مدرس">
-      <Link to="/instructors" className="mb-4 inline-block text-brand-600">بازگشت به مدرس‌ها</Link>
+      <PanelBack to="/instructors" label="بازگشت به مدرس‌ها" className="mb-4" />
       {profileError ? <p role="alert" className="text-danger-600">{profileError}</p> : !profile || profile.id !== instructorId ? <Spinner /> : (
         <>
           <h1 className="mb-2 text-2xl font-bold dark:text-white">{name}</h1>
@@ -43,7 +44,7 @@ export default function AdminInstructorDetailPage() {
               onClick={() => { setTab(item.key); setBank(null); }}
               className={`rounded-lg border px-4 py-2 text-sm ${tab === item.key ? 'bg-brand-600 text-white' : 'dark:text-gray-200'}`}>{item.label}</button>)}
           </div>
-          {bank && <p className="mb-3 dark:text-gray-200">بانک: {bank.name} <button type="button" onClick={() => setBank(null)} className="ms-3 text-brand-600">همهٔ سوال‌های این مدرس</button></p>}
+          {bank && <p className="mb-3 dark:text-gray-200">بانک: {bank.name} <button type="button" onClick={() => setBank(null)} className="ms-3 text-brand-ink">همهٔ سوال‌های این مدرس</button></p>}
           <ListPagination {...list} maxSearchLength={100} />
           {list.error && <p role="alert" className="mb-3 text-danger-600">{list.error}</p>}
           {list.loading ? <Spinner /> : <InstructorContentList items={list.items} tab={tab}

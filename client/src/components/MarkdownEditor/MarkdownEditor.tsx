@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import {
   Bold,
   Italic,
@@ -11,6 +11,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 
 type MarkdownEditorProps = {
+  id?: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -57,12 +58,14 @@ function injectSyntax(
 }
 
 function MarkdownEditor({
+  id,
   value,
   onChange,
   placeholder,
   rows = 12,
   error,
 }: MarkdownEditorProps) {
+  const errorId = useId();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [mobileTab, setMobileTab] = useState<'write' | 'preview'>('write');
 
@@ -81,7 +84,7 @@ function MarkdownEditor({
                 if (!textarea) return;
                 injectSyntax(textarea, action, value, onChange);
               }}
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 transition hover:bg-white hover:text-brand-600 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-brand-400"
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 transition hover:bg-white hover:text-brand-ink dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-brand-ink"
             >
               <action.icon size={15} />
             </button>
@@ -94,7 +97,7 @@ function MarkdownEditor({
             onClick={() => setMobileTab('write')}
             className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition ${
               mobileTab === 'write'
-                ? 'bg-white text-brand-600 dark:bg-gray-700 dark:text-brand-400'
+                ? 'bg-white text-brand-ink dark:bg-gray-700'
                 : 'text-gray-500 dark:text-gray-400'
             }`}
           >
@@ -106,7 +109,7 @@ function MarkdownEditor({
             onClick={() => setMobileTab('preview')}
             className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition ${
               mobileTab === 'preview'
-                ? 'bg-white text-brand-600 dark:bg-gray-700 dark:text-brand-400'
+                ? 'bg-white text-brand-ink dark:bg-gray-700'
                 : 'text-gray-500 dark:text-gray-400'
             }`}
           >
@@ -119,18 +122,21 @@ function MarkdownEditor({
       <div className="grid grid-cols-1 divide-y divide-gray-200 rounded-b-xl border border-gray-200 dark:divide-gray-700 dark:border-gray-700 md:grid-cols-2 md:divide-x md:divide-y-0 md:divide-x-reverse">
         <textarea
           ref={textareaRef}
+          id={id}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : undefined}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           rows={rows}
           dir="rtl"
-          className={`resize-y bg-white px-4 py-3 text-sm leading-7 text-gray-800 outline-none dark:bg-gray-900 dark:text-white ${
+          className={`resize-none bg-white px-4 py-3 text-sm leading-7 text-gray-800 outline-none dark:bg-gray-900 dark:text-white ${
             mobileTab === 'preview' ? 'hidden md:block' : ''
           }`}
         />
 
         <div
-          className={`max-w-none overflow-y-auto bg-gray-50 px-4 py-3 text-sm leading-7 text-gray-700 dark:bg-gray-800/40 dark:text-gray-200 [&_a]:text-brand-600 [&_a]:underline [&_h1]:mt-3 [&_h1]:text-lg [&_h1]:font-bold [&_h2]:mt-3 [&_h2]:text-base [&_h2]:font-bold [&_h3]:mt-2 [&_h3]:text-sm [&_h3]:font-bold [&_li]:mr-5 [&_ol]:list-decimal [&_p]:mb-2 [&_strong]:font-bold [&_ul]:list-disc ${
+          className={`max-w-none overflow-y-auto bg-gray-50 px-4 py-3 text-sm leading-7 text-gray-700 dark:bg-gray-800/40 dark:text-gray-200 [&_a]:text-brand-ink [&_a]:underline [&_h1]:mt-3 [&_h1]:text-lg [&_h1]:font-bold [&_h2]:mt-3 [&_h2]:text-base [&_h2]:font-bold [&_h3]:mt-2 [&_h3]:text-sm [&_h3]:font-bold [&_li]:mr-5 [&_ol]:list-decimal [&_p]:mb-2 [&_strong]:font-bold [&_ul]:list-disc ${
             mobileTab === 'write' ? 'hidden md:block' : ''
           }`}
         >
@@ -144,7 +150,7 @@ function MarkdownEditor({
         </div>
       </div>
 
-      {error && <p className="text-xs text-danger-600 dark:text-danger-400">{error}</p>}
+      {error && <p id={errorId} role="alert" className="text-xs text-danger-600 dark:text-danger-400">{error}</p>}
     </div>
   );
 }

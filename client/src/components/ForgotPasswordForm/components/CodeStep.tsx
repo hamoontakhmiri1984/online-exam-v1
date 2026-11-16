@@ -70,7 +70,7 @@ function CodeStep({
             type="button"
             onClick={onResend}
             disabled={loading || resending || (captchaRequired && !captcha)}
-            className="cursor-pointer text-xs text-brand-600 hover:underline disabled:cursor-not-allowed disabled:text-gray-400 disabled:no-underline dark:text-brand-400"
+            className="cursor-pointer text-xs text-brand-ink hover:underline disabled:cursor-not-allowed disabled:text-gray-400 disabled:no-underline"
           >
             {resending ? 'در حال ارسال...' : 'ارسال مجدد کد'}
           </button>
@@ -84,7 +84,7 @@ function CodeStep({
         type="button"
         disabled={loading || resending}
         onClick={onBack}
-        className="text-xs text-brand-600 hover:underline dark:text-brand-400 cursor-pointer"
+        className="text-xs text-brand-ink hover:underline cursor-pointer"
       >
         بازگشت و اصلاح شناسه
       </button>

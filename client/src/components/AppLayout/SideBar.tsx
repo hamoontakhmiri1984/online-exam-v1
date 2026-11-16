@@ -79,7 +79,7 @@ function Sidebar({
       </AnimatePresence>
 
       <aside
-        className={`fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-s border-gray-100 bg-white shadow-2xl transition-all duration-300 dark:border-white/5 dark:bg-gray-900 md:relative md:z-auto md:translate-x-0 md:border-e md:border-s-0 md:shadow-none ${
+        className={`fixed inset-y-0 right-0 z-50 flex h-dvh w-72 min-h-0 flex-col border-s border-gray-100 bg-white shadow-2xl transition-all duration-300 dark:border-white/5 dark:bg-gray-900 md:relative md:z-auto md:translate-x-0 md:border-e md:border-s-0 md:shadow-none ${
           isCollapsed ? 'md:w-20' : 'md:w-64'
         } ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
@@ -87,7 +87,7 @@ function Sidebar({
         <button
           onClick={onToggleCollapse}
           title={isCollapsed ? 'باز کردن منو' : 'جمع کردن منو'}
-          className="absolute -left-3.5 top-1/2 z-10 hidden h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-400 shadow-md transition-all duration-200 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-500 dark:hover:border-brand-900 dark:hover:bg-brand-950/40 dark:hover:text-brand-400 md:flex"
+          className="absolute -left-5.5 top-1/2 z-10 hidden h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-400 shadow-md transition-all duration-200 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-ink dark:border-gray-700 dark:bg-gray-900 dark:text-gray-500 dark:hover:border-brand-900 dark:hover:bg-brand-950/40 dark:hover:text-brand-ink md:flex"
         >
           {isCollapsed ? (
             <ChevronLeft size={14} />
@@ -96,9 +96,9 @@ function Sidebar({
           )}
         </button>
 
-        <div className="flex h-full flex-col justify-between overflow-y-auto">
-          <div>
-            <div className="flex items-center justify-between px-5 pb-3 pt-6">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex shrink-0 items-center justify-between px-5 pb-3 pt-6">
               <button
                 onClick={handleLogoClick}
                 className="flex cursor-pointer items-center"
@@ -115,10 +115,11 @@ function Sidebar({
               </button>
             </div>
 
-            <nav aria-label="منوی اصلی" className="flex flex-col gap-4 px-3 py-4">
+            <nav dir="ltr" aria-label="منوی اصلی" className="sidebar-navigation panel-scrollbar flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain px-3 py-2">
               {sections.map((section, sectionIndex) => (
                 <div
                   key={section.group ?? 'main'}
+                  dir="rtl"
                   role={section.group ? 'group' : undefined}
                   aria-label={
                     section.group ? navigationGroupLabel[section.group] : undefined
@@ -126,7 +127,7 @@ function Sidebar({
                   className="flex flex-col gap-0.5"
                 >
                   {section.group && !isCollapsed && (
-                    <p className="mx-1 mb-2 mt-2 rounded-lg border-r-[3px] border-violet-400 bg-violet-50/75 px-3 py-2 text-[11px] font-bold text-violet-700 dark:bg-violet-400/10 dark:text-violet-200">
+                    <p className="mx-1 mb-2 mt-2 rounded-lg border-r-[3px] border-violet-400 bg-violet-50/75 px-3 py-2 text-[11px] font-bold text-brand-ink dark:bg-violet-400/10">
                       {navigationGroupLabel[section.group]}
                     </p>
                   )}
@@ -140,12 +141,13 @@ function Sidebar({
                     <NavLink
                       key={to}
                       to={to}
+                      end={to === '/workspace'}
                       onClick={(e) => handleNavClick(e, to)}
                       title={isCollapsed ? label : undefined}
                       className={({ isActive }) =>
                         `flex items-center gap-3 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-brand-500 ${
                           isActive
-                            ? 'sidebar-selected-glass text-violet-800 dark:text-violet-100'
+                            ? 'sidebar-selected-glass text-brand-ink'
                             : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100'
                         } ${isCollapsed ? 'md:justify-center md:px-0' : ''}`
                       }
@@ -162,7 +164,7 @@ function Sidebar({
           </div>
 
           <div
-            className={`m-3 flex items-center rounded-xl bg-gray-50 p-3 transition-all duration-300 dark:bg-gray-800/60 ${
+            className={`m-3 flex shrink-0 items-center rounded-xl bg-gray-50 p-3 transition-all duration-300 dark:bg-gray-800/60 ${
               isCollapsed ? 'flex-col gap-2' : 'justify-between'
             }`}
           >

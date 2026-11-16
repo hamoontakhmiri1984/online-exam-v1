@@ -33,7 +33,7 @@ function QuestionCard({
             disabled={disabled}
             aria-label="ویرایش سوال"
             onClick={() => onEdit(question)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-brand-50 hover:text-brand-600 dark:text-gray-400 dark:hover:bg-brand-950/40 dark:hover:text-brand-400 transition"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-brand-50 hover:text-brand-ink dark:text-gray-400 dark:hover:bg-brand-950/40 dark:hover:text-brand-ink transition"
             title="ویرایش"
           >
             <Pencil size={16} />

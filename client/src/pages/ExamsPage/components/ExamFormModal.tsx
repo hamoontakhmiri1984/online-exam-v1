@@ -110,7 +110,7 @@ function ExamFormModal({
               <label htmlFor="exam-start-time" className="mb-1 block text-xs text-gray-500 dark:text-gray-400">ساعت برگزاری (انتخاب ۱۲ یا ۲۴ ساعته)</label>
               <TimePicker value={scheduledTime} onChange={onScheduledTimeChange} invalid={timeError} />
               {timeError && <p role="alert" className="text-xs font-medium text-rose-600 dark:text-rose-300">ساعت برگزاری الزامی است.</p>}
-              <p className="mt-1 text-[11px] font-medium text-violet-600 dark:text-violet-300">{scheduledTime ? `زمان انتخابی: ${scheduledTime}` : "مثلاً ۱۴:۳۰"}</p>
+              <p className="mt-1 text-[11px] font-medium text-brand-ink">{scheduledTime ? `زمان انتخابی: ${scheduledTime}` : "مثلاً ۱۴:۳۰"}</p>
             </div>
           </div>
         </div>

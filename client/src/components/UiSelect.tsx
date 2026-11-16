@@ -58,7 +58,7 @@ export default function UiSelect({ className = '', children, value, defaultValue
         onClick={() => { setActive(-1); setOpen(x => !x); }}
         onKeyDown={keyboard} className="ui-select-trigger flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-violet-200/70 bg-white/90 px-4 py-2.5 text-right text-sm text-slate-800 transition-colors hover:border-violet-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-400/25 dark:bg-slate-800/85 dark:text-white">
         <span className="min-w-0 truncate">{current?.label ?? 'انتخاب کنید'}</span>
-        <ChevronDown size={17} aria-hidden="true" className={`shrink-0 text-violet-600 transition-transform dark:text-violet-300 ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown size={17} aria-hidden="true" className={`shrink-0 text-brand-ink transition-transform dark:text-brand-ink ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && <div id={menuId} role="listbox" aria-label={ariaLabel} className="ui-select-menu absolute inset-x-0 top-full z-50 mt-2 max-h-60 overflow-y-auto rounded-2xl border border-violet-200 bg-white p-1.5 shadow-xl shadow-violet-950/10 dark:border-violet-400/25 dark:bg-slate-800">
         {choices.map((choice, index) => (
@@ -67,8 +67,8 @@ export default function UiSelect({ className = '', children, value, defaultValue
             // can scroll the document even though the menu is absolutely placed.
             onMouseDown={event => event.preventDefault()}
             onMouseEnter={() => setActive(index)} onClick={() => choose(choice)}
-            className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-right text-sm transition-colors disabled:opacity-40 ${active === index ? 'bg-violet-100 text-violet-800 dark:bg-violet-500/20 dark:text-violet-100' : 'text-slate-700 hover:bg-violet-50 dark:text-slate-200 dark:hover:bg-violet-500/10'}`}>
-            <span>{choice.label}</span>{choice.value === selected && <Check size={15} className="text-violet-600 dark:text-violet-300" />}
+            className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-right text-sm transition-colors disabled:opacity-40 ${active === index ? 'bg-violet-100 text-brand-ink dark:bg-violet-500/20' : 'text-slate-700 hover:bg-violet-50 dark:text-slate-200 dark:hover:bg-violet-500/10'}`}>
+            <span>{choice.label}</span>{choice.value === selected && <Check size={15} className="text-brand-ink" />}
           </button>
         ))}
       </div>}

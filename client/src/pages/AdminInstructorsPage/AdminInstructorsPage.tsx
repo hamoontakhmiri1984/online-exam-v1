@@ -74,7 +74,7 @@ export default function AdminInstructorsPage() {
             label: 'مدرس',
             render: (i) => (
               <Link
-                className="font-semibold text-brand-600 underline-offset-4 hover:underline dark:text-brand-400"
+                className="font-semibold text-brand-ink underline-offset-4 hover:underline"
                 to={`/instructors/${i.id}`}
               >
                 {userDisplayName(i)}

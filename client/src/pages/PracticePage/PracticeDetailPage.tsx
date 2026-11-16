@@ -14,6 +14,7 @@ import {
 import { ApiError } from "../../lib/apiClient";
 import AppLayout from "../../components/AppLayout/AppLayout";
 import PracticeQuestions from "./components/PracticeQuestions";
+import PanelBack from "../../components/PanelBack/PanelBack";
 import { panel, primary, secondary, statusLabels } from "./practiceUi";
 export default function PracticeDetailPage() {
   const { practiceId } = useParams();
@@ -43,6 +44,7 @@ function Detail({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [statusError, setStatusError] = useState("");
   const [revision, setRevision] = useState(0);
   const pending = useRef(false);
   useEffect(() => {
@@ -70,15 +72,15 @@ function Detail({ id }: { id: string }) {
     if (!practice || pending.current) return;
     pending.current = true;
     setBusy(true);
-    setError("");
+    setStatusError("");
     try {
-      await setPracticeStatus(
+      const status = await setPracticeStatus(
         id,
         practice.status === "Published" ? "Archived" : "Published",
       );
-      setPractice(await getPractice(id));
+      setPractice({ ...practice, ...status });
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "تغییر وضعیت ناموفق بود.");
+      setStatusError(e instanceof ApiError ? e.message : "تغییر وضعیت ناموفق بود.");
     } finally {
       pending.current = false;
       setBusy(false);
@@ -89,9 +91,7 @@ function Detail({ id }: { id: string }) {
       title={role === "Student" ? "تمرین و مرور" : "بازبینی مجموعهٔ تمرین"}
     >
       <div className="mx-auto max-w-6xl space-y-5" dir="rtl">
-        <Link to="/practice" className="text-sm text-gray-500">
-          ← بازگشت به تمرین‌ها
-        </Link>
+        <PanelBack to="/practice" label="بازگشت به تمرین‌ها" />
         {error && (
           <div
             role="alert"
@@ -114,7 +114,7 @@ function Detail({ id }: { id: string }) {
               <header className={panel}>
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
-                    <p className="mb-2 text-sm text-brand-600 dark:text-brand-300">
+                    <p className="mb-2 text-sm text-brand-ink">
                       {role === "Student"
                         ? "فضای تمرین شما"
                         : "بازبینی پیش از انتشار"}
@@ -149,10 +149,11 @@ function Detail({ id }: { id: string }) {
                       </Link>
                       <button type="button" onClick={() => { setDeleteError(""); setConfirmDelete(true); }} className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-200 px-4 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:border-rose-500/30 dark:text-rose-300 dark:hover:bg-rose-500/10"><Trash2 size={16}/> حذف تمرین</button>
                       <button
+                        type="button"
                         className={primary}
                         disabled={
                           busy ||
-                          (!practice.groups.length &&
+                          ((!practice.groups.length || !practice.questionCount) &&
                             practice.status !== "Published")
                         }
                         onClick={changeStatus}
@@ -164,6 +165,12 @@ function Detail({ id }: { id: string }) {
                             : "انتشار برای گروه‌های انتخاب‌شده"}
                       </button>
                     </div>
+                    {statusError && <p role="alert" className="mt-3 form-inline-error">{statusError}</p>}
+                    {practice.status !== "Published" && (!practice.groups.length || !practice.questionCount) && (
+                      <p className="mt-3 text-sm text-amber-800 dark:text-amber-300">
+                        برای انتشار، در ویرایش تمرین حداقل یک گروه و یک سؤال انتخاب کنید.
+                      </p>
+                    )}
                     <p className="mt-3 text-xs text-gray-500">
                       توقف دسترسی، سابقه‌ها را حذف نمی‌کند؛ با انتشار دوباره،
                       دسترسی برمی‌گردد.

@@ -35,7 +35,7 @@ export default function ReportsPage() {
         {instructorId && (
           <button
             type="button"
-            className="text-sm text-brand-600"
+            className="text-sm text-brand-ink"
             onClick={() => setInstructorId('')}
           >
             حذف فیلتر مدرس

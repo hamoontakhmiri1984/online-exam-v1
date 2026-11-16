@@ -1,3 +1,4 @@
+import PanelBack from '../../../components/PanelBack/PanelBack';
 import { TimerOff, XCircle } from 'lucide-react';
 import AppLayout from '../../../components/AppLayout/AppLayout';
 import Spinner from '../../../components/Spinner/Spinner';
@@ -52,7 +53,7 @@ function ResultScreen({
           </div>
         ) : attempt ? (
           <>
-            <div className="mb-6 text-5xl font-extrabold text-brand-600">
+            <div className="mb-6 text-5xl font-extrabold text-brand-ink">
               {Math.round(
                 (attempt.correctCount / (attempt.totalQuestions || 1)) * 100
               ).toLocaleString('fa-IR')}
@@ -66,12 +67,7 @@ function ResultScreen({
           </>
         ) : null}
 
-        <button
-          onClick={onBackToList}
-          className="w-full rounded-xl bg-brand-600 px-4 py-2.5 font-medium text-white transition hover:bg-brand-700"
-        >
-          بازگشت به لیست آزمون‌ها
-        </button>
+        <PanelBack onClick={onBackToList} label="بازگشت به لیست آزمون‌ها" />
       </div>
     </AppLayout>
   );

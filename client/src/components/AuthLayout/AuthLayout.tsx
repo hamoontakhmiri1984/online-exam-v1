@@ -122,7 +122,7 @@ function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProps) {
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="stagger-1 animate-fade-slide-up group mx-auto mt-6 flex items-center gap-1.5 text-sm font-medium text-gray-500 transition hover:text-brand-600 dark:text-gray-400 dark:hover:text-white cursor-pointer"
+            className="stagger-1 animate-fade-slide-up group mx-auto mt-6 flex items-center gap-1.5 text-sm font-medium text-gray-500 transition hover:text-brand-ink dark:text-gray-400 dark:hover:text-white cursor-pointer"
           >
             <ArrowRight
               size={15}

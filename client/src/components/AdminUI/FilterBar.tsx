@@ -2,6 +2,8 @@ import UiSelect from '../UiSelect';
 import type { ReactNode } from 'react';
 export const controlClass =
   'rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100';
+export const singleLineMenuClass =
+  '[&_.ui-select-menu]:min-w-max [&_.ui-select-menu]:whitespace-nowrap';
 export default function FilterBar({ children }: { children: ReactNode }) {
   return (
     <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-gray-200/70 bg-gray-50/70 p-3 dark:border-gray-800 dark:bg-gray-900/50">
@@ -20,7 +22,7 @@ export function RangeSelect({
     <label className="flex items-center gap-2 text-sm text-gray-500">
       بازهٔ زمانی
       <UiSelect
-        className="min-w-36"
+        className={`w-36 ${singleLineMenuClass}`}
         value={days}
         onChange={(e) => onChange(Number(e.target.value))}
       >

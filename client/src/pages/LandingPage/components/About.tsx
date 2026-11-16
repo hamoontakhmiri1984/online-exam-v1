@@ -79,7 +79,7 @@ function About({ data }: AboutProps) {
                 key={`${pillar.title}-${index}`}
                 className="flex flex-col items-center text-center"
               >
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-600/10 dark:text-brand-400">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 text-brand-ink dark:bg-brand-600/10">
                   <Icon size={22} />
                 </div>
                 <h3 className="mb-2 text-sm font-bold text-gray-900 dark:text-white">

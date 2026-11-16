@@ -18,7 +18,7 @@ function StepIndicator({ steps, currentIndex }: StepIndicatorProps) {
                   isCompleted
                     ? 'bg-brand-600 text-white'
                     : isCurrent
-                    ? 'bg-brand-50 text-brand-700 border-2 border-brand-500 dark:bg-brand-950/40 dark:text-brand-300'
+                    ? 'bg-brand-50 text-brand-ink border-2 border-brand-500 dark:bg-brand-950/40'
                     : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500'
                 }`}
               >

@@ -107,7 +107,7 @@ export default function GoogleAccess({ onSuccess, onFlowChange }: Props) {
             <button
               type="button"
               onClick={reset}
-              className="text-sm text-brand-600 dark:text-brand-400"
+              className="text-sm text-brand-ink"
             >
               بازگشت
             </button>

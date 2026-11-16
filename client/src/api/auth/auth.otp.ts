@@ -1,8 +1,35 @@
-import { apiRequest } from '../../lib/apiClient';
+import { ApiError, apiRequest } from '../../lib/apiClient';
 import type { CaptchaAnswer, OtpPurpose, RequestOtpResult, ResetPasswordResult, VerifyOtpResult, VerifyResetOtpResult, MeResponse } from './auth.types';
 import { captchaRequiredOf, messageOf, userFromMe } from './auth.utils';
 import { applySession } from './auth.session';
-export async function requestOtp(identifier: string, purpose: OtpPurpose, captcha?: CaptchaAnswer): Promise<RequestOtpResult> { try { await apiRequest('/auth/otp/request', { method: 'POST', body: { identifier, purpose, ...captcha } }); return { status: 'sent', identifier }; } catch (err) { return { status: 'error', message: messageOf(err), captchaRequired: captchaRequiredOf(err) }; } }
+export async function requestOtp(
+  identifier: string,
+  purpose: OtpPurpose,
+  captcha?: CaptchaAnswer,
+): Promise<RequestOtpResult> {
+  try {
+    await apiRequest('/auth/otp/request', {
+      method: 'POST',
+      body: { identifier, purpose, ...captcha },
+    });
+    return { status: 'sent', identifier };
+  } catch (err) {
+    const retryAfterSeconds =
+      err instanceof ApiError && err.status === 429 &&
+      err.body && typeof err.body === 'object' && 'retryAfterSeconds' in err.body
+        ? err.body.retryAfterSeconds
+        : undefined;
+    return {
+      status: 'error',
+      message: messageOf(err),
+      captchaRequired: captchaRequiredOf(err),
+      retryAfterSeconds: typeof retryAfterSeconds === 'number' &&
+        Number.isSafeInteger(retryAfterSeconds) && retryAfterSeconds > 0
+        ? retryAfterSeconds
+        : undefined,
+    };
+  }
+}
 export async function verifyOtp(
   identifier: string,
   purpose: OtpPurpose,

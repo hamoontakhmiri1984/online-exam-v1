@@ -13,7 +13,7 @@ function AppearanceSection({
 }) {
   const { selected, setBackground } = useWorkspaceBackground(userId);
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <div>
       <div className="flex items-center gap-3 mb-4">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-500/10 text-accent-600 dark:bg-accent-500/15 dark:text-accent-500">
           <Palette size={18} />

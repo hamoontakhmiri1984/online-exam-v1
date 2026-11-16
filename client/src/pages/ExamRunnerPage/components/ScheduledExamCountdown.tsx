@@ -30,10 +30,10 @@ export default function ScheduledExamCountdown({ scheduledAt, compact = false }:
   const countdown = [hours + days * 24, minutes, secs].map(pad).join(':');
   return (
     <div role="timer" aria-label="زمان باقی‌مانده تا شروع آزمون" className={`rounded-2xl border border-violet-200/70 bg-violet-50/70 text-center dark:border-violet-400/25 dark:bg-violet-500/10 ${compact ? 'px-4 py-3' : 'px-5 py-5'}`}>
-      <p className="mb-2 flex items-center justify-center gap-2 text-sm font-semibold text-violet-700 dark:text-violet-200">
+      <p className="mb-2 flex items-center justify-center gap-2 text-sm font-semibold text-brand-ink">
         <Clock3 size={17} /> زمان باقی‌مانده تا شروع آزمون
       </p>
-      <div dir="ltr" className="text-3xl font-extrabold tabular-nums tracking-wider text-violet-800 dark:text-violet-100">{countdown}</div>
+      <div dir="ltr" className="text-3xl font-extrabold tabular-nums tracking-wider text-brand-ink">{countdown}</div>
       <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">ساعت : دقیقه : ثانیه</p>
     </div>
   );

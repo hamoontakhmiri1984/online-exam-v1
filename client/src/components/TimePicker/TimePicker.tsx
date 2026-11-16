@@ -51,7 +51,7 @@ export default function TimePicker({ value, onChange, invalid = false }: Props) 
   return (
     <div className="relative min-w-0" ref={triggerRef}>
       <div className={`flex min-h-11 items-center gap-2 rounded-xl border bg-gray-50 px-3 dark:bg-gray-700 ${invalid ? 'border-rose-500' : 'border-gray-200 dark:border-gray-600'}`}>
-        <button type="button" aria-label="انتخاب ساعت و دقیقه" aria-expanded={open} onClick={() => setOpen(v => !v)} className="shrink-0 rounded-lg p-1 text-violet-600 hover:bg-violet-100 dark:text-violet-300">
+        <button type="button" aria-label="انتخاب ساعت و دقیقه" aria-expanded={open} onClick={() => setOpen(v => !v)} className="shrink-0 rounded-lg p-1 text-brand-ink hover:bg-violet-100">
           <Clock3 size={18}/><ChevronDown size={12} className="mx-auto"/>
         </button>
         <input
@@ -72,8 +72,8 @@ export default function TimePicker({ value, onChange, invalid = false }: Props) 
           <div className="mb-2.5 flex flex-wrap items-center justify-between gap-1.5">
             <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">انتخاب زمان</span>
             <div className="inline-flex rounded-lg bg-violet-50 p-1 dark:bg-violet-500/10" role="group" aria-label="قالب ساعت">
-              <button type="button" onClick={() => setMode('24')} aria-pressed={mode === '24'} className={`rounded-md px-2 py-1 text-xs ${mode === '24' ? 'bg-violet-600 text-white' : 'text-violet-700 dark:text-violet-200'}`}>۲۴ ساعته</button>
-              <button type="button" onClick={() => setMode('12')} aria-pressed={mode === '12'} className={`rounded-md px-2 py-1 text-xs ${mode === '12' ? 'bg-violet-600 text-white' : 'text-violet-700 dark:text-violet-200'}`}>۱۲ ساعته</button>
+              <button type="button" onClick={() => setMode('24')} aria-pressed={mode === '24'} className={`rounded-md px-2 py-1 text-xs ${mode === '24' ? 'bg-violet-600 text-white' : 'text-brand-ink'}`}>۲۴ ساعته</button>
+              <button type="button" onClick={() => setMode('12')} aria-pressed={mode === '12'} className={`rounded-md px-2 py-1 text-xs ${mode === '12' ? 'bg-violet-600 text-white' : 'text-brand-ink'}`}>۱۲ ساعته</button>
             </div>
           </div>
           <div className={`grid min-w-0 items-center gap-1.5 ${mode === '12' ? 'grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]' : 'grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'}`} dir="ltr">

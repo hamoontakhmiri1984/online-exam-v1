@@ -67,6 +67,12 @@ test('Postgres practice: concurrent retry, immutable snapshot, group revocation 
     },
   });
   await withPracticeApi(t, db, async (r) => {
+    const sampled = await r(`Instructor:${owner}`, 'POST', '/random-questions', {
+      bankIds: [bankId],
+      counts: { Easy: 0, Medium: 0, Hard: 1 },
+    });
+    assert.equal(sampled.status, 200, JSON.stringify(sampled.body));
+    assert.deepEqual(sampled.body, [{ id: questionId, bankId, text: 'Original', difficulty: 'Hard' }]);
     const created = await r(`Instructor:${owner}`, 'POST', '', {
       title: 'Integration practice',
       groupIds: [groupId],

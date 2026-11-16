@@ -123,7 +123,7 @@ function FooterSectionForm({ initialData, saving, onSave }: FooterSectionFormPro
         <button
           type="button"
           onClick={() => setLinks((prev) => [...prev, { label: '', href: '' }])}
-          className="inline-flex w-fit items-center gap-1.5 rounded-xl border border-dashed border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-500 transition hover:border-brand-400 hover:text-brand-600 dark:border-gray-600 dark:text-gray-400"
+          className="inline-flex w-fit items-center gap-1.5 rounded-xl border border-dashed border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-500 transition hover:border-brand-400 hover:text-brand-ink dark:border-gray-600 dark:text-gray-400"
         >
           <Plus size={13} />
           افزودنِ لینک
@@ -177,7 +177,7 @@ function FooterSectionForm({ initialData, saving, onSave }: FooterSectionFormPro
           onClick={() =>
             setSocialLinks((prev) => [...prev, { platform: SOCIAL_PLATFORMS[0], href: '' }])
           }
-          className="inline-flex w-fit items-center gap-1.5 rounded-xl border border-dashed border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-500 transition hover:border-brand-400 hover:text-brand-600 dark:border-gray-600 dark:text-gray-400"
+          className="inline-flex w-fit items-center gap-1.5 rounded-xl border border-dashed border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-500 transition hover:border-brand-400 hover:text-brand-ink dark:border-gray-600 dark:text-gray-400"
         >
           <Plus size={13} />
           افزودنِ شبکه

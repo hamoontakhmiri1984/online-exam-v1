@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { XCircle, Layout, Send, RotateCcw, FolderOpen } from 'lucide-react';
 import AppLayout from '../../components/AppLayout/AppLayout';
 import Spinner from '../../components/Spinner/Spinner';
@@ -33,7 +34,10 @@ function AdminSiteContentPage() {
     publish,
   } = useAdminSiteContent();
 
-  const [activeTab, setActiveTab] = useState<SiteContentSection>('hero');
+  const [searchParams] = useSearchParams();
+  const requestedSection = searchParams.get('section');
+  const initialSection: SiteContentSection = SITE_CONTENT_SECTIONS.find(section => section === requestedSection) ?? 'hero';
+  const [activeTab, setActiveTab] = useState<SiteContentSection>(initialSection);
   const [draftRevision, setDraftRevision] = useState(0);
   const [showSavedDraft, setShowSavedDraft] = useState(false);
 
@@ -68,7 +72,7 @@ function AdminSiteContentPage() {
       {error && <div role="alert" className="form-inline-error mb-4 flex items-center justify-between gap-2"><span>{error}</span><button aria-label="بستن خطا" type="button" onClick={clearError}><XCircle size={17}/></button></div>}
 
       <div className="mb-6 flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-ink dark:bg-brand-500/15">
           <Layout size={20} />
         </div>
         <div>
@@ -103,10 +107,10 @@ function AdminSiteContentPage() {
 
       <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
         <span className="me-auto text-xs text-gray-500 dark:text-gray-400">{showSavedDraft ? 'در حال ویرایش پیش‌نویس ذخیره‌شده' : 'فرم جدید و خالی؛ پیش‌نویس قبلی محفوظ است'}</span>
-        <button type="button" disabled={!!savingSection || publishing || loading} onClick={loadSavedDraft} className="inline-flex items-center gap-2 rounded-xl border border-violet-200 px-4 py-2 text-xs font-semibold text-violet-700 transition hover:bg-violet-50 disabled:opacity-50 dark:border-violet-400/25 dark:text-violet-200 dark:hover:bg-violet-400/10">
+        <button type="button" disabled={!!savingSection || publishing || loading} onClick={loadSavedDraft} className="inline-flex items-center gap-2 rounded-xl border border-violet-200 px-4 py-2 text-xs font-semibold text-brand-ink transition hover:bg-violet-50 disabled:opacity-50 dark:border-violet-400/25 dark:hover:bg-violet-400/10">
           <FolderOpen size={14}/> بارگذاری پیش‌نویس قبلی
         </button>
-        <button type="button" disabled={!!savingSection || publishing || loading} onClick={clearCurrentDraft} className="inline-flex items-center gap-2 rounded-xl border border-violet-200 px-4 py-2 text-xs font-semibold text-violet-700 transition hover:bg-violet-50 disabled:opacity-50 dark:border-violet-400/25 dark:text-violet-200 dark:hover:bg-violet-400/10">
+        <button type="button" disabled={!!savingSection || publishing || loading} onClick={clearCurrentDraft} className="inline-flex items-center gap-2 rounded-xl border border-violet-200 px-4 py-2 text-xs font-semibold text-brand-ink transition hover:bg-violet-50 disabled:opacity-50 dark:border-violet-400/25 dark:hover:bg-violet-400/10">
           <RotateCcw size={14}/> شروع با فرم خالی
         </button>
       </div>

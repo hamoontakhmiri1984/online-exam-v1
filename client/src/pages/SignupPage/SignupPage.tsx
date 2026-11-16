@@ -15,7 +15,7 @@ function SignupPage() {
           <button
             type="button"
             onClick={() => navigate('/login')}
-            className="font-bold text-brand-600 hover:underline dark:text-brand-400"
+            className="font-bold text-brand-ink hover:underline"
           >
             ورود به حساب
           </button>

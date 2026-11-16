@@ -28,7 +28,7 @@ function UsageRow({
           {label}
         </span>
         <span
-          className="font-medium text-violet-700 dark:text-violet-200"
+          className="font-medium text-brand-ink"
         >
           {used.toLocaleString('fa-IR')} / {formatLimit(limit)}
         </span>

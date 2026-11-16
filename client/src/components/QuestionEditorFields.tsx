@@ -76,7 +76,7 @@ export default function QuestionEditorFields({
           })}
         </div>
         {onAddOption && options.length < 6 && (
-          <button type="button" onClick={onAddOption} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-dashed border-violet-200 px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50 dark:border-violet-400/25 dark:text-violet-200">
+          <button type="button" onClick={onAddOption} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-dashed border-violet-200 px-4 py-2 text-sm font-semibold text-brand-ink hover:bg-violet-50 dark:border-violet-400/25">
             <Plus size={16}/> افزودن گزینه
           </button>
         )}

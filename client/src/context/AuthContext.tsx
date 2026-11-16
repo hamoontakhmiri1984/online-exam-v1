@@ -1,13 +1,22 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { getAuthToken } from '../lib/apiClient';
 import { bootstrapSession, getCurrentUser, logout as logoutRequest, subscribeToAuth, type User } from '../api/authApi';
+import { isTabLoginActive, shouldRestoreSessionOnLoad } from '../api/auth/auth.tabSession';
 type SessionState = 'loading' | 'ready' | 'unavailable';
 export type AuthContextValue = { user: User | null; isAuthenticated: boolean; isSessionReady: boolean; isSessionUnavailable: boolean; retrySession: () => void; logout: () => void; };
 type AuthProviderProps = { children: ReactNode; };
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(() => getCurrentUser());
-  const [sessionState, setSessionState] = useState<SessionState>('loading');
+  const [restoreSessionOnMount] = useState(() =>
+    shouldRestoreSessionOnLoad(
+      typeof window === 'undefined' ? '/' : window.location.pathname,
+      isTabLoginActive(),
+    )
+  );
+  const [sessionState, setSessionState] = useState<SessionState>(
+    () => restoreSessionOnMount ? 'loading' : 'ready'
+  );
   useEffect(() => subscribeToAuth(currentUser => {
     setUser(currentUser);
     if (currentUser && getAuthToken()) setSessionState('ready');
@@ -41,10 +50,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (isActive()) setSessionState('unavailable');
   }, []);
   useEffect(() => {
+    // Public pages should be usable immediately as guests in fresh tabs.
+    if (!restoreSessionOnMount) return;
     let active = true;
     void initializeSession(() => active);
     return () => { active = false; };
-  }, [initializeSession]);
+  }, [initializeSession, restoreSessionOnMount]);
   // A startup outage is not a logout: reconnect automatically without
   // forcing the user to repeatedly press Refresh or log in again.
   useEffect(() => {

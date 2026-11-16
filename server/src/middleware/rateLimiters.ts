@@ -17,12 +17,15 @@ export const authLimiter = rateLimit({
   },
 });
 
-// Keep the resend window aligned with the client countdown.
+// Login permits five sends per window. Signup and recovery have their own resend cooldown.
 export const otpSendLimiter = rateLimit({
   store: new RedisRateLimitStore(rateLimitRedis, 'otpSend'),
   passOnStoreError: false,
   windowMs: 90 * 1000,
-  max: 1,
+  max: (req) =>
+    /^\/otp\/request\/?$/i.test(req.path) && req.body?.purpose === 'LOGIN'
+      ? 5
+      : 1,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: otpSendKey,

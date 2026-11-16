@@ -10,6 +10,7 @@ import {
 import {
   answerSchema,
   createPracticeSchema,
+  randomPracticeQuestionsSchema,
   statusSchema,
   updatePracticeSchema,
 } from './practice/practice.validation';
@@ -25,6 +26,7 @@ import {
   practiceHistory,
 } from './practice/practice.read';
 import { answerPractice } from './practice/practice.answers';
+import { randomPracticeQuestions } from './practice/practice.random';
 import type { z } from 'zod';
 const router = Router();
 router.use(requireAuth);
@@ -55,6 +57,16 @@ router.post(
           parse(createPracticeSchema, req.body),
         ),
       );
+  }),
+);
+router.post(
+  '/random-questions',
+  requireRole('Instructor'),
+  asyncHandler(async (req, res) => {
+    res.json(await randomPracticeQuestions(
+      req.user!.sub,
+      parse(randomPracticeQuestionsSchema, req.body),
+    ));
   }),
 );
 router.get(

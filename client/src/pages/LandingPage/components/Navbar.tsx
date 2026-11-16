@@ -5,6 +5,9 @@ import { Menu, X, Sun, Moon, LogIn } from 'lucide-react';
 import { collapseFade } from '../../../components/motion/variants';
 import useTheme from '../../../hooks/useTheme';
 import Logo from '../../../components/Logo/Logo';
+import { useAuth } from '../../../context/AuthContext';
+import LandingProfileMenu from './LandingProfileMenu';
+import { getLandingAccountView } from './landingAccountView';
 
 const NAV_LINKS = [
   { label: 'ویژگی‌ها', href: '#features' },
@@ -18,6 +21,19 @@ function Navbar() {
   const location = useLocation();
   const { isDark, toggleTheme } = useTheme();
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+  const { user, isSessionReady, logout } = useAuth();
+  const account = getLandingAccountView({ user, isSessionReady });
+
+  function openProfileRoute(path: string) {
+    setIsMenuOpen(false);
+    navigate(path);
+  }
+
+  function signOut() {
+    setIsMenuOpen(false);
+    logout();
+    navigate('/');
+  }
 
   function handleNavLinkClick(event: React.MouseEvent, hash: string) {
     if (location.pathname === '/') return;
@@ -48,7 +64,7 @@ function Navbar() {
               key={link.href}
               href={navLinkHref(link.href)}
               onClick={(e) => handleNavLinkClick(e, link.href)}
-              className="group relative text-sm font-medium text-gray-600 transition hover:text-brand-600 dark:text-gray-300 dark:hover:text-white"
+              className="group relative text-sm font-medium text-gray-600 transition hover:text-brand-ink dark:text-gray-300 dark:hover:text-white"
             >
               {link.label}
               <span className="absolute -bottom-1.5 right-0 h-0.5 w-0 rounded-full bg-brand-600 transition-all duration-300 group-hover:w-full dark:bg-brand-400" />
@@ -61,37 +77,47 @@ function Navbar() {
             type="button"
             onClick={toggleTheme}
             aria-label={isDark ? 'حالت روشن' : 'حالت شب'}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition duration-300 hover:bg-violet-50 hover:border-violet-300 hover:text-violet-700 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-violet-500/15"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition duration-300 hover:bg-violet-50 hover:border-violet-300 hover:text-brand-ink dark:border-gray-700 dark:text-gray-300 dark:hover:bg-violet-500/15"
           >
             {isDark ? <Sun size={16} /> : <Moon size={16} />}
           </button>
-          <button
-            onClick={() => navigate('/login')}
-            className="group flex items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition duration-300 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 dark:border-gray-700 dark:text-gray-200 dark:hover:border-brand-600/50 dark:hover:bg-gray-800 dark:hover:text-white"
-          >
-            <LogIn
-              size={15}
-              className="transition-transform duration-300 group-hover:text-violet-600"
-            />
-            ورود
-          </button>
-          <button
-            onClick={() => navigate('/signup')}
-            className="ui-primary-gradient rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition duration-300 hover:bg-brand-700 hover:shadow-lg hover:shadow-brand-600/40"
-          >
-            ثبت‌نام رایگان
-          </button>
+          {account.status === 'authenticated' ? (
+            <LandingProfileMenu account={account} onNavigate={openProfileRoute} onLogout={signOut} />
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="group flex items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition duration-300 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-ink dark:border-gray-700 dark:text-gray-200 dark:hover:border-brand-600/50 dark:hover:bg-gray-800 dark:hover:text-white"
+              >
+                <LogIn size={15} className="transition-transform duration-300 group-hover:text-violet-600" />
+                ورود
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/signup')}
+                className="ui-primary-gradient rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition duration-300 hover:bg-brand-700 hover:shadow-lg hover:shadow-brand-600/40"
+              >
+                ثبت‌نام رایگان
+              </button>
+            </>
+          )}
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsMenuOpen((prev) => !prev)}
-          aria-label={isMenuOpen ? 'بستن منو' : 'باز کردن منو'}
-          aria-expanded={isMenuOpen}
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300 md:hidden"
-        >
-          {isMenuOpen ? <X size={18} /> : <Menu size={18} />}
-        </button>
+        <div className="flex items-center gap-2 md:hidden">
+          {account.status === 'authenticated' && (
+            <LandingProfileMenu account={account} onNavigate={openProfileRoute} onLogout={signOut} />
+          )}
+          <button
+            type="button"
+            onClick={() => setIsMenuOpen((prev) => !prev)}
+            aria-label={isMenuOpen ? 'بستن منو' : 'باز کردن منو'}
+            aria-expanded={isMenuOpen}
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-violet-200/70 bg-white/70 text-gray-600 transition-colors hover:bg-violet-50 dark:border-violet-400/20 dark:bg-slate-900/70 dark:text-gray-300"
+          >
+            {isMenuOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -127,19 +153,25 @@ function Navbar() {
             >
               {isDark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
-            <button
-              onClick={() => navigate('/login')}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-gray-200 py-2 text-sm font-medium text-gray-700 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 dark:border-gray-700 dark:text-gray-200 dark:hover:border-brand-600/50 dark:hover:bg-gray-800 dark:hover:text-white"
-            >
-              <LogIn size={15} />
-              ورود
-            </button>
-            <button
-              onClick={() => navigate('/signup')}
-              className="ui-primary-gradient flex-1 rounded-xl py-2 text-sm font-semibold text-white"
-            >
-              ثبت‌نام رایگان
-            </button>
+            {account.status === 'guest' && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => { setIsMenuOpen(false); navigate('/login'); }}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-gray-200 py-2 text-sm font-medium text-gray-700 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-ink dark:border-gray-700 dark:text-gray-200 dark:hover:border-brand-600/50 dark:hover:bg-gray-800 dark:hover:text-white"
+                >
+                  <LogIn size={15} />
+                  ورود
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setIsMenuOpen(false); navigate('/signup'); }}
+                  className="ui-primary-gradient flex-1 rounded-xl py-2 text-sm font-semibold text-white"
+                >
+                  ثبت‌نام رایگان
+                </button>
+              </>
+            )}
           </div>
           </motion.div>
         )}

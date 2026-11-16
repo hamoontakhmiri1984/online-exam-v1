@@ -15,8 +15,16 @@ export type SiteContentSection = (typeof SITE_CONTENT_SECTIONS)[number];
 // Each section defines its own data shape; consumers supply defaults.
 export type SiteContentMap = Record<SiteContentSection, Record<string, unknown>>;
 
-export function getSiteContent(): Promise<{ sections: SiteContentMap }> {
-  return apiRequest<{ sections: SiteContentMap }>('/cms');
+export function getSiteContent(): Promise<{ sections: SiteContentMap; hiddenSections: SiteContentSection[] }> {
+  return apiRequest<{ sections: SiteContentMap; hiddenSections: SiteContentSection[] }>('/cms');
+}
+
+export function publishSiteContentSection(section: SiteContentSection): Promise<{ section: string; published: boolean }> {
+  return apiRequest(`/cms/admin/publish/${section}`, { method: 'POST' });
+}
+
+export function unpublishSiteContentSection(section: SiteContentSection): Promise<{ section: string; published: boolean }> {
+  return apiRequest(`/cms/admin/unpublish/${section}`, { method: 'POST' });
 }
 
 export function getDraftSiteContent(): Promise<{ sections: SiteContentMap }> {

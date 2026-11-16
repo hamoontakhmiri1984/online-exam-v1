@@ -206,7 +206,7 @@ function ExamRunnerPage() {
               {exam ? 'در حال بررسی انتشار سؤال‌های آزمون…' : 'این آزمون یافت نشد یا دسترسی به آن ندارید.'}
             </p>
           )}
-          {exam && <button type="button" onClick={retryLoadData} className="mt-5 rounded-xl border border-violet-200 px-4 py-2 text-sm font-semibold text-violet-700 dark:border-violet-400/30 dark:text-violet-200">بررسی مجدد</button>}
+          {exam && <button type="button" onClick={retryLoadData} className="mt-5 rounded-xl border border-violet-200 px-4 py-2 text-sm font-semibold text-brand-ink dark:border-violet-400/30">بررسی مجدد</button>}
         </div>
       </AppLayout>
     );

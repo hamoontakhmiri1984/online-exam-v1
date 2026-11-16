@@ -1,9 +1,11 @@
+import PanelBack from '../../components/PanelBack/PanelBack';
 import ListPagination from '../../components/ListPagination/ListPagination';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowRight, Upload, Plus, LibraryBig } from 'lucide-react';
+import { Plus, LibraryBig } from 'lucide-react';
 
 import AppLayout from '../../components/AppLayout/AppLayout';
+import ExcelImportButton from '../../components/ExcelImportButton/ExcelImportButton';
 import { getCurrentUser } from '../../api/authApi';
 
 import useBankQuestions from '../../hooks/useBankQuestions';
@@ -168,29 +170,13 @@ function QuestionBankDetailsPage() {
     <AppLayout title="مدیریت سؤال‌های بانک">
       <div className="mx-auto max-w-6xl" dir="rtl">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={() => navigate('/question-banks')}
-          className="flex items-center gap-2 text-sm text-gray-500 hover:text-brand-600"
-        >
-          <ArrowRight size={17} />
-          بازگشت به بانک‌ها
-        </button>
+        <PanelBack onClick={() => navigate('/question-banks')} label="بازگشت به بانک‌ها" />
 
-        {canManage && (
-          <button
-            type="button"
-            onClick={importModal.open}
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 transition"
-          >
-            <Upload size={16} />
-            ایمپورت از اکسل
-          </button>
-        )}
+        {canManage && <ExcelImportButton onClick={importModal.open} />}
       </div>
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-violet-200/50 bg-gradient-to-bl from-violet-50 via-white to-white p-5 dark:border-violet-400/20 dark:from-violet-500/10 dark:via-slate-900 dark:to-slate-900">
-        <div className="min-w-0"><p className="mb-2 inline-flex items-center gap-2 text-sm font-semibold text-violet-600 dark:text-violet-300"><LibraryBig size={17}/> بانک سؤال</p><h1 className="break-words text-xl font-bold text-slate-800 dark:text-white">{bank?.name || "سؤال‌های بانک"}</h1><p className="mt-2 text-xs text-slate-500">{bank ? `دسته‌بندی: ${bank.category} • ${bank.questionCount.toLocaleString("fa-IR")} سؤال` : bankError || "سؤال‌ها را مدیریت کنید و پاسخ صحیح را مشخص کنید."}</p></div>
+        <div className="min-w-0"><p className="mb-2 inline-flex items-center gap-2 text-sm font-semibold text-brand-ink"><LibraryBig size={17}/> بانک سؤال</p><h1 className="break-words text-xl font-bold text-slate-800 dark:text-white">{bank?.name || "سؤال‌های بانک"}</h1><p className="mt-2 text-xs text-slate-500">{bank ? `دسته‌بندی: ${bank.category} • ${bank.questionCount.toLocaleString("fa-IR")} سؤال` : bankError || "سؤال‌ها را مدیریت کنید و پاسخ صحیح را مشخص کنید."}</p></div>
         {canManage && <button type="button" onClick={() => { resetForm(); setFormOpen(true); }} className="ui-primary-gradient inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold"><Plus size={17}/> سؤال جدید</button>}
       </div>
       <section className="rounded-2xl border border-violet-100 bg-white p-4 dark:border-violet-400/15 dark:bg-slate-900 sm:p-5">

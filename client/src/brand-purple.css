@@ -1,0 +1,25 @@
+:root {
+  --ui-brand-ink: #5b3bad;
+  --ui-brand-fill: linear-gradient(105deg, #6546c6, #7654ca);
+  --ui-brand-on-fill: #fff;
+  --ui-brand-shadow: 0 8px 20px rgba(105, 73, 200, .23);
+}
+
+.dark {
+  --ui-brand-ink: #d5c1ff;
+  --ui-brand-shadow: 0 8px 24px rgba(82, 47, 173, .3);
+}
+
+/* Legacy filled actions also appear outside the glass layout, for example on session recovery. */
+:where(button, a):is(
+  .bg-brand-500, .bg-brand-600, .bg-brand-700,
+  .bg-violet-500, .bg-violet-600, .bg-violet-700,
+  .bg-purple-500, .bg-purple-600, .bg-purple-700
+):not(:disabled, .bg-danger-600, .text-danger-600) {
+  background: var(--ui-brand-fill) !important;
+  color: var(--ui-brand-on-fill) !important;
+}
+
+.auth-premium-card button.text-brand-600 {
+  color: var(--ui-brand-ink);
+}

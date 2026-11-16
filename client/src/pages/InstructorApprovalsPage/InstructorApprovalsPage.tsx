@@ -59,7 +59,7 @@ function InstructorApprovalsPage() {
             className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
               status === tab.value
                 ? 'ui-purple-gradient text-white shadow-sm'
-                : 'text-slate-600 hover:bg-violet-50 hover:text-violet-700 dark:text-slate-300 dark:hover:bg-white/10'
+                : 'text-slate-600 hover:bg-violet-50 hover:text-brand-ink dark:text-slate-300 dark:hover:bg-white/10'
             }`}
           >
             {tab.label}

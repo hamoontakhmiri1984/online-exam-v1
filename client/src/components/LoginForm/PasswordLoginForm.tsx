@@ -101,6 +101,7 @@ function PasswordLoginForm({
     setServerError('');
     setLoading(true);
 
+    let signedIn = false;
     try {
       const result = await loginWithPassword(
         identifier,
@@ -113,6 +114,7 @@ function PasswordLoginForm({
         onCaptchaChange(null);
 
         onSuccess(result.user.onboardingCompleted);
+        signedIn = true;
 
         return;
       }
@@ -128,7 +130,8 @@ function PasswordLoginForm({
         setCaptchaResetSignal((current) => current + 1);
       }
     } finally {
-      setLoading(false);
+      // Keep the button busy while the destination route loads.
+      if (!signedIn) setLoading(false);
     }
   }
 
@@ -168,7 +171,7 @@ function PasswordLoginForm({
         <Link
           to="/forgot-password"
           state={{ identifier }}
-          className="text-xs text-brand-600 hover:underline dark:text-brand-400"
+          className="text-xs text-brand-ink hover:underline"
         >
           رمز عبور را فراموش کرده‌اید؟
         </Link>
@@ -178,7 +181,7 @@ function PasswordLoginForm({
             type="checkbox"
             checked={rememberMe}
             onChange={(event) => onRememberMeChange(event.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-400"
+            className="h-4 w-4 rounded border-gray-300 text-brand-ink focus:ring-brand-400"
           />
           مرا به خاطر بسپار
         </label>
@@ -191,8 +194,8 @@ function PasswordLoginForm({
       <Button type="submit" disabled={loading || (captchaRequired && !captcha)}>
         {loading ? (
           <span className="flex items-center justify-center gap-2">
-            <Loader2 size={15} className="animate-spin" />
-            در حال ورود...
+            <Loader2 size={15} aria-hidden="true" className="motion-safe:animate-spin" />
+            در حال ورود…
           </span>
         ) : (
           'ورود'
@@ -203,7 +206,7 @@ function PasswordLoginForm({
         type="button"
         onClick={onChangeMethod}
         disabled={loading}
-        className="mx-auto cursor-pointer text-xs text-gray-500 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-60 dark:text-gray-400 dark:hover:text-brand-400"
+        className="mx-auto cursor-pointer text-xs text-gray-500 hover:text-brand-ink disabled:cursor-not-allowed disabled:opacity-60 dark:text-gray-400 dark:hover:text-brand-ink"
       >
         {codeLabel}
       </button>

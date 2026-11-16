@@ -104,17 +104,10 @@ function useAdminBlogPostEditor(postId: string | undefined) {
   ): Promise<BlogPostAdmin | null> {
     const errors = validate();
     setFieldErrors(errors);
-    const validationError = Object.values(errors)[0];
-    if (validationError) {
-      const message = 'لطفاً فیلدهای مشخص‌شده را تکمیل یا اصلاح کنید.';
-      notifySaveError(message);
-      setError(message);
-      return null;
-    }
+    setError(null);
+    if (Object.keys(errors).length) return null;
 
     setSaving(true);
-    setError(null);
-    setFieldErrors({});
     try {
       const input = {
         title: title.trim(),

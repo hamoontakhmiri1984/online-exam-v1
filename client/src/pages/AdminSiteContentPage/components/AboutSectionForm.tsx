@@ -101,7 +101,7 @@ function AboutSectionForm({ initialData, saving, onSave }: AboutSectionFormProps
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-ink dark:bg-brand-500/15">
                     <Icon size={16} />
                   </div>
                   <select
@@ -150,7 +150,7 @@ function AboutSectionForm({ initialData, saving, onSave }: AboutSectionFormProps
               { icon: DEFAULT_ICON_NAME, title: '', description: '' },
             ])
           }
-          className="inline-flex w-fit items-center gap-1.5 rounded-xl border border-dashed border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-500 transition hover:border-brand-400 hover:text-brand-600 dark:border-gray-600 dark:text-gray-400"
+          className="inline-flex w-fit items-center gap-1.5 rounded-xl border border-dashed border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-500 transition hover:border-brand-400 hover:text-brand-ink dark:border-gray-600 dark:text-gray-400"
         >
           <Plus size={13} />
           افزودنِ ستون

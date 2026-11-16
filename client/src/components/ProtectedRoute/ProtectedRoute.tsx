@@ -15,7 +15,7 @@ function ProtectedRoute({ children, allowedRoles, skipOnboardingGate = false }: 
     case 'unavailable':
       return <SessionUnavailable onRetry={retrySession} />;
     case 'loading':
-      return <div className="flex min-h-screen items-center justify-center"><Spinner /></div>;
+      return <div className="flex min-h-screen items-center justify-center"><Spinner showLabel /></div>;
     case 'redirect':
       return <Navigate to={decision.to} replace />;
     default:

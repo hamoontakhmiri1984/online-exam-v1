@@ -115,7 +115,7 @@ function MyResultsPage() {
       label: 'آزمون‌های داده‌شده',
       value: records.length.toLocaleString('fa-IR'),
       icon: ListChecks,
-      bg: 'bg-violet-500/12 text-violet-600 dark:text-violet-300',
+      bg: 'bg-violet-500/12 text-brand-ink',
     },
     {
       label: 'میانگین نمره',
@@ -168,7 +168,7 @@ function MyResultsPage() {
           <section aria-label="تاریخچه آزمون‌ها" className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-lg font-bold text-slate-900 dark:text-white">تاریخچه آزمون‌ها</h2>
-              <span className="rounded-lg bg-violet-100/80 px-3 py-1.5 text-xs font-semibold text-violet-700 dark:bg-violet-500/15 dark:text-violet-200">
+              <span className="rounded-lg bg-violet-100/80 px-3 py-1.5 text-xs font-semibold text-brand-ink dark:bg-violet-500/15">
                 {sortedAttempts.length.toLocaleString('fa-IR')} نتیجه
               </span>
             </div>
@@ -222,7 +222,7 @@ function MyResultsPage() {
                     key: 'actions',
                     label: 'عملیات',
                     render: (attempt) => attempt.exam.allowReview ? (
-                      <button type="button" onClick={() => navigate(`/exams/${attempt.exam.id}/review`)} className="ui-action-edit inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-violet-200 px-3 py-2 text-xs font-semibold text-violet-700 transition hover:bg-violet-50 dark:border-violet-400/25 dark:text-violet-200 dark:hover:bg-violet-500/10">
+                      <button type="button" onClick={() => navigate(`/exams/${attempt.exam.id}/review`)} className="ui-action-edit inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-violet-200 px-3 py-2 text-xs font-semibold text-brand-ink transition hover:bg-violet-50 dark:border-violet-400/25 dark:hover:bg-violet-500/10">
                         <Eye size={15}/> مرور پاسخ‌ها
                       </button>
                     ) : <span className="text-xs text-slate-400">—</span>,

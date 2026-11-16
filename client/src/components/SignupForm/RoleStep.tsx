@@ -73,7 +73,7 @@ function RoleStep({
                   </span>
                 )}
 
-                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-violet-500/10 text-violet-600 dark:text-violet-300"><Icon size={25} strokeWidth={1.8}/></span>
+                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-violet-500/10 text-brand-ink"><Icon size={25} strokeWidth={1.8}/></span>
 
                 <span className="text-sm font-bold text-gray-800 dark:text-white">
                   {option.title}

@@ -52,7 +52,7 @@ function Modal({ isOpen, onClose, children, label = 'پنجرهٔ گفتگو', w
             type="button"
             onClick={onClose}
             aria-label="بستن"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-violet-200/60 text-slate-400 outline-none transition hover:bg-violet-50 hover:text-violet-700 focus-visible:ring-2 focus-visible:ring-violet-400 dark:border-violet-400/20 dark:hover:bg-violet-500/10"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-violet-200/60 text-slate-400 outline-none transition hover:bg-violet-50 hover:text-brand-ink focus-visible:ring-2 focus-visible:ring-violet-400 dark:border-violet-400/20 dark:hover:bg-violet-500/10"
           >
             <X size={18} />
           </button>

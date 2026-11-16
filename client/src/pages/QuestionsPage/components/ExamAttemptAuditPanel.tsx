@@ -62,7 +62,7 @@ export default function ExamAttemptAuditPanel({ examId }: { examId: string }) {
       ) : error ? (
         <div role="alert" className="py-3 text-sm text-danger-600">
           <p>{error}</p>
-          <button type="button" onClick={() => void load(page)} className="mt-2 font-medium text-brand-600">
+          <button type="button" onClick={() => void load(page)} className="mt-2 font-medium text-brand-ink">
             تلاش دوباره
           </button>
         </div>

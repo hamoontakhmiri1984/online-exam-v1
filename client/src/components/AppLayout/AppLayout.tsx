@@ -7,6 +7,7 @@ import useSidebarCollapse from '../../hooks/useSidebarCollapse';
 import useWorkspaceBackground from '../../hooks/useWorkspaceBackground';
 import { useAuth } from '../../context/AuthContext';
 import { useExamGuard } from '../../context/ExamGuardContext';
+import { EMPTY_WORKSPACE_PATH } from '../../constants/workspace';
 import Sidebar from './SideBar';
 import Header from './Header';
 
@@ -28,7 +29,7 @@ function readTabs(key: string): PanelTab[] {
       typeof tab.title === 'string'
     );
     const restored = Array.from(new Map(valid.map(tab => [tab.path.split('?')[0], { ...tab, path: tab.path.split('?')[0] }])).values());
-    return restored.filter(tab => tab.path !== '/workspace').slice(-20);
+    return restored.filter(tab => tab.path !== EMPTY_WORKSPACE_PATH).slice(-20);
   } catch {
     return [];
   }
@@ -50,7 +51,7 @@ function AppLayout({ children, title }: AppLayoutProps) {
   const currentPath = location.pathname;
 
   useEffect(() => {
-    if (!accountKey || currentPath === '/workspace') return;
+    if (!accountKey || currentPath === EMPTY_WORKSPACE_PATH) return;
     setTabState(previous => {
       const existing = previous.accountKey === accountKey ? previous.tabs : readTabs(accountKey);
       const next = existing.some(tab => tab.path === currentPath)
@@ -84,33 +85,42 @@ function AppLayout({ children, title }: AppLayoutProps) {
     const index = tabs.findIndex(tab => tab.path === path);
     if (index < 0) return;
     const remaining = tabs.filter(tab => tab.path !== path);
-    try {
-      sessionStorage.setItem(accountKey, JSON.stringify(remaining));
-    } catch {
-      // Closing a tab should still work when storage is unavailable.
+    function removeTab() {
+      try {
+        sessionStorage.setItem(accountKey, JSON.stringify(remaining));
+      } catch {
+        // Closing a tab should still work when storage is unavailable.
+      }
+      setTabState({ accountKey, tabs: remaining });
     }
-    setTabState({ accountKey, tabs: remaining });
+
     if (path === currentPath) {
       const next = remaining[Math.min(index, remaining.length - 1)];
-      guardNavigation(() => navigate(next?.path ?? '/workspace'));
+      guardNavigation(() => {
+        removeTab();
+        navigate(next?.path ?? EMPTY_WORKSPACE_PATH, { replace: !next });
+      });
+    } else {
+      removeTab();
     }
   }
 
   return (
-    <div className={`glass-app-shell workspace-theme-${workspaceBackground} min-h-screen bg-surface-light text-gray-900 transition-colors dark:bg-surface-dark dark:text-white`}>
-      <div className="flex min-h-screen flex-col md:flex-row">
+    <div className={`glass-app-shell workspace-theme-${workspaceBackground} h-dvh overflow-hidden bg-surface-light text-gray-900 transition-colors dark:bg-surface-dark dark:text-white`}>
+      <div className="flex h-full min-h-0 flex-col md:flex-row">
         <Sidebar
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
           isCollapsed={isCollapsed}
           onToggleCollapse={toggleCollapse}
         />
-        <main onClickCapture={selectPlainTableRow} className={`min-w-0 flex-1 transition-all duration-300 motion-reduce:transition-none ${isCollapsed ? 'md:w-[calc(100%-5rem)]' : 'md:w-[calc(100%-16rem)]'}`}>
+        <main onClickCapture={selectPlainTableRow} className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden transition-all duration-300 motion-reduce:transition-none ${isCollapsed ? 'md:w-[calc(100%-5rem)]' : 'md:w-[calc(100%-16rem)]'}`}>
           <Header
             title={title}
             isDark={isDark}
             onToggleTheme={toggleTheme}
             onOpenSidebar={() => setIsSidebarOpen(true)}
+            onGoHome={() => guardNavigation(() => navigate('/'))}
           />
           {showTabs && tabs.length > 0 && (
             <nav aria-label="تب‌های باز پنل" className="panel-internal-tabs">
@@ -126,8 +136,10 @@ function AppLayout({ children, title }: AppLayoutProps) {
               ))}
             </nav>
           )}
-          <div className="mx-auto w-full max-w-none px-3 py-5 sm:px-4 md:px-5 md:py-7 xl:px-6 xl:py-8">
-            {children}
+          <div dir="ltr" data-testid="panel-scroll-region" className="panel-scrollbar min-h-0 w-full flex-1 overflow-y-auto overscroll-contain">
+            <div dir="rtl" className="mx-auto max-w-[90rem] px-3 py-5 sm:px-4 md:px-5 md:py-7 xl:px-6 xl:py-8">
+              {children}
+            </div>
           </div>
         </main>
       </div>

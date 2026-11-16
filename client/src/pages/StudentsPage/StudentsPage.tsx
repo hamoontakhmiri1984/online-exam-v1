@@ -112,7 +112,7 @@ function StudentsPage() {
                                 {groupNames.map((name) => (
                                   <span
                                     key={name}
-                                    className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 dark:bg-brand-950/40 dark:text-brand-400"
+                                    className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-ink dark:bg-brand-950/40"
                                   >
                                     <Users size={12} />
                                     {name}

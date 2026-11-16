@@ -17,9 +17,9 @@ export default function InstructorContentList({ items, tab, onOpenBank }: Props)
           {item.fileSize !== undefined && <p className="text-sm">حجم: {Math.ceil(item.fileSize / 1024)} کیلوبایت</p>}
           {item._count && <p className="text-sm">{Object.entries(item._count).map(([key, value]) => `${({ students: 'دانشجو', exams: 'آزمون', questions: 'سوال', attachments: 'پیوست', attempts: 'تلاش' } as Record<string, string>)[key]}: ${value}`).join(' · ')}</p>}
           {item.status && <p className="text-sm">{item.status === 'Published' ? 'منتشرشده' : item.status === 'Draft' ? 'پیش‌نویس' : item.status}</p>}
-          {item.options && <ol className="mt-3 list-inside list-decimal space-y-1">{item.options.map((option, index) => <li key={index} className={index === item.correctOptionIndex ? 'font-bold text-brand-600' : ''}>{option}{index === item.correctOptionIndex ? ' — پاسخ صحیح' : ''}</li>)}</ol>}
+          {item.options && <ol className="mt-3 list-inside list-decimal space-y-1">{item.options.map((option, index) => <li key={index} className={index === item.correctOptionIndex ? 'font-bold text-brand-ink' : ''}>{option}{index === item.correctOptionIndex ? ' — پاسخ صحیح' : ''}</li>)}</ol>}
           {tab === 'results' && <p className="mt-2 text-sm">دانشجو: {item.student?.name || item.student?.id} · {item.correctCount} از {item.totalQuestions} · {item.finishedAt ? 'تمام‌شده' : 'ناتمام'}</p>}
-          {tab === 'banks' && <button type="button" onClick={() => onOpenBank({ id: item.id, name: item.name ?? item.id })} className="mt-3 text-sm text-brand-600">مشاهدهٔ سوال‌های این بانک</button>}
+          {tab === 'banks' && <button type="button" onClick={() => onOpenBank({ id: item.id, name: item.name ?? item.id })} className="mt-3 text-sm text-brand-ink">مشاهدهٔ سوال‌های این بانک</button>}
         </article>
       ))}
     </div>

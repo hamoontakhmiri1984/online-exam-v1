@@ -71,7 +71,7 @@ export default function GroupApprovalQueue({
     <section className="group-approval-panel space-y-5 rounded-3xl border border-violet-200/40 bg-white/70 p-5 shadow-sm backdrop-blur-xl dark:border-violet-400/15 dark:bg-slate-800/55 sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="mb-2 flex items-center gap-2 text-violet-600 dark:text-violet-300"><UsersRound size={19}/><span className="text-xs font-bold">مدیریت درخواست‌ها</span></div>
+          <div className="mb-2 flex items-center gap-2 text-brand-ink"><UsersRound size={19}/><span className="text-xs font-bold">مدیریت درخواست‌ها</span></div>
           <h3 className="text-lg font-bold text-slate-800 dark:text-white">بررسی گروه‌ها</h3>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">درخواست‌های ایجاد گروه را بررسی و مدیریت کنید.</p>
         </div>
@@ -109,14 +109,14 @@ export default function GroupApprovalQueue({
             </article>
           ))}
         </div>
-      ) : <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-violet-200/70 bg-violet-50/30 px-5 py-12 text-center dark:border-violet-400/20 dark:bg-violet-500/5"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-violet-500/10 text-violet-500"><UsersRound size={22}/></div><p className="text-sm font-semibold text-slate-600 dark:text-slate-300">گروهی با این وضعیت وجود ندارد.</p></div>)}
+      ) : <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-violet-200/70 bg-violet-50/30 px-5 py-12 text-center dark:border-violet-400/20 dark:bg-violet-500/5"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-violet-500/10 text-brand-ink"><UsersRound size={22}/></div><p className="text-sm font-semibold text-slate-600 dark:text-slate-300">گروهی با این وضعیت وجود ندارد.</p></div>)}
       <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200/70 pt-5 text-sm dark:border-slate-700/70">
-        <button type="button" disabled={loading || !!busy} onClick={() => setReload((x) => x + 1)} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white/70 px-3.5 text-xs font-semibold text-slate-600 transition-colors hover:border-violet-300 hover:text-violet-600 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"><RefreshCw size={15}/>بارگذاری مجدد</button>
+        <button type="button" disabled={loading || !!busy} onClick={() => setReload((x) => x + 1)} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white/70 px-3.5 text-xs font-semibold text-slate-600 transition-colors hover:border-violet-300 hover:text-brand-ink disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"><RefreshCw size={15}/>بارگذاری مجدد</button>
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-xs text-slate-500 dark:text-slate-400">صفحه {page.toLocaleString('fa-IR')} از {totalPages.toLocaleString('fa-IR')} · {total.toLocaleString('fa-IR')} گروه</span>
           <nav aria-label="صفحه‌بندی گروه‌ها" className="flex items-center gap-2">
-            <button type="button" disabled={loading || !!busy || page === 1} onClick={() => setPage(p => p-1)} className="inline-flex h-10 items-center gap-1 rounded-xl border border-slate-200 bg-white/80 px-3 text-xs font-semibold text-slate-700 transition-colors hover:border-violet-300 hover:text-violet-600 disabled:cursor-not-allowed disabled:opacity-35 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"><ChevronRight size={16}/>قبلی</button>
-            <button type="button" disabled={loading || !!busy || page >= totalPages} onClick={() => setPage(p => p+1)} className="inline-flex h-10 items-center gap-1 rounded-xl border border-slate-200 bg-white/80 px-3 text-xs font-semibold text-slate-700 transition-colors hover:border-violet-300 hover:text-violet-600 disabled:cursor-not-allowed disabled:opacity-35 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">بعدی<ChevronLeft size={16}/></button>
+            <button type="button" disabled={loading || !!busy || page === 1} onClick={() => setPage(p => p-1)} className="inline-flex h-10 items-center gap-1 rounded-xl border border-slate-200 bg-white/80 px-3 text-xs font-semibold text-slate-700 transition-colors hover:border-violet-300 hover:text-brand-ink disabled:cursor-not-allowed disabled:opacity-35 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"><ChevronRight size={16}/>قبلی</button>
+            <button type="button" disabled={loading || !!busy || page >= totalPages} onClick={() => setPage(p => p+1)} className="inline-flex h-10 items-center gap-1 rounded-xl border border-slate-200 bg-white/80 px-3 text-xs font-semibold text-slate-700 transition-colors hover:border-violet-300 hover:text-brand-ink disabled:cursor-not-allowed disabled:opacity-35 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">بعدی<ChevronLeft size={16}/></button>
           </nav>
         </div>
       </footer>

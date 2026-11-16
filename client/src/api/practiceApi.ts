@@ -4,7 +4,7 @@ import {
   type ListPage,
   type ListQuery,
 } from '../lib/listPagination';
-import type { QuestionDifficulty } from './questionBankApi';
+import type { BankQuestion, QuestionDifficulty } from './questionBankApi';
 export type Practice = {
   id: string;
   title: string;
@@ -49,6 +49,13 @@ export type PracticeInput = {
   groupIds: string[];
   questionIds?: string[];
 };
+export type RandomPracticeCounts = Record<QuestionDifficulty, number>;
+export type RandomPracticeQuestion = Pick<BankQuestion, 'id' | 'bankId' | 'text' | 'difficulty'>;
+export const getRandomPracticeQuestions = (body: {
+  bankIds: string[];
+  counts: RandomPracticeCounts;
+  excludeQuestionIds: string[];
+}) => apiRequest<RandomPracticeQuestion[]>('/practice/random-questions', { method: 'POST', body });
 export type PracticeFilters = {
   difficulty?: QuestionDifficulty;
   progress?: 'all' | 'unanswered' | 'mistakes';
@@ -66,7 +73,7 @@ export const deletePractice = (id: string) =>
 export const setPracticeStatus = (
   id: string,
   status: 'Published' | 'Archived',
-) => apiRequest(`/practice/${id}/status`, { method: 'POST', body: { status } });
+) => apiRequest<Pick<Practice, 'id' | 'status' | 'publishedAt'>>(`/practice/${id}/status`, { method: 'POST', body: { status } });
 export function getPracticeQuestions(
   id: string,
   query: ListQuery = {},

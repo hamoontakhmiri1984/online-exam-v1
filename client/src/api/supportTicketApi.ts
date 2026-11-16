@@ -17,13 +17,6 @@ export type SupportTicket = {
   createdAt: string;
   updatedAt: string;
 };
-export type SupportInstructor = {
-  id: string;
-  name: string | null;
-  username: string | null;
-  ticketCount: number;
-  openCount: number;
-};
 export type TicketMessage = {
   id: string;
   ticketId: string;
@@ -53,9 +46,10 @@ export const getStudentInstructors = () =>
   apiRequest<AvailableInstructor[]>('/support/student/instructors');
 export const getAssignedStudentTickets = (page = 0) =>
   apiRequest<SupportTicket[]>(`/support/assigned/tickets?page=${page}`);
-export const getSupportInstructors = () => apiRequest<SupportInstructor[]>('/support/instructors');
-export const getInstructorTickets = (id: string, page = 0) =>
-  apiRequest<SupportTicket[]>(`/support/instructors/${encodeURIComponent(id)}/tickets?page=${page}`);
+export const getAdminSupportTickets = (page = 0, waitingOnly = false) =>
+  apiRequest<{ items: SupportTicket[]; hasMore: boolean }>(
+    `/support/inbox/tickets?page=${page}${waitingOnly ? '&status=Open' : ''}`,
+  );
 export const getTicket = (id: string) =>
   apiRequest<SupportTicket>(`/support/tickets/${encodeURIComponent(id)}`);
 export const getTicketMessages = (id: string) =>

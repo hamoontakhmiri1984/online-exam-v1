@@ -44,7 +44,7 @@ export default function BankQuestionForm({
       />
       {error && <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-200">{error}</p>}
       <footer className="flex flex-wrap gap-3 border-t border-slate-100 pt-4 dark:border-white/10">
-        <button type="button" onClick={onCancel} disabled={saving} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-violet-200 px-4 text-sm font-semibold text-violet-700 disabled:opacity-50 dark:border-violet-400/25 dark:text-violet-200"><X size={16}/> انصراف</button>
+        <button type="button" onClick={onCancel} disabled={saving} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-violet-200 px-4 text-sm font-semibold text-brand-ink disabled:opacity-50 dark:border-violet-400/25"><X size={16}/> انصراف</button>
         <button type="submit" disabled={saving || !canSubmit} className="ui-primary-gradient inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold disabled:opacity-40"><Save size={16}/>{saving ? 'در حال ذخیره…' : isEditing ? 'ذخیره تغییرات' : 'افزودن سؤال'}</button>
       </footer>
     </form>

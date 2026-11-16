@@ -1,6 +1,6 @@
-type SpinnerProps = { label?: string; compact?: boolean };
+type SpinnerProps = { label?: string; compact?: boolean; showLabel?: boolean };
 
-export default function Spinner({ label = 'در حال بارگذاری…', compact = false }: SpinnerProps) {
+export default function Spinner({ label = 'در حال بارگذاری…', compact = false, showLabel = false }: SpinnerProps) {
   return (
     <div
       className={`site-loading ${compact ? 'site-loading-compact' : ''}`}
@@ -11,9 +11,10 @@ export default function Spinner({ label = 'در حال بارگذاری…', com
     >
       <span className="site-loading-spinner" aria-hidden="true">
         <span className="site-loading-spinner-ring" />
+        <span className="site-loading-spinner-ring-inner" />
         <span className="site-loading-spinner-core" />
       </span>
-      <span className="sr-only">{label}</span>
+      <span className={showLabel ? 'site-loading-caption' : 'sr-only'}>{label}</span>
     </div>
   );
 }

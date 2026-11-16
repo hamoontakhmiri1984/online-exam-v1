@@ -82,7 +82,7 @@ function GroupFormModal({
                     type="checkbox"
                     checked={studentIds.includes(student.id)}
                     onChange={() => onToggleStudent(student.id)}
-                    className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-400 dark:border-gray-600"
+                    className="h-4 w-4 rounded border-gray-300 text-brand-ink focus:ring-brand-400 dark:border-gray-600"
                   />
                   <span className="text-gray-700 dark:text-gray-200">
                     {userDisplayName(student)}

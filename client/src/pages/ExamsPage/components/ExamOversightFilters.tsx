@@ -20,6 +20,6 @@ export default function ExamOversightFilters({ query, status, count, onQuery, on
         <option value="">بدون فیلتر وضعیت</option><option value="draft">پیش‌نویس</option><option value="upcoming">زمان‌بندی‌شده</option><option value="completed">پایان‌یافته</option>
       </UiSelect></div>
     </label>
-    <p className="inline-flex h-11 items-center gap-2 rounded-xl border border-violet-200/60 bg-violet-50/70 px-4 text-sm font-semibold text-violet-700 dark:border-violet-400/20 dark:bg-violet-500/10 dark:text-violet-200" role="status"><ClipboardList size={16}/>{toPersianDigits(count.toLocaleString('fa-IR'))} آزمون</p>
+    <p className="inline-flex h-11 items-center gap-2 rounded-xl border border-violet-200/60 bg-violet-50/70 px-4 text-sm font-semibold text-brand-ink dark:border-violet-400/20 dark:bg-violet-500/10" role="status"><ClipboardList size={16}/>{toPersianDigits(count.toLocaleString('fa-IR'))} آزمون</p>
   </div>;
 }

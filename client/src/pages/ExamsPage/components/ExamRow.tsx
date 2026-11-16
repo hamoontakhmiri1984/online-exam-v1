@@ -37,7 +37,7 @@ const STATUS_BADGE: Record<
   upcoming: {
     label: 'زمان‌بندی‌شده',
     className:
-      'bg-brand-50 text-brand-600 dark:bg-brand-950/40 dark:text-brand-400',
+      'bg-brand-50 text-brand-ink dark:bg-brand-950/40',
   },
   completed: {
     label: 'پایان‌یافته',
@@ -103,23 +103,23 @@ function ExamRow({
           {canManage ? (
             <>
               <button type="button" onClick={() => onOpenQuestions(exam)}
-                className="inline-flex h-9 w-22 items-center justify-center gap-1 rounded-lg text-xs font-semibold text-violet-700 transition hover:bg-violet-100 dark:text-violet-200 dark:hover:bg-violet-500/15"
+                className="inline-flex h-9 w-22 items-center justify-center gap-1 rounded-lg text-xs font-semibold text-brand-ink transition hover:bg-violet-100 dark:hover:bg-violet-500/15"
                 title="سؤال‌های آزمون"><ListChecks size={16}/> سؤال‌ها</button>
               <button type="button" onClick={() => exam.status === 'draft' ? onPublish(exam) : onUnpublish(exam)}
                 disabled={exam.status === 'completed'}
                 aria-label={exam.status === 'draft' ? 'انتشار آزمون' : 'لغو انتشار'}
                 title={exam.status === 'completed' ? 'آزمون پایان یافته و امکان تغییر انتشار ندارد' : exam.status === 'draft' ? 'انتشار آزمون' : 'لغو انتشار'}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-violet-600 transition hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-25 dark:text-violet-300 dark:hover:bg-violet-500/15">
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-brand-ink transition hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-25 dark:hover:bg-violet-500/15">
                 {exam.status === 'draft' ? <UploadCloud size={16}/> : <Undo2 size={16}/>}
               </button>
               <button type="button" onClick={() => onEdit(exam)} title="ویرایش" aria-label="ویرایش آزمون"
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition hover:bg-violet-100 hover:text-violet-700 dark:text-gray-400 dark:hover:bg-violet-500/15"><Pencil size={16}/></button>
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition hover:bg-violet-100 hover:text-brand-ink dark:text-gray-400 dark:hover:bg-violet-500/15"><Pencil size={16}/></button>
               <button type="button" onClick={() => onDelete(exam)} title="حذف" aria-label="حذف آزمون"
                 className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition hover:bg-rose-50 hover:text-rose-600 dark:text-gray-400 dark:hover:bg-rose-500/10"><Trash2 size={16}/></button>
             </>
           ) : isObserver ? (
             <button type="button" onClick={() => onOpenQuestions(exam)}
-              className="inline-flex h-9 w-29 items-center justify-center rounded-lg text-xs font-semibold text-violet-600 transition hover:bg-violet-50 dark:text-violet-300 dark:hover:bg-violet-500/10"><ListChecks size={16}/> مشاهده سؤال‌ها</button>
+              className="inline-flex h-9 w-29 items-center justify-center rounded-lg text-xs font-semibold text-brand-ink transition hover:bg-violet-50 dark:hover:bg-violet-500/10"><ListChecks size={16}/> مشاهده سؤال‌ها</button>
           ) : (
             <button type="button" onClick={() => onTake(exam)}
               disabled={!canTake || hasFinished || exam.status === 'draft' || exam.status === 'completed'}

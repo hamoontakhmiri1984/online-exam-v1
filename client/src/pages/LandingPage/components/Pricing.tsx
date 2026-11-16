@@ -3,6 +3,8 @@ import { Check, Crown, Medal, Gem, Gift, Sparkles } from 'lucide-react';
 
 import { PLANS, PLAN_ORDER, type PlanId } from '../../../constants/plans';
 import Reveal, { RevealGroup, RevealItem } from '../../../components/motion/Reveal';
+import { useAuth } from '../../../context/AuthContext';
+import { getLandingAccountView } from './landingAccountView';
 
 interface PlanView {
   description: string;
@@ -62,6 +64,8 @@ function readString(
 
 function Pricing({ data }: PricingProps) {
   const navigate = useNavigate();
+  const { user, isSessionReady } = useAuth();
+  const account = getLandingAccountView({ user, isSessionReady });
   const title = readString(data, 'title') || 'تعرفه‌ای متناسب با نیازت';
   const subtitle =
     readString(data, 'subtitle') ||
@@ -102,7 +106,7 @@ function Pricing({ data }: PricingProps) {
               )}
 
               <div className="flex items-center gap-2">
-                <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl shadow-inner ${planId === 'free' ? 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-200' : planId === 'gold' ? 'bg-amber-200 text-amber-800 dark:bg-amber-700/30 dark:text-amber-200' : planId === 'platinum' ? 'bg-sky-200 text-blue-800 dark:bg-sky-700/30 dark:text-sky-200' : 'bg-violet-200/70 text-violet-800 dark:bg-violet-500/30 dark:text-violet-200'}`}><TierIcon size={29} strokeWidth={1.8}/></span>
+                <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl shadow-inner ${planId === 'free' ? 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-200' : planId === 'gold' ? 'bg-amber-200 text-amber-800 dark:bg-amber-700/30 dark:text-amber-200' : planId === 'platinum' ? 'bg-sky-200 text-blue-800 dark:bg-sky-700/30 dark:text-sky-200' : 'bg-violet-200/70 text-brand-ink dark:bg-violet-500/30'}`}><TierIcon size={29} strokeWidth={1.8}/></span>
                 <div>
                 <h3
                   className={`text-lg font-extrabold ${
@@ -164,7 +168,8 @@ function Pricing({ data }: PricingProps) {
               </ul>
 
               <button
-                onClick={() => navigate('/signup')}
+                type="button"
+                onClick={() => navigate(account.status === 'guest' ? '/signup' : account.user.role === 'Instructor' ? '/plans' : account.dashboardPath)}
                 className={`mt-7 w-full cursor-pointer rounded-xl px-4 py-2.5 text-sm font-bold transition duration-300 hover:-translate-y-0.5 ${
                   isDark
                     ? 'bg-white text-gray-900 hover:shadow-lg hover:shadow-white/10'
@@ -173,7 +178,7 @@ function Pricing({ data }: PricingProps) {
                     : 'border border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800'
                 }`}
               >
-                {view.cta}
+                {account.status === 'guest' ? view.cta : account.user.role === 'Instructor' ? 'مدیریت اشتراک' : 'ورود به پنل'}
               </button>
             </RevealItem>
           );

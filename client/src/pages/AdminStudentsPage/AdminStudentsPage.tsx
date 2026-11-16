@@ -6,6 +6,7 @@ import DataTable from '../../components/AdminUI/DataTable';
 import FilterBar, {
   controlClass,
   LoadError,
+  singleLineMenuClass,
 } from '../../components/AdminUI/FilterBar';
 import InstructorFilter from '../../components/AdminUI/InstructorFilter';
 import ListPagination from '../../components/ListPagination/ListPagination';
@@ -19,6 +20,7 @@ import {
 export default function AdminStudentsPage() {
   const [selection, setSelection] = useState('');
   const [order, setOrder] = useState('newest');
+  const ungrouped = selection === UNGROUPED_SELECTION;
   const list = usePagedList(
     (q) => getAdminStudents(q, filterFromSelection(selection), order),
     `${selection}:${order}`,
@@ -31,30 +33,29 @@ export default function AdminStudentsPage() {
       />
       <FilterBar>
         <InstructorFilter
-          value={selection === UNGROUPED_SELECTION ? '' : selection}
+          value={ungrouped ? '' : selection}
           onChange={setSelection}
         />
         <button
           type="button"
-          className={controlClass}
-          aria-pressed={selection === UNGROUPED_SELECTION}
-          onClick={() => setSelection(UNGROUPED_SELECTION)}
+          className={`${controlClass} aria-pressed:border-violet-400 aria-pressed:bg-violet-100 aria-pressed:text-brand-ink dark:aria-pressed:border-violet-400/50 dark:aria-pressed:bg-violet-500/20`}
+          aria-pressed={ungrouped}
+          onClick={() => setSelection(current => current === UNGROUPED_SELECTION ? '' : UNGROUPED_SELECTION)}
         >
           بدون گروه
         </button>
-        {selection && (
+        {selection && !ungrouped && (
           <button
             type="button"
             onClick={() => setSelection('')}
-            className="text-sm text-brand-600"
+            className="text-sm text-brand-ink"
           >
             حذف فیلتر
           </button>
         )}
-        <div className="relative inline-flex items-center">
         <UiSelect
           aria-label="ترتیب دانشجویان"
-          className="min-w-44"
+          className={`w-36 ${singleLineMenuClass}`}
           value={order}
           onChange={(e) => setOrder(e.target.value)}
         >
@@ -62,7 +63,6 @@ export default function AdminStudentsPage() {
           <option value="oldest">قدیمی‌ترین</option>
           <option value="name">نام دانشجو</option>
         </UiSelect>
-        </div>
       </FilterBar>
       <ListPagination {...list} maxSearchLength={100} />
       <LoadError message={list.error} retry={list.reload} />

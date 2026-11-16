@@ -285,6 +285,26 @@ test('ticketing separates student and instructor requests, provides unique track
   ).json()) as Array<{ id: string; ticketCount: number }>;
   assert.ok(adminsInstructors.some((row) => row.ticketCount > 0));
   assert.equal((await request('/instructors', student)).status, 403);
+  assert.equal((await request('/inbox/tickets', student)).status, 403);
+  assert.equal((await request('/inbox/tickets', instructor)).status, 403);
+  const waiting = await request('/inbox/tickets?status=Open', admin);
+  assert.equal(waiting.status, 200);
+  const waitingInbox = (await waiting.json()) as {
+    items: Array<{ id: string; status: string; user: { id: string } }>;
+    hasMore: boolean;
+  };
+  assert.ok(
+    waitingInbox.items.some(
+      (item) =>
+        item.id === instructorTicket.id && item.user.id === instructorId,
+    ),
+  );
+  assert.ok(waitingInbox.items.every((item) => item.status === 'Open'));
+  const allInbox = (await (await request('/inbox/tickets', admin)).json()) as {
+    items: Array<{ id: string }>;
+  };
+  assert.ok(allInbox.items.some((item) => item.id === instructorTicket.id));
+  assert.ok(!allInbox.items.some((item) => item.id === studentTicket.id));
   const instructorDetail = await request(
     `/tickets/${instructorTicket.id}/messages`,
     admin,

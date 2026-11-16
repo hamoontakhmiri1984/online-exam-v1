@@ -93,7 +93,7 @@ function News({ data }: NewsProps) {
           const cardInner = (
             <>
               <div className="mb-4 flex items-center justify-between">
-                <span className="flex items-center gap-1.5 rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-bold text-brand-600 dark:bg-brand-600/10 dark:text-brand-400">
+                <span className="flex items-center gap-1.5 rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-bold text-brand-ink dark:bg-brand-600/10">
                   <Sparkles size={12} />
                   بلاگ
                 </span>
@@ -135,7 +135,7 @@ function News({ data }: NewsProps) {
         >
           <Link
             to="/blog"
-            className="group inline-flex items-center gap-1.5 text-sm font-bold text-brand-600 transition hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300"
+            className="group inline-flex items-center gap-1.5 text-sm font-bold text-brand-ink transition hover:text-brand-ink dark:hover:text-brand-ink"
           >
             دیدنِ همه‌ی پست‌ها
             <ArrowLeft size={15} className="transition-transform duration-300 group-hover:-translate-x-1" />

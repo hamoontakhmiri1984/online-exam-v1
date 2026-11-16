@@ -85,7 +85,7 @@ function Features({ data }: FeaturesProps) {
               key={`${item.title}-${index}`}
               className="group rounded-2xl border border-gray-100 bg-white p-6 transition hover:-translate-y-1 hover:shadow-lg hover:shadow-gray-100 dark:border-gray-800 dark:bg-gray-900 dark:hover:shadow-none"
             >
-              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-600/10 text-brand-600 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6 dark:text-brand-500">
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-600/10 text-brand-ink transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
                 <Icon size={20} />
               </div>
               <h3 className="mb-2 text-sm font-bold text-gray-900 dark:text-white">

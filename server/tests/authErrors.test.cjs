@@ -198,6 +198,23 @@ test('OTP cooldown: reset does not block signup/login; normalized identifiers an
     429,
   );
 });
+test('login OTP allows five sends in a window before returning a retry timer', async (t) => {
+  const { load } = setup();
+  const { otpSendLimiter } = load('middleware/rateLimiters.ts');
+  const app = express();
+  app.use(express.json());
+  app.post('/otp/request', otpSendLimiter, (_req, res) => res.json({ ok: true }));
+  const request = await listen(t, app);
+  const body = { identifier: '09123456789', purpose: 'LOGIN' };
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    assert.equal((await request('/otp/request', body)).status, 200, `attempt ${attempt}`);
+  }
+  const response = await request('/otp/request', { ...body, identifier: '+989123456789' });
+  assert.equal(response.status, 429);
+  const { retryAfterSeconds } = await response.json();
+  assert.equal(retryAfterSeconds, Number(response.headers.get('Retry-After')));
+  assert.ok(retryAfterSeconds > 0 && retryAfterSeconds <= 90);
+});
 test('OTP cooldown: captcha/database failures can retry, successful requests remain limited', async (t) => {
   const { load } = setup();
   const { otpSendLimiter } = load('middleware/rateLimiters.ts');

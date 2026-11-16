@@ -1,0 +1,183 @@
+.learning-content-card {
+  --learning-surface: #fff;
+  --learning-border: #e1d8ed;
+  --learning-title: #271d3c;
+  --learning-muted: #5e526f;
+  --learning-delete: #a0425a;
+  --learning-icon-bg: rgba(255, 255, 255, .66);
+  display: flex;
+  min-width: 0;
+  min-height: 14.75rem;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--learning-title);
+  background: var(--learning-surface);
+  border: 1px solid var(--learning-border);
+  border-radius: 1rem;
+  box-shadow: 0 9px 26px rgba(39, 29, 60, .07);
+}
+
+.learning-content-card--bank {
+  --learning-header-start: #e1d6f8;
+  --learning-header-end: #eee8fc;
+}
+
+.learning-content-card--practice {
+  --learning-header-start: #eed9f6;
+  --learning-header-end: #f6ecfa;
+}
+
+.dark .learning-content-card {
+  --learning-surface: #2a2239;
+  --learning-border: #4a3c5b;
+  --learning-title: #f7efff;
+  --learning-muted: #ccbedb;
+  --learning-delete: #ffb3c2;
+  --learning-icon-bg: rgba(42, 34, 57, .65);
+}
+
+.dark .learning-content-card--bank {
+  --learning-header-start: #4b3a70;
+  --learning-header-end: #41365e;
+}
+
+.dark .learning-content-card--practice {
+  --learning-header-start: #553762;
+  --learning-header-end: #493553;
+}
+
+.learning-content-card-header {
+  position: relative;
+  min-height: 9rem;
+  flex: 1;
+  padding: 1rem 1rem .875rem;
+  background-image: linear-gradient(140deg, var(--learning-header-start), var(--learning-header-end));
+  border-bottom: 1px solid var(--learning-border);
+}
+
+.learning-content-card-header > div { color: var(--ui-brand-ink); }
+.learning-content-card-header :is(h2, p) { margin-inline-end: 4.75rem; }
+.learning-content-card-header p { color: var(--learning-muted); }
+
+.learning-content-card-art {
+  --paper-line: color-mix(in srgb, var(--ui-brand-ink) 42%, transparent);
+  position: absolute;
+  inset-inline-end: .875rem;
+  inset-block-end: .75rem;
+  width: 4rem;
+  height: 4rem;
+  pointer-events: none;
+}
+
+.learning-content-card-art > span {
+  position: absolute;
+  inset: .4375rem .875rem .3125rem;
+  border: 1px solid var(--paper-line);
+  border-radius: .375rem;
+  background: var(--learning-header-end);
+  transform: rotate(-7deg);
+}
+
+.learning-content-card-art > span:nth-child(1) { transform: translateX(7px) rotate(12deg); }
+.learning-content-card-art > span:nth-child(2) { transform: translateX(3px) rotate(3deg); }
+.learning-content-card-art > span:nth-child(3) {
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 5px, var(--paper-line) 5px 6.5px) center 14px / 18px 21px no-repeat,
+    var(--learning-header-end);
+}
+
+.learning-content-card--bank .learning-content-card-art > span:nth-child(4),
+.learning-content-card--practice .learning-content-card-art > span:nth-child(2) { display: none; }
+
+.learning-content-card--practice .learning-content-card-art > span:nth-child(4) {
+  display: grid;
+  place-items: center;
+  inset: auto .125rem .125rem auto;
+  width: 1.375rem;
+  height: 1.375rem;
+  border-radius: 50%;
+  transform: none;
+  font-size: .875rem;
+}
+
+.learning-content-card--practice .learning-content-card-art > span:nth-child(4)::before { content: "✓"; }
+
+.learning-content-card-icon {
+  display: grid;
+  width: 2.125rem;
+  height: 2.125rem;
+  flex: none;
+  place-items: center;
+  background: var(--learning-icon-bg);
+  border-radius: .625rem;
+}
+
+.learning-content-card-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .375rem .875rem;
+  padding: .625rem 1rem .25rem;
+  color: var(--learning-muted);
+  font-size: .75rem;
+}
+
+.learning-content-card-meta strong { color: var(--learning-title); }
+
+.learning-content-card-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .375rem;
+  padding: .625rem 1rem .875rem;
+}
+
+.learning-content-card-primary,
+.learning-content-card-action {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: .625rem;
+  transition: background-color 150ms, filter 150ms;
+}
+
+.learning-content-card-primary {
+  flex: 1 1 7.25rem;
+  gap: .375rem;
+  padding: .375rem .5rem;
+  color: var(--ui-brand-on-fill);
+  background: var(--ui-brand-fill);
+  font-size: .8125rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.learning-content-card-primary:hover {
+  filter: brightness(1.07);
+}
+
+.learning-content-card-action {
+  width: 2.75rem;
+  flex: none;
+  color: var(--ui-brand-ink);
+  border: 1px solid var(--learning-border);
+}
+
+.learning-content-card-action:hover {
+  background: color-mix(in srgb, var(--ui-brand-ink) 11%, var(--learning-surface));
+}
+
+.learning-content-card-action--delete { color: var(--learning-delete); }
+.learning-content-card-action--delete:hover {
+  background: color-mix(in srgb, var(--learning-delete) 10%, var(--learning-surface));
+}
+
+.learning-content-card-actions :is(a, button):focus-visible {
+  outline: 2px solid var(--ui-brand-ink);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .learning-content-card-actions :is(a, button) { transition: none; }
+}

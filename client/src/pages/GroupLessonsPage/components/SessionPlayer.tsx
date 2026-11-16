@@ -161,7 +161,7 @@ function SessionPlayer({ session }: SessionPlayerProps) {
                 >
                   <FileText
                     size={16}
-                    className="shrink-0 text-brand-600 dark:text-brand-400"
+                    className="shrink-0 text-brand-ink"
                   />
                   <span className="flex-1 truncate text-right">
                     {file.fileName}

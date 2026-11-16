@@ -3,6 +3,7 @@ import { sessionLogoutUrl } from '../../lib/sessionNotice';
 import { connectSocket, disconnectSocket } from '../../lib/socket';
 import type { MeResponse, User } from './auth.types';
 import { userFromMe } from './auth.utils';
+import { markTabLoginActive, clearTabLogin } from './auth.tabSession';
 type AuthListener = (user: User | null) => void;
 let currentUser: User | null = null;
 let sessionVersion = 0;
@@ -29,6 +30,7 @@ export function applySession(user: User, accessToken: string, options: { hydrate
   if (options.hydrate !== false) clearPanelTabs(user.id);
   sessionVersion++;
   setAuthToken(accessToken);
+  markTabLoginActive();
   setCurrentUser(user);
   connectSocket(getAuthToken, reason => { clearSession(); window.location.href = sessionLogoutUrl(reason); });
   if (options.hydrate !== false) void hydrateCurrentUser();
@@ -37,6 +39,7 @@ export function clearSession(): void {
   sessionVersion++;
   clearPanelTabs(currentUser?.id);
   setAuthToken(null);
+  clearTabLogin();
   setCurrentUser(null);
   disconnectSocket();
 }

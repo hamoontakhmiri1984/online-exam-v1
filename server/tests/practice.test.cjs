@@ -296,3 +296,52 @@ test('practice HTTP: empty-group drafts save but cannot publish, and removing me
     m.groups[0].students = [];
     assert.equal((await r('Student:student-a', 'GET', `/${id}`)).status, 404);
   }));
+
+test('practice HTTP: samples exact difficulties across owned banks without repeating selected questions', (t) =>
+  fixture(t, async (r, m) => {
+    m.banks.push({ id: 'bank-extra', instructorId: 'teacher-a' });
+    m.source.push(
+      { ...m.source[0], id: 'qc', bankId: 'bank-extra', difficulty: 'Medium' },
+      { ...m.source[0], id: 'qd', bankId: 'bank-extra', difficulty: 'Hard' },
+      { ...m.source[0], id: 'qe', bankId: 'bank-extra' },
+    );
+    const actor = 'Instructor:teacher-a';
+    const query = {
+      bankIds: ['bank-a', 'bank-extra'],
+      counts: { Easy: 1, Medium: 1, Hard: 1 },
+      excludeQuestionIds: ['qe'],
+    };
+    const response = await r(actor, 'POST', '/random-questions', query);
+    assert.equal(response.status, 200, JSON.stringify(response.body));
+    assert.deepEqual(new Set(response.body.map(q => q.id)), new Set(['qa', 'qc', 'qd']));
+    assert.ok(response.body.every(q => !Object.hasOwn(q, 'correctOptionIndex')));
+    const shortage = await r(actor, 'POST', '/random-questions', { ...query, counts: { ...query.counts, Hard: 2 } });
+    assert.equal(shortage.status, 400);
+    assert.match(shortage.body.error, /سخت.*۲.*۱/);
+    assert.equal((await r(actor, 'POST', '/random-questions', { ...query, bankIds: ['bank-b'] })).status, 404);
+    assert.equal((await r('Student:student-a', 'POST', '/random-questions', query)).status, 403);
+  }));
+
+test('practice HTTP: a draft can add questions while keeping a snapshot whose bank question was removed', (t) =>
+  fixture(t, async (r, m) => {
+    const id = await create(r);
+    const snapshotId = m.questions[0].id;
+    m.questions[0].sourceQuestionId = null;
+    m.source.push({ ...m.source[0], id: 'qc', difficulty: 'Medium' });
+    const actor = 'Instructor:teacher-a';
+    const updated = await r(actor, 'PUT', `/${id}`, {
+      ...input, title: 'Updated practice', questionIds: [snapshotId, 'qc'],
+    });
+    assert.equal(updated.status, 200, JSON.stringify(updated.body));
+    assert.deepEqual(m.questions.map(q => q.sourceQuestionId), [null, 'qc']);
+    m.groups[0].approvalStatus = 'Pending';
+    const blocked = await r(actor, 'POST', `/${id}/status`, { status: 'Published' });
+    assert.equal(blocked.status, 400);
+    m.groups[0].approvalStatus = 'Approved';
+    const status = await r(actor, 'POST', `/${id}/status`, { status: 'Published' });
+    assert.equal(status.status, 200);
+    assert.equal(status.body.status, 'Published');
+    assert.ok(status.body.publishedAt);
+    const published = await r('Student:student-a', 'GET', `/${id}/questions`);
+    assert.deepEqual(published.body.items.map(q => q.difficulty), ['Easy', 'Medium']);
+  }));

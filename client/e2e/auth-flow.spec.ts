@@ -128,3 +128,137 @@ test('automatic session recovery opens the workspace after a temporary outage', 
   await expect(page.getByRole('heading', { name: 'در حال اتصال مجدد…' })).toBeVisible();
   await expect(page.getByRole('heading', { name: adminUser.name })).toBeVisible({ timeout: 12_000 });
 });
+
+for (const priorSend of [true, false]) {
+  test(`login OTP displays a retry timer and restores sending (prior send: ${priorSend})`, async ({ page }) => {
+    const identifier = 'student@example.test';
+    const acceptedBeforeLimit = priorSend ? 5 : 0;
+    let attempts = 0;
+
+    await page.clock.install();
+    await page.route('http://127.0.0.1:4109/**', async route => {
+      const path = new URL(route.request().url()).pathname;
+      if (path === '/auth/entry') {
+        return route.fulfill({ json: { identifier, next: 'otp' } });
+      }
+      if (path === '/auth/otp/request') {
+        attempts += 1;
+        if (attempts === acceptedBeforeLimit + 1) {
+          return route.fulfill({
+            status: 429,
+            json: { error: 'برای درخواست دوبارهٔ کد صبر کنید.', retryAfterSeconds: 6 },
+          });
+        }
+        return route.fulfill({ json: {} });
+      }
+      return route.fulfill({ status: 401, json: {} });
+    });
+
+    await page.goto('/login');
+    await page.getByRole('textbox', { name: 'شماره تماس یا پست الکترونیکی' }).fill(identifier);
+    await page.getByRole('button', { name: 'ادامه', exact: true }).click();
+    if (priorSend) {
+      const resend = page.getByRole('button', { name: 'ارسال مجدد کد', exact: true });
+      for (let attempt = 2; attempt <= 6; attempt += 1) {
+        await expect(resend).toBeEnabled();
+        await resend.click();
+      }
+    }
+    const waiting = page.getByRole('button', { name: /ارسال مجدد در/ });
+    await expect(waiting).toBeDisabled();
+    await expect(waiting).toContainText(/00:0[56]/);
+    const before = await waiting.innerText();
+    await page.clock.runFor(2000);
+    await expect(waiting).not.toHaveText(before);
+    expect(attempts).toBe(acceptedBeforeLimit + 1);
+
+    await page.clock.runFor(6000);
+    const send = page.getByRole('button', {
+      name: priorSend ? 'ارسال مجدد کد' : 'ارسال کد تأیید', exact: true,
+    });
+    await expect(send).toBeEnabled();
+    await send.click();
+    await expect.poll(() => attempts).toBe(acceptedBeforeLimit + 2);
+  });
+}
+
+for (const method of ['password', 'otp'] as const) {
+  test(`login ${method} stays busy while signing in and allows retry after an error`, async ({ page }) => {
+    const identifier = '09123456789';
+    const loginPath = method === 'password' ? '/auth/login/password' : '/auth/otp/verify';
+    const errorMessage = 'اطلاعات ورود نادرست است';
+    let attempts = 0;
+    let finishAttempt = () => {};
+    let attemptPending = new Promise<void>(resolve => { finishAttempt = resolve; });
+
+    await page.route('http://127.0.0.1:4109/**', async route => {
+      switch (new URL(route.request().url()).pathname) {
+        case '/auth/entry': return route.fulfill({ json: { identifier, next: method } });
+        case '/auth/otp/request': return route.fulfill({ json: {} });
+        case loginPath: {
+          attempts += 1;
+          await attemptPending;
+          return attempts === 1
+            ? route.fulfill({ status: 400, json: { error: errorMessage } })
+            : route.fulfill({ json: { accessToken: 'fixture-token', user: adminUser } });
+        }
+        case '/auth/me': return route.fulfill({ json: adminUser });
+        case '/auth/refresh': return route.fulfill({ status: 401, json: {} });
+        default: return route.fulfill({ status: 503, json: {} });
+      }
+    });
+
+    await page.goto('/login');
+    await page.locator('#login-identifier').fill(identifier);
+    await page.getByRole('button', { name: 'ادامه', exact: true }).click();
+    const submit = page.getByRole('button', {
+      name: method === 'password' ? 'ورود' : 'تأیید و ورود', exact: true,
+    });
+
+    async function enterCredentials() {
+      if (method === 'password') {
+        await page.locator('#login-password').fill('ExamplePassword123');
+        await submit.click();
+      } else {
+        const first = page.getByRole('textbox', { name: 'رقم 1 کد تأیید', exact: true });
+        await first.evaluate(input => {
+          const clipboard = new DataTransfer();
+          clipboard.setData('text', '123456');
+          input.dispatchEvent(new ClipboardEvent('paste', { clipboardData: clipboard, bubbles: true }));
+        });
+      }
+    }
+
+    const busy = page.getByRole('button', { name: 'در حال ورود…', exact: true });
+    let releaseWorkspace = () => {};
+    const workspacePending = new Promise<void>(resolve => { releaseWorkspace = resolve; });
+    const workspaceModule = '**/src/pages/WorkspacePage/WorkspacePage.tsx*';
+    await page.route(workspaceModule, async route => {
+      await workspacePending;
+      await route.continue();
+    });
+    try {
+      await enterCredentials();
+      await expect(busy).toBeDisabled();
+      await expect(busy).toHaveCSS('opacity', /^0\.[1-9][0-9]*$/);
+      finishAttempt();
+      await expect(page.getByText(errorMessage, { exact: true })).toBeVisible();
+      await expect(submit).toBeVisible();
+      if (method === 'password') await expect(submit).toBeEnabled();
+
+      attemptPending = new Promise<void>(resolve => { finishAttempt = resolve; });
+      await enterCredentials();
+      await expect(busy).toBeDisabled();
+      const workspaceRequested = page.waitForRequest(workspaceModule);
+      finishAttempt();
+      await workspaceRequested;
+      await expect(busy).toBeDisabled();
+      releaseWorkspace();
+      await expect(page.getByRole('heading', { name: adminUser.name })).toBeVisible();
+      expect(attempts).toBe(2);
+    } finally {
+      finishAttempt();
+      releaseWorkspace();
+    }
+  });
+}

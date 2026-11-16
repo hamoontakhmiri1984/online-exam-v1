@@ -43,7 +43,7 @@ function BlogPostPage() {
       <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
         <button
           onClick={() => navigate('/blog')}
-          className="mb-8 inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 transition hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400"
+          className="mb-8 inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 transition hover:text-brand-ink dark:text-gray-400 dark:hover:text-brand-ink"
         >
           <ArrowRight size={15} />
           بازگشت به بلاگ
@@ -83,7 +83,7 @@ function BlogPostPage() {
               )}
             </div>
 
-            <div className="mt-8 max-w-none text-sm leading-7 text-gray-700 dark:text-gray-200 [&_a]:text-brand-600 [&_a]:underline [&_h1]:mt-6 [&_h1]:text-xl [&_h1]:font-bold [&_h2]:mt-6 [&_h2]:text-lg [&_h2]:font-bold [&_h3]:mt-4 [&_h3]:text-base [&_h3]:font-bold [&_li]:mr-5 [&_ol]:list-decimal [&_p]:mb-4 [&_strong]:font-bold [&_ul]:list-disc">
+            <div className="mt-8 max-w-none text-sm leading-7 text-gray-700 dark:text-gray-200 [&_a]:text-brand-ink [&_a]:underline [&_h1]:mt-6 [&_h1]:text-xl [&_h1]:font-bold [&_h2]:mt-6 [&_h2]:text-lg [&_h2]:font-bold [&_h3]:mt-4 [&_h3]:text-base [&_h3]:font-bold [&_li]:mr-5 [&_ol]:list-decimal [&_p]:mb-4 [&_strong]:font-bold [&_ul]:list-disc">
               <ReactMarkdown>{post.contentMarkdown}</ReactMarkdown>
             </div>
           </article>

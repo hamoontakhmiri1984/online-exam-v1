@@ -1,3 +1,4 @@
+import PanelBack from '../../../components/PanelBack/PanelBack';
 import { useEffect, useState } from 'react';
 import {
   getQuestionBanks,
@@ -163,13 +164,7 @@ export default function BankQuestionPicker({
         </p>
       )}
       <div className="flex gap-3">
-        <button
-          disabled={busy}
-          onClick={onClose}
-          className="rounded-xl border px-4 py-2 text-sm dark:text-white"
-        >
-          بازگشت
-        </button>
+        <PanelBack onClick={onClose} disabled={busy} label="بازگشت" />
         <button
           disabled={busy || !selected.length}
           onClick={async () => {

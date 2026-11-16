@@ -80,7 +80,7 @@ function QuestionScreen({
                   aria-pressed={isSelected}
                   className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-right text-sm transition ${
                     isSelected
-                      ? 'border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300'
+                      ? 'border-brand-500 bg-brand-50 text-brand-ink dark:bg-brand-950/40'
                       : 'border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800'
                   }`}
                 >

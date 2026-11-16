@@ -7,7 +7,7 @@ import type { RouteConfig } from './routeConfig';
 // Public routes render immediately; only ProtectedRoute waits for session validation.
 function RouteTable({ routeTable }: { routeTable: RouteConfig[] }) {
   return (
-    <Suspense fallback={<div className="flex min-h-dvh w-full items-center justify-center bg-surface-light dark:bg-surface-dark"><Spinner /></div>}>
+    <Suspense fallback={<div className="flex min-h-dvh w-full items-center justify-center bg-surface-light dark:bg-surface-dark"><Spinner showLabel /></div>}>
       <Routes>
         {routeTable.map(({ path, Component, protected: isProtected, allowedRoles, skipOnboardingGate }) => (
           <Route

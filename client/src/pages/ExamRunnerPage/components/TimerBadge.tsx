@@ -22,7 +22,7 @@ function TimerBadge({ timeLeft }: TimerBadgeProps) {
       className={`inline-flex h-11 w-32 shrink-0 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-bold shadow-sm transition-colors ${
         isCritical
           ? 'border-rose-200/70 bg-rose-50/90 text-rose-600 dark:border-rose-400/25 dark:bg-rose-950/40 dark:text-rose-300'
-          : 'border-violet-200/70 bg-white/80 text-violet-700 dark:border-violet-400/25 dark:bg-violet-500/10 dark:text-violet-200'
+          : 'border-violet-200/70 bg-white/80 text-brand-ink dark:border-violet-400/25 dark:bg-violet-500/10'
       }`}
     >
       <Clock size={17} className="shrink-0 opacity-75" />

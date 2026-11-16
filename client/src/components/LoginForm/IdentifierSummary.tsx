@@ -17,7 +17,7 @@ export default function IdentifierSummary({
         type="button"
         onClick={onEdit}
         disabled={disabled}
-        className="shrink-0 text-sm font-medium text-brand-600 hover:underline disabled:opacity-50 dark:text-brand-400"
+        className="shrink-0 text-sm font-medium text-brand-ink hover:underline disabled:opacity-50"
       >
         ویرایش
       </button>

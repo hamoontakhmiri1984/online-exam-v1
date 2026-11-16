@@ -47,6 +47,10 @@ export default function OtpVerifyForm({
   const [inputKey, setInputKey] = useState(0);
   const pending = useRef(false);
   const busy = loading || sending;
+  const waitingToResend = cooldown > 0;
+  const resendCountdown = waitingToResend && (
+    <>ارسال مجدد در <bdi dir="ltr">{formatCountdown(cooldown)}</bdi></>
+  );
   async function verify(value: string) {
     if (pending.current || sending || !sent || value.length !== OTP_CODE_LENGTH)
       return;
@@ -57,6 +61,7 @@ export default function OtpVerifyForm({
     pending.current = true;
     setLoading(true);
     setError('');
+    let signedIn = false;
     try {
       const result = await verifyOtp(
         identifier,
@@ -67,6 +72,7 @@ export default function OtpVerifyForm({
       );
       if (result.status === 'success') {
         onSuccess(result.user.onboardingCompleted);
+        signedIn = true;
         return;
       }
       setError(result.message);
@@ -78,8 +84,10 @@ export default function OtpVerifyForm({
         setInputKey((current) => current + 1);
       }
     } finally {
-      pending.current = false;
-      setLoading(false);
+      if (!signedIn) {
+        pending.current = false;
+        setLoading(false);
+      }
     }
   }
   function submit(event: FormEvent) {
@@ -87,7 +95,7 @@ export default function OtpVerifyForm({
     void verify(code);
   }
   function resend() {
-    if (pending.current || busy || cooldown > 0) return;
+    if (pending.current || busy || waitingToResend) return;
     setCode('');
     setError('');
     setInputKey((current) => current + 1);
@@ -107,9 +115,11 @@ export default function OtpVerifyForm({
       >
         {sending
           ? 'در حال ارسال کد تأیید…'
-          : sent
-            ? 'اگر این حساب وجود داشته باشد، کد تأیید برای آن ارسال می‌شود.'
-            : 'کد هنوز ارسال نشده است. دوباره تلاش کنید یا با رمز عبور وارد شوید.'}
+          : waitingToResend
+            ? 'برای درخواست دوبارهٔ کد، تا پایان شمارش معکوس صبر کنید.'
+            : sent
+              ? 'اگر این حساب وجود داشته باشد، کد تأیید برای آن ارسال می‌شود.'
+              : 'کد هنوز ارسال نشده است. دوباره تلاش کنید یا با رمز عبور وارد شوید.'}
       </p>
       {(sendError || error) && (
         <p
@@ -143,20 +153,18 @@ export default function OtpVerifyForm({
       )}
       {captchaSlot}
       {!sent ? (
-        <Button type="button" onClick={resend} disabled={busy}>
-          ارسال کد تأیید
+        <Button type="button" onClick={resend} disabled={busy || waitingToResend}>
+          {resendCountdown || 'ارسال کد تأیید'}
         </Button>
       ) : (
         <>
           <button
             type="button"
             onClick={resend}
-            disabled={busy || cooldown > 0}
+            disabled={busy || waitingToResend}
             className="text-sm text-brand-600 disabled:opacity-50 dark:text-brand-400"
           >
-            {cooldown > 0
-              ? `ارسال مجدد در ${formatCountdown(cooldown)}`
-              : 'ارسال مجدد کد'}
+            {resendCountdown || 'ارسال مجدد کد'}
           </button>
           <Button
             type="submit"
@@ -166,7 +174,7 @@ export default function OtpVerifyForm({
               (captchaRequired && !captcha)
             }
           >
-            {loading ? 'در حال تأیید…' : 'تأیید و ورود'}
+            {loading ? 'در حال ورود…' : 'تأیید و ورود'}
           </Button>
         </>
       )}

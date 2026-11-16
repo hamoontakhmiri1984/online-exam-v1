@@ -99,7 +99,7 @@ export default function LoginForm() {
           {notice && (
             <p
               role="status"
-              className="text-sm text-brand-700 dark:text-brand-300"
+              className="text-sm text-brand-ink"
             >
               {notice}
             </p>

@@ -58,6 +58,7 @@ export type RequestOtpResult =
       status: 'error';
       message: string;
       captchaRequired?: boolean;
+      retryAfterSeconds?: number;
     };
 
 export type VerifyOtpResult =

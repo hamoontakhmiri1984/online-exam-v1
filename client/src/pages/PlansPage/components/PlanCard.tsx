@@ -89,7 +89,7 @@ function PlanCard({
           >
             <Check
               size={15}
-              className={`mt-0.5 shrink-0 text-violet-600 dark:text-violet-300`}
+              className={`mt-0.5 shrink-0 text-brand-ink dark:text-brand-ink`}
             />
             {feature}
           </li>

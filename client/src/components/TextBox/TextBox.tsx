@@ -93,7 +93,7 @@ function TextBox({
             }`}
         />
         {floatingLabel && (
-          <label htmlFor={id} className={`pointer-events-none absolute right-4 top-4 max-w-[calc(100%-2rem)] origin-right truncate text-sm leading-5 transition-[transform,color] duration-200 ease-out motion-reduce:transition-none ${focused || value ? '-translate-y-3 scale-[0.8]' : 'translate-y-0 scale-100'} ${error ? 'text-danger-600 dark:text-danger-400' : focused ? 'text-brand-600 dark:text-brand-300' : 'text-gray-500 dark:text-gray-300'} peer-autofill:-translate-y-3 peer-autofill:scale-[0.8]`}>
+          <label htmlFor={id} className={`pointer-events-none absolute right-4 top-4 max-w-[calc(100%-2rem)] origin-right truncate text-sm leading-5 transition-[transform,color] duration-200 ease-out motion-reduce:transition-none ${focused || value ? '-translate-y-3 scale-[0.8]' : 'translate-y-0 scale-100'} ${error ? 'text-danger-600 dark:text-danger-400' : focused ? 'text-brand-ink' : 'text-gray-500 dark:text-gray-300'} peer-autofill:-translate-y-3 peer-autofill:scale-[0.8]`}>
             {floatingLabel}
           </label>
         )}

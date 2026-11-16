@@ -87,7 +87,7 @@ function HeroSectionForm({ initialData, saving, onSave }: HeroSectionFormProps) 
       <Modal isOpen={showRestoreConfirm} onClose={() => { if (!saving) setShowRestoreConfirm(false); }} label="تأیید بازگردانی متن استاندارد">
         <div dir="rtl" className="space-y-4 text-right">
           <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-200">
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-100 text-brand-ink dark:bg-violet-500/15">
               <RotateCcw size={21} />
             </span>
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">بازگردانی متن استاندارد</h2>
@@ -106,7 +106,7 @@ function HeroSectionForm({ initialData, saving, onSave }: HeroSectionFormProps) 
       {formError && <p role="alert" className="form-inline-error">{formError}</p>}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-violet-200/50 bg-violet-50/40 px-4 py-3 text-xs text-gray-600 dark:border-violet-400/20 dark:bg-violet-400/5 dark:text-gray-300">
         <span>این بخش پیش‌نویس است؛ تا زمان انتشار، متن صفحه اصلی تغییر نمی‌کند.</span>
-        <button type="button" disabled={saving} onClick={() => setShowRestoreConfirm(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-violet-300/60 px-3 py-2 text-violet-700 hover:bg-violet-100/70 disabled:opacity-50 dark:text-violet-200 dark:hover:bg-violet-400/10"><RotateCcw size={14}/>بازگردانی متن استاندارد</button>
+        <button type="button" disabled={saving} onClick={() => setShowRestoreConfirm(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-violet-300/60 px-3 py-2 text-brand-ink hover:bg-violet-100/70 disabled:opacity-50 dark:hover:bg-violet-400/10"><RotateCcw size={14}/>بازگردانی متن استاندارد</button>
       </div>
       <div className="flex flex-col gap-1.5">
         <label className={labelClass}>عنوان اصلی</label>
@@ -159,7 +159,7 @@ function HeroSectionForm({ initialData, saving, onSave }: HeroSectionFormProps) 
         <button
           type="button"
           onClick={() => setTrustPoints((prev) => [...prev, ''])}
-          className="inline-flex w-fit items-center gap-1.5 rounded-xl border border-dashed border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-500 transition hover:border-brand-400 hover:text-brand-600 dark:border-gray-600 dark:text-gray-400"
+          className="inline-flex w-fit items-center gap-1.5 rounded-xl border border-dashed border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-500 transition hover:border-brand-400 hover:text-brand-ink dark:border-gray-600 dark:text-gray-400"
         >
           <Plus size={13} />
           افزودنِ نکته

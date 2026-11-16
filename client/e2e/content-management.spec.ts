@@ -168,3 +168,44 @@ test('instructor can create, edit and delete an individual question inside a ban
   await expect(page.getByText('هنوز سوالی وجود ندارد')).toBeVisible();
   expect(operations).toEqual(['POST', 'PUT', 'DELETE']);
 });
+
+test('instructor content cards use the approved light and dark headers', async ({ page }) => {
+  const practice = {
+    id: 'practice-1', title: 'مرور مشتق و کاربردها', description: 'مرور مشتق‌گیری',
+    status: 'Published', questionCount: 12, groups: [{ id: 'group-1', name: 'ریاضی' }],
+  };
+  await page.route('http://127.0.0.1:4109/**', route => {
+    const path = new URL(route.request().url()).pathname;
+    switch (path) {
+      case '/auth/refresh': return route.fulfill({ json: { accessToken: 'test-token' } });
+      case '/auth/me': return route.fulfill({ json: teacher });
+      case '/banks': return route.fulfill({ json: { items: [firstBank], total: 1, page: 1, pageSize: 25 } });
+      case '/practice': return route.fulfill({ json: { items: [practice], total: 1, page: 1, pageSize: 25 } });
+      default: return route.fulfill({ json: [] });
+    }
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const [path, title, light, dark] of [
+    ['/question-banks', firstBank.name, 'rgb(225, 214, 248)', 'rgb(75, 58, 112)'],
+    ['/practice', practice.title, 'rgb(238, 217, 246)', 'rgb(85, 55, 98)'],
+  ]) {
+    if (path === '/question-banks') await page.goto(path);
+    else await page.getByRole('link', { name: 'مشاهده تمرین‌ها' }).click();
+    const card = page.getByRole('article').filter({ has: page.getByRole('heading', { name: title }) });
+    const header = card.locator('.learning-content-card-header');
+    await expect(card).toBeVisible();
+    await expect(card.locator('.learning-content-card-art')).toBeVisible();
+    expect(await card.evaluate(element => {
+      const art = element.querySelector('.learning-content-card-art')!.getBoundingClientRect();
+      const title = element.querySelector('h2')!.getBoundingClientRect();
+      return art.right <= title.left;
+    })).toBe(true);
+    await expect.poll(() => header.evaluate(el => getComputedStyle(el).backgroundImage)).toContain(light);
+    await page.getByRole('button', { name: 'فعال کردن حالت تاریک' }).click();
+    await expect.poll(() => header.evaluate(el => getComputedStyle(el).backgroundImage)).toContain(dark);
+    expect(await card.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await page.getByRole('button', { name: 'فعال کردن حالت روشن' }).click();
+  }
+  await expect(page.getByText('فعال برای تمرین', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'مشاهده و انتشار' })).toBeVisible();
+});
