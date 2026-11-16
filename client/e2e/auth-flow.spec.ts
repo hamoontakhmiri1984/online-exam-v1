@@ -97,6 +97,8 @@ test('password login opens the admin workspace during a pending refresh', async 
   });
 
   try {
+    // A tab that already signed in restores its session on load, which is the pending-refresh case under test.
+    await page.addInitScript(() => window.sessionStorage.setItem('exam-active-login-this-tab', '1'));
     const refreshStarted = page.waitForRequest(request => request.url().endsWith('/auth/refresh'));
     await page.goto('/login');
     await refreshStarted;
