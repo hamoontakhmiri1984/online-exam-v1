@@ -57,8 +57,8 @@ function practiceMemory() {
             : v.notIn
               ? !v.notIn.includes(x[k])
               : v.contains
-              ? x[k].includes(v.contains)
-              : true
+                ? x[k].includes(v.contains)
+                : true
           : x[k] === v),
     );
   function setMatch(p, w = {}) {
@@ -147,7 +147,8 @@ function practiceMemory() {
       count: async ({ where }) => groups.filter((g) => basic(g, where)).length,
     },
     questionBank: {
-      count: async ({ where }) => banks.filter(bank => basic(bank, where)).length,
+      count: async ({ where }) =>
+        banks.filter((bank) => basic(bank, where)).length,
     },
     question: {
       findMany: async ({ where, select }) =>
@@ -157,7 +158,11 @@ function practiceMemory() {
               basic(q, where) &&
               q.bank.instructorId === where.bank.instructorId,
           )
-          .map(q => select ? Object.fromEntries(Object.keys(select).map(k => [k, q[k]])) : copy(q)),
+          .map((q) =>
+            select
+              ? Object.fromEntries(Object.keys(select).map((k) => [k, q[k]]))
+              : copy(q),
+          ),
     },
     practiceSet: {
       async create({ data }) {
@@ -194,7 +199,7 @@ function practiceMemory() {
       async update({ where, data, select }) {
         const p = sets.find((p) => p.id === where.id);
         Object.assign(p, data);
-        return Object.fromEntries(Object.keys(select).map(k => [k, p[k]]));
+        return Object.fromEntries(Object.keys(select).map((k) => [k, p[k]]));
       },
     },
     practiceSetGroup: {

@@ -313,13 +313,32 @@ test('practice HTTP: samples exact difficulties across owned banks without repea
     };
     const response = await r(actor, 'POST', '/random-questions', query);
     assert.equal(response.status, 200, JSON.stringify(response.body));
-    assert.deepEqual(new Set(response.body.map(q => q.id)), new Set(['qa', 'qc', 'qd']));
-    assert.ok(response.body.every(q => !Object.hasOwn(q, 'correctOptionIndex')));
-    const shortage = await r(actor, 'POST', '/random-questions', { ...query, counts: { ...query.counts, Hard: 2 } });
+    assert.deepEqual(
+      new Set(response.body.map((q) => q.id)),
+      new Set(['qa', 'qc', 'qd']),
+    );
+    assert.ok(
+      response.body.every((q) => !Object.hasOwn(q, 'correctOptionIndex')),
+    );
+    const shortage = await r(actor, 'POST', '/random-questions', {
+      ...query,
+      counts: { ...query.counts, Hard: 2 },
+    });
     assert.equal(shortage.status, 400);
     assert.match(shortage.body.error, /سخت.*۲.*۱/);
-    assert.equal((await r(actor, 'POST', '/random-questions', { ...query, bankIds: ['bank-b'] })).status, 404);
-    assert.equal((await r('Student:student-a', 'POST', '/random-questions', query)).status, 403);
+    assert.equal(
+      (
+        await r(actor, 'POST', '/random-questions', {
+          ...query,
+          bankIds: ['bank-b'],
+        })
+      ).status,
+      404,
+    );
+    assert.equal(
+      (await r('Student:student-a', 'POST', '/random-questions', query)).status,
+      403,
+    );
   }));
 
 test('practice HTTP: a draft can add questions while keeping a snapshot whose bank question was removed', (t) =>
@@ -330,18 +349,30 @@ test('practice HTTP: a draft can add questions while keeping a snapshot whose ba
     m.source.push({ ...m.source[0], id: 'qc', difficulty: 'Medium' });
     const actor = 'Instructor:teacher-a';
     const updated = await r(actor, 'PUT', `/${id}`, {
-      ...input, title: 'Updated practice', questionIds: [snapshotId, 'qc'],
+      ...input,
+      title: 'Updated practice',
+      questionIds: [snapshotId, 'qc'],
     });
     assert.equal(updated.status, 200, JSON.stringify(updated.body));
-    assert.deepEqual(m.questions.map(q => q.sourceQuestionId), [null, 'qc']);
+    assert.deepEqual(
+      m.questions.map((q) => q.sourceQuestionId),
+      [null, 'qc'],
+    );
     m.groups[0].approvalStatus = 'Pending';
-    const blocked = await r(actor, 'POST', `/${id}/status`, { status: 'Published' });
+    const blocked = await r(actor, 'POST', `/${id}/status`, {
+      status: 'Published',
+    });
     assert.equal(blocked.status, 400);
     m.groups[0].approvalStatus = 'Approved';
-    const status = await r(actor, 'POST', `/${id}/status`, { status: 'Published' });
+    const status = await r(actor, 'POST', `/${id}/status`, {
+      status: 'Published',
+    });
     assert.equal(status.status, 200);
     assert.equal(status.body.status, 'Published');
     assert.ok(status.body.publishedAt);
     const published = await r('Student:student-a', 'GET', `/${id}/questions`);
-    assert.deepEqual(published.body.items.map(q => q.difficulty), ['Easy', 'Medium']);
+    assert.deepEqual(
+      published.body.items.map((q) => q.difficulty),
+      ['Easy', 'Medium'],
+    );
   }));

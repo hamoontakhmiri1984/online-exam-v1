@@ -23,8 +23,10 @@ async function snapshots(
   ids: string[],
   existing: PracticeQuestion[] = [],
 ) {
-  const retained = new Map(existing.map(q => [q.sourceQuestionId ?? q.id, q]));
-  const newIds = ids.filter(id => !retained.has(id));
+  const retained = new Map(
+    existing.map((q) => [q.sourceQuestionId ?? q.id, q]),
+  );
+  const newIds = ids.filter((id) => !retained.has(id));
   const items = await db.question.findMany({
     where: { id: { in: newIds }, bank: { instructorId: owner } },
   });
@@ -70,7 +72,10 @@ export async function updatePractice(id: string, owner: string, input: Input) {
       where: { id, instructorId: owner },
     });
     if (!practice) throw notFound();
-    if (input.questionIds && (practice.publishedAt || practice.status === 'Published'))
+    if (
+      input.questionIds &&
+      (practice.publishedAt || practice.status === 'Published')
+    )
       throw conflict(
         'سؤال‌های تمرین منتشرشده ثابت هستند؛ مجموعهٔ تازه بسازید.',
       );
@@ -78,7 +83,9 @@ export async function updatePractice(id: string, owner: string, input: Input) {
       throw badRequest('تمرین منتشرشده باید حداقل یک گروه داشته باشد.');
     await ownedGroups(db, owner, input.groupIds);
     if (input.questionIds) {
-      const existing = await db.practiceQuestion.findMany({ where: { practiceId: id } });
+      const existing = await db.practiceQuestion.findMany({
+        where: { practiceId: id },
+      });
       const questions = await snapshots(db, owner, input.questionIds, existing);
       await db.practiceQuestion.deleteMany({ where: { practiceId: id } });
       await db.practiceQuestion.createMany({
@@ -107,15 +114,24 @@ export async function setPracticeStatus(
     await db.$queryRaw`SELECT id FROM practice_sets WHERE id = ${id} FOR UPDATE`;
     const p = await db.practiceSet.findFirst({
       where: { id, instructorId: owner },
-      include: { groups: { select: { groupId: true } }, _count: { select: { questions: true } } },
+      include: {
+        groups: { select: { groupId: true } },
+        _count: { select: { questions: true } },
+      },
     });
     if (!p) throw notFound();
     if (status === 'Published') {
       const groups = await db.group.count({
-        where: { id: { in: p.groups.map(group => group.groupId) }, instructorId: owner, approvalStatus: 'Approved' },
+        where: {
+          id: { in: p.groups.map((group) => group.groupId) },
+          instructorId: owner,
+          approvalStatus: 'Approved',
+        },
       });
       if (!groups || !p._count.questions)
-        throw badRequest('برای انتشار، حداقل یک گروه تأییدشده و یک سؤال لازم است.');
+        throw badRequest(
+          'برای انتشار، حداقل یک گروه تأییدشده و یک سؤال لازم است.',
+        );
     }
     return db.practiceSet.update({
       where: { id },

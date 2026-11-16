@@ -26,14 +26,22 @@ export const updatePracticeSchema = z
   .strict();
 export const practiceDifficulties = ['Easy', 'Medium', 'Hard'] as const;
 const sampleCount = z.number().int().min(0).max(100);
-export const randomPracticeQuestionsSchema = z.object({
-  bankIds: ids(100, 1),
-  counts: z.object({ Easy: sampleCount, Medium: sampleCount, Hard: sampleCount }).strict(),
-  excludeQuestionIds: ids(100).default([]),
-}).strict().refine(({ counts, excludeQuestionIds }) => {
-  const total = practiceDifficulties.reduce((sum, level) => sum + counts[level], 0);
-  return total > 0 && total + excludeQuestionIds.length <= 100;
-}, 'مجموع سؤال‌های انتخاب‌شده و تصادفی باید بین ۱ و ۱۰۰ باشد.');
+export const randomPracticeQuestionsSchema = z
+  .object({
+    bankIds: ids(100, 1),
+    counts: z
+      .object({ Easy: sampleCount, Medium: sampleCount, Hard: sampleCount })
+      .strict(),
+    excludeQuestionIds: ids(100).default([]),
+  })
+  .strict()
+  .refine(({ counts, excludeQuestionIds }) => {
+    const total = practiceDifficulties.reduce(
+      (sum, level) => sum + counts[level],
+      0,
+    );
+    return total > 0 && total + excludeQuestionIds.length <= 100;
+  }, 'مجموع سؤال‌های انتخاب‌شده و تصادفی باید بین ۱ و ۱۰۰ باشد.');
 export const answerSchema = z
   .object({
     requestId: z.string().uuid(),

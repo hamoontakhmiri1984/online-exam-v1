@@ -63,10 +63,12 @@ router.post(
   '/random-questions',
   requireRole('Instructor'),
   asyncHandler(async (req, res) => {
-    res.json(await randomPracticeQuestions(
-      req.user!.sub,
-      parse(randomPracticeQuestionsSchema, req.body),
-    ));
+    res.json(
+      await randomPracticeQuestions(
+        req.user!.sub,
+        parse(randomPracticeQuestionsSchema, req.body),
+      ),
+    );
   }),
 );
 router.get(
