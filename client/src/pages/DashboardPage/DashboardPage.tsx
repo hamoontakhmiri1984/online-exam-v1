@@ -19,7 +19,7 @@ import useGroupMembership from '../../hooks/useGroupMembership';
 import { DashboardWelcome } from './components/DashboardVisuals';
 
 const panelClass =
-  'glass-admin-panel overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900';
+  'glass-admin-panel overflow-hidden rounded-2xl border border-white/70 bg-white/75 shadow-sm dark:border-gray-800 dark:bg-gray-900/80';
 
 function MemberDashboard() {
   const { user, exams, attempts, studentCount, error, clearError } =
@@ -36,14 +36,14 @@ function MemberDashboard() {
   const topExamsData = buildTopExamsData(exams, attempts);
   const progressData = buildProgressData(attempts);
   const displayName = user?.name || user?.username || 'کاربر';
-  const description =
-    user?.role === 'Student'
-      ? 'وضعیت آزمون‌ها، نتایج و روند پیشرفت تحصیلی شما'
-      : 'نمای کلی آزمون‌ها، دانشجویان و عملکرد کلاس‌های شما';
+  const isStudent = user?.role === 'Student';
+  const description = isStudent
+    ? 'نمای کلی آزمون‌ها و روند پیشرفت تحصیلی شما'
+    : 'نمای کلی آزمون‌ها، دانشجویان و عملکرد کلاس‌های شما';
 
   return (
     <AppLayout title="میزکار">
-      <div className="glass-dashboard">
+      <div className="glass-dashboard space-y-5">
         {error && (
           <Toast
             message={error}
@@ -55,24 +55,44 @@ function MemberDashboard() {
 
         <DashboardWelcome name={displayName} description={description} />
 
-        {user?.role === 'Student' && (
-          <section className={`${panelClass} mb-6 p-5 sm:p-6`}>
-            <div className="mb-4 flex items-center gap-3">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-violet-100 text-brand-ink dark:bg-violet-500/20">
-                <UsersRound size={21} />
+        <StatsCards
+          examCount={exams.filter((exam) => exam.status === 'upcoming').length}
+          studentCount={studentCount}
+          showStudentCount={!isStudent}
+          averageScorePercent={averageScorePercent}
+          hasAttempts={attempts.length > 0}
+          attemptCount={attempts.length}
+        />
+
+        <section
+          aria-label="تحلیل عملکرد"
+          className="grid grid-cols-1 gap-4 xl:grid-cols-2"
+        >
+          <ProgressChart data={progressData} />
+          <TodayExamsChart data={topExamsData} />
+        </section>
+
+        {isStudent && (
+          <section
+            aria-labelledby="join-group-title"
+            className={`${panelClass} flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5`}
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
+                <UsersRound size={19} />
               </span>
-              <div>
-                <h2 className="font-semibold text-gray-900 dark:text-white">
+              <div className="min-w-0">
+                <h2 id="join-group-title" className="font-semibold text-gray-900 dark:text-white">
                   پیوستن به گروه کلاس
                 </h2>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  کد عضویت را از مدرس دریافت کنید و وارد شوید.
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  برای دسترسی به آزمون‌های گروهی، کد عضویت مدرس را وارد کنید.
                 </p>
               </div>
             </div>
             <form
               onSubmit={membership.handleJoinGroup}
-              className="flex flex-col gap-2 sm:flex-row"
+              className="flex w-full min-w-0 flex-col gap-2 sm:max-w-xl sm:flex-row"
             >
               <input
                 aria-label="کد عضویت گروه"
@@ -82,54 +102,29 @@ function MemberDashboard() {
                   membership.setJoinError(null);
                 }}
                 placeholder="کد عضویت گروه"
-                className="min-h-11 min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-4 text-sm outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/15 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
+                className="min-h-10 min-w-0 flex-1 rounded-xl border border-gray-200 bg-white/90 px-3 text-sm outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-400/15 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
               />
               <button
                 type="submit"
                 disabled={membership.joining}
-                className="ui-create-cta inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 disabled:cursor-wait disabled:opacity-60"
+                className="ui-create-cta inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl px-4 text-sm disabled:cursor-wait disabled:opacity-60"
               >
-                <LogIn size={17} />
+                <LogIn size={16} />
                 {membership.joining ? 'در حال بررسی…' : 'پیوستن به گروه'}
               </button>
             </form>
             {membership.joinError && (
-              <p role="alert" className="mt-3 text-sm text-rose-600 dark:text-rose-300">
+              <p role="alert" className="text-sm text-rose-600 dark:text-rose-300">
                 {membership.joinError}
               </p>
             )}
             {membership.joinSuccess && (
-              <p role="status" className="mt-3 text-sm text-emerald-600 dark:text-emerald-300">
+              <p role="status" className="text-sm text-emerald-600 dark:text-emerald-300">
                 {membership.joinSuccess}
               </p>
             )}
           </section>
         )}
-
-        <section aria-labelledby="dashboard-stats-title" className="mb-3">
-          <h2
-            id="dashboard-stats-title"
-            className="mb-3 font-semibold text-gray-900 dark:text-white"
-          >
-            نمای کلی عملکرد
-          </h2>
-          <StatsCards
-            examCount={exams.filter((exam) => exam.status === 'upcoming').length}
-            studentCount={studentCount}
-            showStudentCount={user?.role !== 'Student'}
-            averageScorePercent={averageScorePercent}
-            hasAttempts={attempts.length > 0}
-            attemptCount={attempts.length}
-          />
-        </section>
-
-        <section
-          aria-label="نمودارهای عملکرد"
-          className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2"
-        >
-          <TodayExamsChart data={topExamsData} />
-          <ProgressChart data={progressData} />
-        </section>
 
         <RecentExamsTable
           exams={recentExams}
