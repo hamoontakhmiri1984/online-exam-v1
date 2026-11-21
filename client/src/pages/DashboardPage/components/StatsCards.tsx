@@ -19,7 +19,10 @@ export default function StatsCards({
   attemptCount,
 }: StatsCardsProps) {
   return (
-    <section className="glass-unified-stats mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section
+      aria-label="آمار کلی"
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
+    >
       <DashboardStatCard
         icon={ClipboardList}
         label="آزمون‌های پیش‌رو"
