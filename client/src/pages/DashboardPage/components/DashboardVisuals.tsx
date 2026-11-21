@@ -37,7 +37,7 @@ export function DashboardStatCard({ icon: Icon, label, value, tone }: {
   };
 
   return (
-    <article className="glass-unified-stat flex min-h-24 items-center gap-3 rounded-2xl border border-white/75 bg-white/75 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/75 sm:p-5">
+    <article className="glass-stat glass-unified-stat flex min-h-24 items-center gap-3 rounded-2xl border border-white/75 bg-white/75 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/75 sm:p-5">
       <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${toneStyles[tone]}`} aria-hidden="true">
         <Icon size={22} strokeWidth={1.8} />
       </span>
