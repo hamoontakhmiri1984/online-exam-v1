@@ -241,8 +241,8 @@ function RecentExams({ exams }: { exams: AdminDashboardData['recentExams'] }) {
 function Content({ data }: { data: AdminDashboardData }) {
   const { stats, attention, recentExams } = data;
   return (
-    <div className="space-y-6">
-      <div className="glass-unified-stats glass-admin-stats grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="space-y-5">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <DashboardStatCard label="مدرسان تأییدشده" value={fa(stats.approvedInstructors)} icon={GraduationCap} tone="violet" />
         <DashboardStatCard label="دانشجویان" value={fa(stats.students)} icon={UsersRound} tone="cyan" />
         <DashboardStatCard label="آزمون‌های فعال" value={fa(stats.activeExams)} icon={ClipboardCheck} tone="green" />
@@ -318,7 +318,7 @@ export default function AdminDashboard() {
 
   return (
     <AppLayout title="میزکار">
-      <div className="glass-dashboard">
+      <div className="glass-dashboard space-y-5">
       {error && (
         <Toast
           message={error}
