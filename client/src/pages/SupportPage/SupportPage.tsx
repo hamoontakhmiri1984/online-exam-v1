@@ -41,6 +41,7 @@ export default function SupportPage() {
   const isTeacher = user?.role === 'Instructor';
   const isStudent = user?.role === 'Student';
   const [waitingOnly, setWaitingOnly] = useState(false);
+  const [adminTicketView, setAdminTicketView] = useState<'Instructor' | 'Student'>('Instructor');
   const [hasMore, setHasMore] = useState(false);
   const [ticketView, setTicketView] = useState<'mine' | 'students'>('mine');
   const [availableInstructors, setAvailableInstructors] = useState<AvailableInstructor[]>([]);
@@ -92,7 +93,7 @@ export default function SupportPage() {
     const run = async () => {
       try {
         if (isAdmin) {
-          const result = await getAdminSupportTickets(page, waitingOnly);
+          const result = await getAdminSupportTickets(page, waitingOnly, adminTicketView);
           if (!active) return;
           if (page > 0 && result.items.length === 0) {
             setPage(page - 1);
@@ -114,7 +115,7 @@ export default function SupportPage() {
     };
     void run();
     return () => { active = false; };
-  }, [isAdmin, page, waitingOnly, refreshKey, isTeacher, ticketView]);
+  }, [isAdmin, page, waitingOnly, refreshKey, isTeacher, ticketView, adminTicketView]);
 
   const openTicket = useCallback(async (ticket: SupportTicket) => {
     const request = ++detailRequest.current;
@@ -229,7 +230,7 @@ export default function SupportPage() {
     setError('');
   }
 
-  const sectionTitle = isAdmin ? 'صندوق تیکت‌های مدرس‌ها' : selectedTicket ? 'جزئیات تیکت'
+  const sectionTitle = isAdmin ? (adminTicketView === 'Student' ? 'صندوق تیکت‌های دانشجویان' : 'صندوق تیکت‌های مدرس‌ها') : selectedTicket ? 'جزئیات تیکت'
     : isTeacher && ticketView === 'students' ? 'تیکت‌های دانشجویان من' : 'تیکت‌های من';
   const pagination = (
     <div className="flex items-center justify-center gap-3">
@@ -249,7 +250,7 @@ export default function SupportPage() {
         <div className="min-w-0">
           {isAdmin && <h2 ref={conversationHeadingRef} tabIndex={-1} className="mb-1 [overflow-wrap:anywhere] text-base font-bold text-slate-900 focus-visible:outline-brand-500 dark:text-white">{selectedTicket.subject}</h2>}
           <p className="w-fit max-w-full [overflow-wrap:anywhere] text-xs font-semibold text-brand-ink" dir="ltr">{selectedTicket.trackingCode}</p>
-          {(isAdmin || isTeacher) && selectedTicket.user && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{isAdmin ? 'مدرس' : 'دانشجو'}: {selectedTicket.user.name || selectedTicket.user.username || 'بدون نام'}</p>}
+          {(isAdmin || isTeacher) && selectedTicket.user && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{isAdmin ? (selectedTicket.user.role === 'Student' ? 'دانشجو' : 'مدرس') : 'دانشجو'}: {selectedTicket.user.name || selectedTicket.user.username || 'بدون نام'}</p>}
           {!isAdmin && <h2 className="mt-1 break-words text-lg font-bold text-slate-900 dark:text-white">{selectedTicket.subject}</h2>}
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
             <span>{ticketCategoryLabels[selectedTicket.category]}</span>
@@ -275,7 +276,7 @@ export default function SupportPage() {
               {startsDay && <p className="my-2 flex items-center gap-3 text-center text-xs text-slate-600 before:h-px before:flex-1 before:bg-violet-100 after:h-px after:flex-1 after:bg-violet-100 dark:text-slate-300 dark:before:bg-violet-400/15 dark:after:bg-violet-400/15">{day}</p>}
               <div className={`flex ${mine ? 'justify-start' : 'justify-end'}`}>
                 <div className={`max-w-[85%] rounded-2xl border sm:max-w-[75%] ${isAdmin ? 'px-3 py-2' : 'px-4 py-3 shadow-sm'} ${mine ? 'border-violet-200 bg-violet-100 text-slate-800 dark:border-violet-400/25 dark:bg-violet-500/20 dark:text-white' : 'border-slate-200 bg-white text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-white'}`}>
-                  <p className={`text-[11px] font-bold ${isAdmin ? 'opacity-75' : 'mb-2 opacity-70'}`}>{message.fromStaff ? 'پشتیبانی' : 'کاربر'}</p>
+                  <p className={`text-[11px] font-bold ${isAdmin ? 'opacity-75' : 'mb-2 opacity-70'}`}>{message.fromStaff ? 'پشتیبانی' : isAdmin ? (selectedTicket.user?.role === 'Student' ? 'دانشجو' : 'مدرس') : 'کاربر'}</p>
                   <p dir="auto" className={`whitespace-pre-wrap [overflow-wrap:anywhere] text-sm ${isAdmin ? 'leading-6' : 'leading-7'}`}>{message.body}</p>
                   <time className={`block text-left ${isAdmin ? 'mt-1 text-[11px] text-slate-600 dark:text-slate-300' : 'mt-2 text-[10px] opacity-60'}`} dateTime={message.createdAt}>{isAdmin ? sentAt.toLocaleTimeString('fa-IR', { timeStyle: 'short' }) : fmt(message.createdAt)}</time>
                 </div>
@@ -308,6 +309,26 @@ export default function SupportPage() {
           {!isAdmin && !selectedTicket && <button type="button" onClick={() => setCreateOpen(true)} className="ui-primary-gradient inline-flex min-h-10 items-center gap-2 rounded-xl px-5 text-sm font-semibold"><Plus size={17}/> ثبت تیکت جدید</button>}
         </div>
 
+        {isAdmin && !selectedTicket && (
+          <div role="group" aria-label="نوع تیکت‌ها" className="inline-flex rounded-xl border border-violet-200/60 bg-white/80 p-1 dark:border-violet-400/20 dark:bg-slate-900/80">
+            <button
+              type="button"
+              aria-pressed={adminTicketView === 'Instructor'}
+              onClick={() => { if (adminTicketView !== 'Instructor') { setAdminTicketView('Instructor'); setPage(0); setSelectedTicket(null); setError(''); } }}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${adminTicketView === 'Instructor' ? 'bg-violet-600 text-white' : 'text-slate-600 hover:bg-violet-50 dark:text-slate-300 dark:hover:bg-violet-500/10'}`}
+            >
+              تیکت‌های مدرس‌ها
+            </button>
+            <button
+              type="button"
+              aria-pressed={adminTicketView === 'Student'}
+              onClick={() => { if (adminTicketView !== 'Student') { setAdminTicketView('Student'); setPage(0); setSelectedTicket(null); setError(''); } }}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${adminTicketView === 'Student' ? 'bg-violet-600 text-white' : 'text-slate-600 hover:bg-violet-50 dark:text-slate-300 dark:hover:bg-violet-500/10'}`}
+            >
+              تیکت‌های دانشجویان
+            </button>
+          </div>
+        )}
         {isTeacher && !selectedTicket && (
           <div role="group" aria-label="نمایش تیکت‌ها" className="inline-flex rounded-xl border border-violet-200/60 bg-white/80 p-1 dark:border-violet-400/20 dark:bg-slate-900/80">
             <button type="button" aria-pressed={ticketView === 'mine'} onClick={() => { setTicketView('mine'); setPage(0); }} className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${ticketView === 'mine' ? 'bg-violet-600 text-white' : 'text-slate-600 hover:bg-violet-50 dark:text-slate-300 dark:hover:bg-violet-500/10'}`}>تیکت‌های من</button>
@@ -345,7 +366,7 @@ export default function SupportPage() {
                               className="flex w-full min-w-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-transparent px-3 py-2.5 text-start transition-colors hover:bg-violet-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500 aria-current:border-violet-300 aria-current:bg-violet-100 disabled:cursor-wait dark:hover:bg-violet-500/10 dark:aria-current:border-violet-400/40 dark:aria-current:bg-violet-500/20">
                               <span className="min-w-0">
                                 <span className="block [overflow-wrap:anywhere] text-sm font-semibold text-slate-900 dark:text-white">{ticket.subject}</span>
-                                <span className="mt-1 block text-xs text-slate-600 dark:text-slate-300">{ticket.user?.name || ticket.user?.username || 'مدرس بدون نام'} · {fmt(ticket.updatedAt)}</span>
+                                <span className="mt-1 block text-xs text-slate-600 dark:text-slate-300">{ticket.user?.name || ticket.user?.username || (adminTicketView === 'Student' ? 'دانشجوی بدون نام' : 'مدرس بدون نام')} · {fmt(ticket.updatedAt)}</span>
                               </span>
                               <Status status={ticket.status} />
                             </button>
