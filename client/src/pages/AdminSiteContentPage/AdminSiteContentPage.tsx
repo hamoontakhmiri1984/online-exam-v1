@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { XCircle, Layout, Send, RotateCcw, FolderOpen } from 'lucide-react';
 import AppLayout from '../../components/AppLayout/AppLayout';
+import LearningPageLayout from '../../components/LearningPageLayout/LearningPageLayout';
 import Spinner from '../../components/Spinner/Spinner';
 import useAdminSiteContent from '../../hooks/useAdminSiteContent';
 import { SITE_CONTENT_SECTIONS, type SiteContentSection } from '../../api/cmsApi';
@@ -69,26 +70,20 @@ function AdminSiteContentPage() {
 
   return (
     <AppLayout title="محتوای فرود">
+      <LearningPageLayout
+        eyebrow="مدیریت محتوا"
+        title="محتوای فرود"
+        description="بخش‌های صفحه‌ی اصلی سامانه را ویرایش کنید و پس از بازبینی منتشر کنید."
+        icon={Layout}
+        actions={
+          <button type="button" onClick={() => void publish()} disabled={publishing || !!savingSection || loading} className="ui-primary-gradient inline-flex min-h-11 items-center gap-2 rounded-xl px-5 text-sm font-bold disabled:opacity-50">
+            <Send size={16}/>{publishing ? 'در حال انتشار…' : 'انتشار در صفحه اصلی'}
+          </button>
+        }
+      >
       {error && <div role="alert" className="form-inline-error mb-4 flex items-center justify-between gap-2"><span>{error}</span><button aria-label="بستن خطا" type="button" onClick={clearError}><XCircle size={17}/></button></div>}
 
-      <div className="mb-6 flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-ink dark:bg-brand-500/15">
-          <Layout size={20} />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold dark:text-white">محتوای فرود</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            متنِ هر بخشِ صفحه‌ی فرود رو از همین‌جا ویرایش کن.
-          </p>
-        </div>
-      </div>
-
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-gray-500 dark:text-gray-300">ذخیره هر بخش فقط پیش‌نویس را تغییر می‌دهد. تا انتشار را نزنید، صفحه اصلی تغییر نمی‌کند.</p>
-        <button type="button" onClick={() => void publish()} disabled={publishing || !!savingSection || loading} className="ui-primary-gradient inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold disabled:opacity-50">
-          <Send size={16}/>{publishing ? 'در حال انتشار…' : 'انتشار در صفحه اصلی'}
-        </button>
-      </div>
+      <p className="mb-4 text-xs leading-6 text-gray-500 dark:text-gray-300">ذخیره هر بخش فقط پیش‌نویس را تغییر می‌دهد. تا انتشار را نزنید، صفحه اصلی تغییر نمی‌کند.</p>
       <div className="mb-4 flex flex-wrap gap-2">
         {SITE_CONTENT_SECTIONS.map((section) => (
           <button
@@ -114,7 +109,7 @@ function AdminSiteContentPage() {
           <RotateCcw size={14}/> شروع با فرم خالی
         </button>
       </div>
-      <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
+      <div className="min-w-0">
         {loading || !sections ? (
           <Spinner />
         ) : (
@@ -170,6 +165,7 @@ function AdminSiteContentPage() {
           </>
         )}
       </div>
+      </LearningPageLayout>
     </AppLayout>
   );
 }
