@@ -144,7 +144,8 @@ test('student gets the unified visual sidebar with direct learning navigation', 
 
   await expect(sidebar.locator('.role-sidebar-identity')).toContainText('دانشجوی نمونه');
   await expect(sidebar.locator('.role-sidebar-identity')).toContainText('دانشجو');
-  await expect(sidebar.locator('.role-nav-section-heading')).toContainText('دسترسی‌های شما');
+  await expect(navigation.locator('.role-nav-section-heading')).toHaveCount(0);
+  await expect(navigation.locator('a').last()).toContainText('پشتیبانی');
   await expect(dashboard).toBeVisible();
   await expect(navigation.getByRole('link', { name: 'آزمون‌ها', exact: true })).toBeVisible();
   await expect(navigation.getByRole('link', { name: 'تمرین‌ها', exact: true })).toBeVisible();
