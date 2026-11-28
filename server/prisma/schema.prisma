@@ -53,6 +53,16 @@ enum CategoryStatus {
   Approved
 }
 
+enum GroupCardColor {
+  Default
+  Stone
+  BlueGray
+  Sage
+  Sand
+  Lavender
+  Teal
+}
+
 enum QuestionDifficulty {
   Easy
   Medium
@@ -137,6 +147,7 @@ model Group {
   id           String   @id @default(cuid())
   name         String
   category     String
+  cardColor    GroupCardColor @default(Default)
   joinCode     String   @unique
   instructorId String
   createdAt    DateTime @default(now())

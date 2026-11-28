@@ -1,9 +1,14 @@
-import { Save } from 'lucide-react';
+import { Check, Save } from 'lucide-react';
 import { userDisplayName } from '../../../lib/userDisplayName';
 import Modal from '../../../components/Modal/Modal';
 import type { Category } from '../../../constants/categories';
 import type { Student } from '../../../api/studentApi';
 import CategorySelect from '../../../components/CategorySelect/CategorySelect';
+import {
+  GROUP_CARD_COLOR_OPTIONS,
+  GROUP_CARD_DEFAULT_COLOR,
+  type GroupCardColor,
+} from '../../../constants/groupCardColors';
 
 type GroupFormModalProps = {
   isOpen: boolean;
@@ -12,6 +17,8 @@ type GroupFormModalProps = {
   onNameChange: (value: string) => void;
   category: Category | '';
   onCategoryChange: (value: Category) => void;
+  cardColor: GroupCardColor;
+  onCardColorChange: (value: GroupCardColor) => void;
   students: Student[];
   studentIds: string[];
   onToggleStudent: (studentId: string) => void;
@@ -27,6 +34,8 @@ function GroupFormModal({
   onNameChange,
   category,
   onCategoryChange,
+  cardColor,
+  onCardColorChange,
   students,
   studentIds,
   onToggleStudent,
@@ -61,6 +70,50 @@ function GroupFormModal({
           value={category}
           onChange={(value) => onCategoryChange(value as Category)}
         /></div>
+
+        <fieldset className="flex flex-col gap-2">
+          <legend className="text-sm font-medium text-gray-700 dark:text-gray-200">
+            رنگ کارت <span className="font-normal text-gray-400">(اختیاری)</span>
+          </legend>
+          <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">
+            اگر رنگی انتخاب نکنی، رنگ بنفش فعلی حفظ می‌شود.
+          </p>
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+            <button
+              type="button"
+              aria-label="رنگ پیش‌فرض فعلی"
+              aria-pressed={cardColor === GROUP_CARD_DEFAULT_COLOR}
+              onClick={() => onCardColorChange(GROUP_CARD_DEFAULT_COLOR)}
+              className="flex min-w-0 flex-col items-center gap-1.5 rounded-xl border border-gray-200 p-2 text-xs text-gray-600 transition hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+              <span className="grid size-7 place-items-center rounded-full border border-violet-300 bg-[linear-gradient(135deg,#d8c6fa,#f0e9ff)]">
+                {cardColor === GROUP_CARD_DEFAULT_COLOR && <Check size={15} className="text-violet-800" />}
+              </span>
+              <span className="text-center leading-4">پیش‌فرض</span>
+            </button>
+            {GROUP_CARD_COLOR_OPTIONS.map((option) => {
+              const isSelected = cardColor === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-label={option.label}
+                  aria-pressed={isSelected}
+                  onClick={() => onCardColorChange(option.value)}
+                  className={\`flex min-w-0 flex-col items-center gap-1.5 rounded-xl border p-2 text-xs transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500 \${isSelected ? 'border-violet-500 bg-violet-50 dark:border-violet-300 dark:bg-violet-950/30' : 'border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800'}\`}
+                >
+                  <span
+                    className="grid size-7 place-items-center rounded-full border border-black/10"
+                    style={{ backgroundColor: option.swatch }}
+                  >
+                    {isSelected && <Check size={15} className="text-slate-700" />}
+                  </span>
+                  <span className="w-full text-center leading-4 text-gray-600 dark:text-gray-300">{option.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
 
         <div className="flex flex-col gap-2">
           <label className="text-sm text-gray-600 dark:text-gray-300">
