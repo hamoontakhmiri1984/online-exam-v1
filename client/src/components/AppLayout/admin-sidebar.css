@@ -315,28 +315,6 @@
   gap: 9px;
 }
 
-.admin-sidebar--executive .admin-nav-group-count {
-  display: inline-flex;
-  min-width: 23px;
-  height: 21px;
-  align-items: center;
-  justify-content: center;
-  padding: 0 5px;
-  border: 1px solid rgba(126, 108, 176, 0.1);
-  border-radius: 7px;
-  color: #88829b;
-  background: rgba(255, 255, 255, 0.72);
-  font-size: 9px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-.admin-sidebar--executive .admin-nav-group-trigger.is-expanded .admin-nav-group-count {
-  border-color: rgba(124, 97, 195, 0.14);
-  color: #684cb2;
-  background: rgba(255, 255, 255, 0.65);
-}
-
 .admin-sidebar--executive .admin-nav-group-chevron {
   color: #9992aa;
 }
@@ -468,17 +446,6 @@
 .dark .admin-sidebar--executive .admin-nav-group-trigger.has-active-route .admin-nav-group-icon {
   color: #fff;
   background: linear-gradient(145deg, #8769dd, #6547b9);
-}
-
-.dark .admin-sidebar--executive .admin-nav-group-count {
-  border-color: rgba(194, 178, 231, 0.12);
-  color: #aaa3bf;
-  background: rgba(255, 255, 255, 0.045);
-}
-
-.dark .admin-sidebar--executive .admin-nav-group-trigger.is-expanded .admin-nav-group-count {
-  color: #e1d7ff;
-  background: rgba(255, 255, 255, 0.08);
 }
 
 .dark .admin-sidebar--executive .admin-nav-submenu {
@@ -739,22 +706,6 @@
   box-shadow: none;
 }
 
-.admin-sidebar--executive .admin-nav-group-count {
-  min-width: 22px;
-  height: 19px;
-  border-color: #e8e5ef;
-  border-radius: 6px;
-  color: #817b90;
-  background: #f7f6fa;
-  font-size: 9px;
-}
-
-.admin-sidebar--executive .admin-nav-group-trigger.is-expanded .admin-nav-group-count {
-  border-color: #d8cdef;
-  color: #6248a7;
-  background: #fff;
-}
-
 /* Submenus read as a connected tree, not a second stack of glass cards. */
 .admin-sidebar--executive .admin-nav-submenu {
   margin-right: 14px;
@@ -887,18 +838,6 @@
   background: #6549ad;
 }
 
-.dark .admin-sidebar--executive .admin-nav-group-count {
-  border-color: #3d3853;
-  color: #aaa3bd;
-  background: #29273d;
-}
-
-.dark .admin-sidebar--executive .admin-nav-group-trigger.is-expanded .admin-nav-group-count {
-  border-color: #68568f;
-  color: #e2d8ff;
-  background: #39304f;
-}
-
 .dark .admin-sidebar--executive .admin-nav-submenu {
   border-right-color: #514568;
   background: transparent;
@@ -1001,10 +940,6 @@
   color: #625d70 !important;
 }
 
-.admin-sidebar--executive .admin-nav-group-count {
-  color: #5f596f !important;
-}
-
 /* Dark mode keeps the icon tile distinct without a bright purple overlay. */
 .dark .admin-sidebar--executive .admin-nav-link:hover {
   border-color: #51466e !important;
@@ -1037,10 +972,6 @@
 
 .dark .admin-sidebar--executive .admin-nav-section-heading {
   color: #c2bad3 !important;
-}
-
-.dark .admin-sidebar--executive .admin-nav-group-count {
-  color: #c9c1d9 !important;
 }
 
 
