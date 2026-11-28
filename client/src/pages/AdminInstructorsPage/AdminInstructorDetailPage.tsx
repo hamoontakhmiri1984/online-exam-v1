@@ -2,6 +2,8 @@ import PanelBack from '../../components/PanelBack/PanelBack';
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout/AppLayout';
+import LearningPageLayout from '../../components/LearningPageLayout/LearningPageLayout';
+import { GraduationCap } from 'lucide-react';
 import ListPagination from '../../components/ListPagination/ListPagination';
 import Spinner from '../../components/Spinner/Spinner';
 import { ApiError } from '../../lib/apiClient';
@@ -34,11 +36,14 @@ export default function AdminInstructorDetailPage() {
   const name = profile?.name || profile?.username || profile?.email || instructorId;
   return (
     <AppLayout title="اطلاعات مدرس">
-      <PanelBack to="/instructors" label="بازگشت به مدرس‌ها" className="mb-4" />
       {profileError ? <p role="alert" className="text-danger-600">{profileError}</p> : !profile || profile.id !== instructorId ? <Spinner /> : (
-        <>
-          <h1 className="mb-2 text-2xl font-bold dark:text-white">{name}</h1>
-          <p className="mb-5 text-sm text-gray-500">{profile.username || profile.email || profile.id} · اطلاعات زیر فقط مربوط به این مدرس است.</p>
+        <LearningPageLayout
+          eyebrow="مدیریت آموزشی"
+          title={name}
+          description={`${profile.username || profile.email || profile.id} · اطلاعات اختصاصی این مدرس را در بخش‌های زیر مشاهده کنید.`}
+          icon={GraduationCap}
+          actions={<PanelBack to="/instructors" label="بازگشت به فهرست مدرس‌ها" />}
+        >
           <div role="tablist" aria-label="بخش‌های مدرس" className="mb-5 flex flex-wrap gap-2">
             {tabs.map(item => <button key={item.key} type="button" role="tab" aria-selected={tab === item.key}
               onClick={() => { setTab(item.key); setBank(null); }}
@@ -49,7 +54,7 @@ export default function AdminInstructorDetailPage() {
           {list.error && <p role="alert" className="mb-3 text-danger-600">{list.error}</p>}
           {list.loading ? <Spinner /> : <InstructorContentList items={list.items} tab={tab}
             onOpenBank={selected => { setBank(selected); setTab('questions'); }} />}
-        </>
+        </LearningPageLayout>
       )}
     </AppLayout>
   );
