@@ -56,7 +56,9 @@ export function readExpandedNavigationGroups(
   if (!storage || !storageKey) return [];
 
   try {
-    const saved: unknown = JSON.parse(storage.getItem(storageKey) ?? '[]');
+    const stored = storage.getItem(storageKey);
+    if (stored === null) return ['requests'];
+    const saved: unknown = JSON.parse(stored);
     if (!Array.isArray(saved)) return [];
     return Array.from(new Set(saved.filter(
       (group): group is NavigationGroupId =>
