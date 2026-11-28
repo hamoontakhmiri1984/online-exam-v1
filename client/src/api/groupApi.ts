@@ -15,7 +15,7 @@ export type Group = {
 };
 
 export function getGroupsPage(query: ListQuery = {}): Promise<ListPage<Group>> {
-  return apiRequest<ListPage<Group>>(\`/groups\${listQueryString(query)}\`);
+  return apiRequest<ListPage<Group>>(`/groups${listQueryString(query)}`);
 }
 
 export function getGroups(): Promise<Group[]> {
@@ -25,7 +25,7 @@ export function getGroups(): Promise<Group[]> {
 // Treat inaccessible groups as absent; propagate transport and infrastructure failures.
 export async function getGroupById(id: string): Promise<Group | undefined> {
   try {
-    return await apiRequest<Group>(\`/groups/\${id}\`);
+    return await apiRequest<Group>(`/groups/${id}`);
   } catch (err) {
     if (err instanceof ApiError && (err.status === 404 || err.status === 403)) {
       return undefined;
@@ -58,7 +58,7 @@ export function updateGroup(
   id: string,
   updated: Omit<Group, 'id' | 'joinCode'>
 ): Promise<Group> {
-  return apiRequest<Group>(\`/groups/\${id}\`, {
+  return apiRequest<Group>(`/groups/${id}`, {
     method: 'PUT',
     body: {
       name: updated.name,
@@ -77,11 +77,11 @@ export function joinGroupByCode(code: string): Promise<Group> {
 }
 
 export function regenerateJoinCode(groupId: string): Promise<Group> {
-  return apiRequest<Group>(\`/groups/\${groupId}/regenerate-join-code\`, {
+  return apiRequest<Group>(`/groups/${groupId}/regenerate-join-code`, {
     method: 'POST',
   });
 }
 
 export function deleteGroup(id: string): Promise<void> {
-  return apiRequest<void>(\`/groups/\${id}\`, { method: 'DELETE' });
+  return apiRequest<void>(`/groups/${id}`, { method: 'DELETE' });
 }

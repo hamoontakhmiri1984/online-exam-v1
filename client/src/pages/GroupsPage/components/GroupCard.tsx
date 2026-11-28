@@ -73,10 +73,10 @@ function GroupCard({
             کارت عضویت
           </span>
           <div className="flex gap-1">
-            <button type="button" onClick={() => onEdit(group)} aria-label={\`ویرایش گروه \${group.name}\`} title="ویرایش" className={cardAction}>
+            <button type="button" onClick={() => onEdit(group)} aria-label={`ویرایش گروه ${group.name}`} title="ویرایش" className={cardAction}>
               <Pencil size={15} aria-hidden="true" />
             </button>
-            <button type="button" onClick={() => onDelete(group)} aria-label={\`حذف گروه \${group.name}\`} title="حذف" className={cardAction + ' hover:text-rose-700 dark:hover:text-rose-200'}>
+            <button type="button" onClick={() => onDelete(group)} aria-label={`حذف گروه ${group.name}`} title="حذف" className={cardAction + ' hover:text-rose-700 dark:hover:text-rose-200'}>
               <Trash2 size={15} aria-hidden="true" />
             </button>
           </div>

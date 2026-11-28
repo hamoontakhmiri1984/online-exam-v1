@@ -100,7 +100,7 @@ function GroupFormModal({
                   aria-label={option.label}
                   aria-pressed={isSelected}
                   onClick={() => onCardColorChange(option.value)}
-                  className={\`flex min-w-0 flex-col items-center gap-1.5 rounded-xl border p-2 text-xs transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500 \${isSelected ? 'border-violet-500 bg-violet-50 dark:border-violet-300 dark:bg-violet-950/30' : 'border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800'}\`}
+                  className={`flex min-w-0 flex-col items-center gap-1.5 rounded-xl border p-2 text-xs transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500 ${isSelected ? 'border-violet-500 bg-violet-50 dark:border-violet-300 dark:bg-violet-950/30' : 'border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800'}`}
                 >
                   <span
                     className="grid size-7 place-items-center rounded-full border border-black/10"
