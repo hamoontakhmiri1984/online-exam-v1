@@ -1,7 +1,8 @@
 import UiSelect from '../../components/UiSelect';
 import { useState } from 'react';
 import AppLayout from '../../components/AppLayout/AppLayout';
-import PageHeader from '../../components/PageHeader/PageHeader';
+import LearningPageLayout from '../../components/LearningPageLayout/LearningPageLayout';
+import { Users } from 'lucide-react';
 import DataTable from '../../components/AdminUI/DataTable';
 import FilterBar, {
   controlClass,
@@ -27,10 +28,12 @@ export default function AdminStudentsPage() {
   );
   return (
     <AppLayout title="دانشجویان">
-      <PageHeader
+      <LearningPageLayout
+        eyebrow="مدیریت آموزشی"
         title="دانشجویان"
-        description="مشاهدهٔ عضویت دانشجویان در گروه‌ها، به تفکیک مدرس"
-      />
+        description="عضویت دانشجویان در گروه‌ها را به تفکیک مدرس مشاهده و بررسی کنید."
+        icon={Users}
+      >
       <FilterBar>
         <InstructorFilter
           value={ungrouped ? '' : selection}
@@ -100,6 +103,7 @@ export default function AdminStudentsPage() {
           },
         ]}
       />
+      </LearningPageLayout>
     </AppLayout>
   );
 }
