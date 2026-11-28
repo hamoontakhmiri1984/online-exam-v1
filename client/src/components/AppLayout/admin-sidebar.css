@@ -1116,26 +1116,6 @@
   padding-bottom: 9px;
 }
 
-.role-sidebar--executive .role-nav-section-heading {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin: 7px 3px 6px;
-  color: #625d70;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.6;
-  white-space: nowrap;
-}
-
-.role-sidebar--executive .role-nav-section-heading::before,
-.role-sidebar--executive .role-nav-section-heading::after {
-  height: 1px;
-  flex: 1;
-  background: #e4e1eb;
-  content: "";
-}
-
 .role-sidebar--executive .role-nav-link {
   position: relative;
   display: flex;
@@ -1219,15 +1199,6 @@
 
 .role-sidebar--executive .role-sidebar-compact-avatar {
   border: 2px solid rgba(127, 99, 196, 0.24);
-}
-
-.dark .role-sidebar--executive .role-nav-section-heading {
-  color: #c2bad3;
-}
-
-.dark .role-sidebar--executive .role-nav-section-heading::before,
-.dark .role-sidebar--executive .role-nav-section-heading::after {
-  background: #38344d;
 }
 
 .dark .role-sidebar--executive .role-nav-link {
