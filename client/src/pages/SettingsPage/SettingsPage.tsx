@@ -1,7 +1,8 @@
 import { useState, type KeyboardEvent } from 'react';
 import ApprovalPolicySection from './components/ApprovalPolicySection';
-import { XCircle, UserRound, LockKeyhole, Palette, Users, ShieldCheck, Link2 } from 'lucide-react';
+import { XCircle, UserRound, LockKeyhole, Palette, Users, ShieldCheck, Link2, Settings as SettingsIcon } from 'lucide-react';
 import AppLayout from '../../components/AppLayout/AppLayout';
+import ContentPageHeader from '../../components/ContentPageHeader/ContentPageHeader';
 import Toast from '../../components/Toast/Toast';
 import useTheme from '../../hooks/useTheme';
 import useGroupMembership from '../../hooks/useGroupMembership';
@@ -93,8 +94,13 @@ function SettingsPage() {
           onDismiss={() => setJoinSuccess(null)}
         />
       )}
-      <div className="mx-auto max-w-5xl space-y-4">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">تنظیمات حساب</h1>
+      <div dir="rtl" className="mx-auto max-w-5xl space-y-5">
+        <ContentPageHeader
+          icon={SettingsIcon}
+          eyebrow="حساب کاربری"
+          title="تنظیمات حساب"
+          description="پروفایل، امنیت، حساب‌های متصل و ظاهر سامانه را مدیریت کنید."
+        />
         <div className="overflow-hidden rounded-2xl border border-violet-200/70 bg-white/85 dark:border-violet-400/25 dark:bg-slate-900">
           <div role="tablist" aria-label="بخش‌های تنظیمات" className="flex flex-wrap gap-1.5 border-b border-violet-200/60 p-2.5 dark:border-violet-400/20">
             {tabs.map(({ id, label, icon: Icon }, index) => (
