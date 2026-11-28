@@ -8,6 +8,7 @@ import useGroups from '../../hooks/useGroups';
 import useScope from '../../hooks/useScope';
 import { getSessions, type LessonSession } from '../../api/lessonApi';
 import EmptyState from '../../components/EmptyState/EmptyState';
+import ContentPageHeader from '../../components/ContentPageHeader/ContentPageHeader';
 
 function LessonsPage() {
   const navigate = useNavigate();
@@ -45,6 +46,13 @@ function LessonsPage() {
 
   return (
     <AppLayout title="درس‌ها">
+      <div dir="rtl" className="mx-auto max-w-6xl space-y-5">
+        <ContentPageHeader
+          icon={PlayCircle}
+          eyebrow="محتوای آموزشی"
+          title="درس‌ها"
+          description="جلسه‌های آموزشی گروه‌های خود را یکجا ببینید و محتوای هر گروه را دنبال کنید."
+        />
       {sessionsError && (
         <Toast
           message={sessionsError}
@@ -57,8 +65,6 @@ function LessonsPage() {
         <Spinner />
       ) : (
         <>
-          <h1 className="text-2xl font-bold mb-6 dark:text-white">درس‌ها</h1>
-
           {visibleGroups.length === 0 ? (
             <EmptyState
               icon={Layers}
@@ -96,6 +102,7 @@ function LessonsPage() {
           )}
         </>
       )}
+      </div>
     </AppLayout>
   );
 }
