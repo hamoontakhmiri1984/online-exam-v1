@@ -2,7 +2,8 @@ import { useState } from 'react';
 import UiSelect from '../../components/UiSelect';
 import { Link } from 'react-router-dom';
 import AppLayout from '../../components/AppLayout/AppLayout';
-import PageHeader from '../../components/PageHeader/PageHeader';
+import LearningPageLayout from '../../components/LearningPageLayout/LearningPageLayout';
+import { GraduationCap } from 'lucide-react';
 import DataTable from '../../components/AdminUI/DataTable';
 import FilterBar, {
   controlClass,
@@ -28,10 +29,12 @@ export default function AdminInstructorsPage() {
   );
   return (
     <AppLayout title="مدرس‌ها">
-      <PageHeader
+      <LearningPageLayout
+        eyebrow="مدیریت آموزشی"
         title="مدرس‌ها"
-        description="مشخصات، وضعیت و محتوای هر مدرس در یک نمای مستقل"
-      />
+        description="مشخصات، وضعیت تأیید و محتوای هر مدرس را در یک نمای یکپارچه مدیریت کنید."
+        icon={GraduationCap}
+      >
       <FilterBar>
         <div className="relative min-w-48 flex-1 sm:flex-none">
         <UiSelect
@@ -123,6 +126,7 @@ export default function AdminInstructorsPage() {
           },
         ]}
       />
+      </LearningPageLayout>
     </AppLayout>
   );
 }
