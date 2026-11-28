@@ -417,7 +417,6 @@ function Sidebar({
                 <span className={`sidebar-logout-icon ${isCollapsed ? 'md:border-l-0 md:pl-0' : ''}`}>
                   <LogOut size={17} aria-hidden="true" />
                 </span>
-                <span aria-hidden="true" className={`sidebar-logout-divider ${isCollapsed ? 'md:hidden' : ''}`} />
                 <span className={isCollapsed ? 'md:hidden' : ''}>خروج از سامانه</span>
               </button>
             </div>
@@ -441,7 +440,6 @@ function Sidebar({
                 <span className={`sidebar-logout-icon ${isCollapsed ? 'md:border-l-0 md:pl-0' : ''}`}>
                   <LogOut size={17} aria-hidden="true" />
                 </span>
-                <span aria-hidden="true" className={`sidebar-logout-divider ${isCollapsed ? 'md:hidden' : ''}`} />
                 <span className={isCollapsed ? 'md:hidden' : ''}>خروج از سامانه</span>
               </button>
             </div>
