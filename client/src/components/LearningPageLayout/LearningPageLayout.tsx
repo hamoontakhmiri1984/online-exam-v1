@@ -39,7 +39,7 @@ export default function LearningPageLayout({
           </div>
         )}
       </header>
-      <section className="learning-page-panel rounded-2xl border border-violet-100 bg-white p-4 shadow-sm dark:border-violet-400/15 dark:bg-slate-900 sm:p-6">
+      <section className="app-panel-card learning-page-panel bg-white p-4 dark:bg-slate-900 sm:p-6">
         {children}
       </section>
     </div>
