@@ -1,5 +1,5 @@
 import UiSelect from '../../components/UiSelect';
-import PageHeader from '../../components/PageHeader/PageHeader';
+import LearningPageLayout from '../../components/LearningPageLayout/LearningPageLayout';
 import FilterBar, { controlClass } from '../../components/AdminUI/FilterBar';
 import StatusBadge from '../../components/StatusBadge/StatusBadge';
 import { useState } from 'react';
@@ -182,16 +182,22 @@ function AdminCategoriesPage() {
         />
       )}
 
-      <div className="flex items-center justify-between mb-6">
-        <PageHeader title="دسته‌بندی‌ها" description="سامان‌دهی دسته‌بندی‌های محتوای آموزشی" />
-        <button
-          onClick={() => setIsAddOpen((prev) => !prev)}
-          className="inline-flex items-center gap-1 rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 transition"
-        >
-          <Plus size={16} />
-          دسته‌بندیِ جدید
-        </button>
-      </div>
+      <LearningPageLayout
+        eyebrow="مدیریت محتوا"
+        title="دسته‌بندی‌ها"
+        description="دسته‌بندی‌های محتوای آموزشی را سامان‌دهی و وضعیت پیشنهادها را مدیریت کنید."
+        icon={Tags}
+        actions={
+          <button
+            type="button"
+            onClick={() => setIsAddOpen((prev) => !prev)}
+            className="ui-primary-gradient inline-flex min-h-11 items-center gap-2 rounded-xl px-5 text-sm font-bold"
+          >
+            <Plus size={16} />
+            {isAddOpen ? 'بستن فرم' : 'دسته‌بندی جدید'}
+          </button>
+        }
+      >
 
       {isAddOpen && (
         <form
@@ -276,6 +282,7 @@ function AdminCategoriesPage() {
           </div>
         </div>
       )}
+      </LearningPageLayout>
     </AppLayout>
   );
 }
