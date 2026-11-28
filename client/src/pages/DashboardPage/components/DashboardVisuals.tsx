@@ -12,7 +12,7 @@ export function DashboardWelcome({
   actions?: ReactNode;
 }) {
   return (
-    <header className="mb-8">
+    <header className="dashboard-welcome-shell mb-8">
       <div className="mb-4 flex justify-end">
         <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white/85 px-3 py-1.5 text-xs font-medium text-gray-500 shadow-sm dark:border-gray-700 dark:bg-slate-800/80 dark:text-gray-300">
           <Calendar size={13}/>{getTodayJalali()}
