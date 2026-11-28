@@ -378,9 +378,6 @@ function Sidebar({
                       </span>
                       {!isCollapsed && (
                         <span className="admin-nav-group-trailing">
-                          <span className="admin-nav-group-count" aria-hidden="true">
-                            {String(section.items.length).padStart(2, '0')}
-                          </span>
                           <ChevronDown
                             size={15}
                             aria-hidden="true"
