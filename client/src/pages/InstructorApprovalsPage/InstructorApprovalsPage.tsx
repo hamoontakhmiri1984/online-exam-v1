@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CheckCircle2, XCircle, ShieldCheck } from 'lucide-react';
 import AppLayout from '../../components/AppLayout/AppLayout';
+import LearningPageLayout from '../../components/LearningPageLayout/LearningPageLayout';
 import Spinner from '../../components/Spinner/Spinner';
 import Toast from '../../components/Toast/Toast';
 import EmptyState from '../../components/EmptyState/EmptyState';
@@ -46,11 +47,13 @@ function InstructorApprovalsPage() {
           onDismiss={clearError}
         />
       )}
-
-      <div className="mb-7 flex items-center justify-between">
-        <h1 className="text-2xl font-bold dark:text-white">تایید مدرس‌ها</h1>
-      </div>
-
+ 
+      <LearningPageLayout
+        eyebrow="درخواست‌ها و رسیدگی"
+        title="تأیید مدرس‌ها"
+        description="درخواست‌های عضویت مدرس‌ها را بررسی کنید و وضعیت تأیید آن‌ها را مدیریت کنید."
+        icon={ShieldCheck}
+      >
       <div className="mb-5 inline-flex max-w-full flex-wrap gap-1.5 rounded-2xl border border-violet-200/50 bg-white/65 p-1.5 dark:border-violet-400/15 dark:bg-slate-800/60">
         {TABS.map((tab) => (
           <button
@@ -139,6 +142,7 @@ function InstructorApprovalsPage() {
           </div>
         )}
       </div>
+      </LearningPageLayout>
     </AppLayout>
   );
 }
