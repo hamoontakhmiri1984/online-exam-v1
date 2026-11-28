@@ -54,10 +54,17 @@ test('student can create a ticket with tracking code and open the conversation',
     subject: 'مشکل ورود به آزمون', category: 'Exams', priority: 'High',
     status: 'Open', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
   };
-  const messages = [{
-    id: 'msg-1', ticketId: ticket.id, clientId: 'uuid-1', fromStaff: false,
-    body: 'صفحه آزمون باز نمی‌شود.', createdAt: new Date().toISOString(),
-  }];
+  const messages = [
+    {
+      id: 'msg-1', ticketId: ticket.id, clientId: 'uuid-1', fromStaff: false,
+      body: 'صفحه آزمون باز نمی‌شود.', createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'msg-2', ticketId: ticket.id, clientId: 'uuid-2', fromStaff: true,
+      body: 'پشتیبانی درخواست شما را دریافت کرد و در حال بررسی است.',
+      createdAt: new Date(Date.now() + 1000).toISOString(),
+    },
+  ];
   let created = false;
   await page.route('http://127.0.0.1:4109/**', async route => {
     const path = new URL(route.request().url()).pathname;
@@ -94,6 +101,8 @@ test('student can create a ticket with tracking code and open the conversation',
   await page.getByRole('button', { name: 'ثبت تیکت', exact: true }).click();
   await expect(page.getByText(ticket.trackingCode)).toBeVisible();
   await expect(page.getByRole('log', { name: 'پیام‌های تیکت' })).toContainText(messages[0].body);
+  await expect(page.getByRole('log', { name: 'پیام‌های تیکت' })).toContainText(messages[1].body);
+  await expect(page.getByRole('log', { name: 'پیام‌های تیکت' })).toContainText('پشتیبانی');
   await expect(page.getByRole('textbox', { name: 'پاسخ به تیکت' })).toHaveCSS('resize', 'none');
 });
 
