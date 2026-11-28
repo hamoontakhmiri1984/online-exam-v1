@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { CreditCard } from 'lucide-react';
 import AppLayout from '../../components/AppLayout/AppLayout';
+import ContentPageHeader from '../../components/ContentPageHeader/ContentPageHeader';
 import Spinner from '../../components/Spinner/Spinner';
 import Toast from '../../components/Toast/Toast';
 import { getCurrentUser } from '../../api/authApi';
@@ -187,9 +189,12 @@ function PlansPage() {
         onConfirm={confirmPlanChange}
       />
 
-      <h1 className="mb-6 text-2xl font-bold text-gray-900 dark:text-white">
-        پکیج من
-      </h1>
+      <ContentPageHeader
+        icon={CreditCard}
+        eyebrow="اشتراک و دسترسی"
+        title="پکیج من"
+        description="وضعیت اشتراک، امکانات فعال و سوابق پرداخت خود را مشاهده و مدیریت کنید."
+      />
 
       {loading ? (
         <Spinner />
