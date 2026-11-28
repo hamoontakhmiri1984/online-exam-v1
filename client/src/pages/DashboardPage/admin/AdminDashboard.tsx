@@ -318,7 +318,7 @@ export default function AdminDashboard() {
 
   return (
     <AppLayout title="میزکار">
-      <div className="glass-dashboard glass-dashboard--bare">
+      <div className="glass-dashboard">
       <div className="mx-auto max-w-6xl space-y-5" dir="rtl">
       {error && (
         <Toast
