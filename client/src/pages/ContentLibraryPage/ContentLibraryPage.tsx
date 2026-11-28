@@ -6,6 +6,7 @@ import {
   MoreHorizontal, Newspaper, Pencil, Plus, RotateCw, Search, Send, Trash2, XCircle, EyeOff,
 } from 'lucide-react';
 import AppLayout from '../../components/AppLayout/AppLayout';
+import LearningPageLayout from '../../components/LearningPageLayout/LearningPageLayout';
 import UiSelect from '../../components/UiSelect';
 import { singleLineMenuClass } from '../../components/AdminUI/FilterBar';
 import ConfirmDeleteModal from '../../components/Modal/ConfirmDeleteModal';
@@ -191,17 +192,18 @@ export default function ContentLibraryPage() {
 
   return (
     <AppLayout title="مدیریت محتوا">
-      <div className="space-y-6" dir="rtl">
-        <header className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">مدیریت محتوا</h1>
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">همه نوشته‌ها و بخش‌های سایت را از یکجا مدیریت کنید.</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
+      <LearningPageLayout
+        eyebrow="مدیریت محتوا"
+        title="مدیریت محتوا"
+        description="نوشته‌ها و بخش‌های صفحه‌ی اصلی سامانه را از یکجا مدیریت کنید."
+        icon={Newspaper}
+        actions={
+          <>
             <Link to="/site-content" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-violet-200 bg-white/70 px-4 text-sm font-semibold text-violet-700 hover:bg-violet-50 dark:border-violet-400/25 dark:bg-violet-400/10 dark:text-violet-200"><LayoutTemplate size={17}/> ویرایش صفحه اصلی</Link>
             <button type="button" onClick={() => navigate('/blog-posts/new')} className="ui-primary-gradient inline-flex min-h-11 items-center gap-2 rounded-xl px-5 text-sm font-bold text-white shadow-md shadow-violet-500/15"><Plus size={18}/> مقاله جدید</button>
-          </div>
-        </header>
+          </>
+        }
+      >
         <div className={surface + ' flex flex-wrap items-center justify-between gap-4 p-4'}>
           <div className="flex flex-wrap gap-2" role="group" aria-label="وضعیت انتشار">
             {filters.map(item => (
@@ -233,7 +235,7 @@ export default function ContentLibraryPage() {
             ))}
           </div>
         }
-      </div>
+      </LearningPageLayout>
       <ConfirmDeleteModal
         isOpen={!!deleteTarget}
         title="حذف مقاله"
