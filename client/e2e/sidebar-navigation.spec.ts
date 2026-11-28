@@ -40,6 +40,7 @@ test('admin sidebar starts collapsed on login and groups expand independently', 
 
   const workspace = navigation.getByRole('link', { name: 'میز کار', exact: true });
   await workspace.hover();
+  await expect(workspace).toHaveCSS('background-color', 'rgb(238, 234, 248)');
   const workspaceVisuals = await workspace.evaluate((element) => {
     const icon = element.querySelector('.admin-nav-link-icon');
     if (!icon) throw new Error('Admin navigation icon container is missing');
@@ -122,9 +123,10 @@ test('instructor gets the unified visual sidebar with direct navigation', async 
   await expect(navigation.getByRole('button', { name: /مدیریت/ })).toHaveCount(0);
   await expect(navigation.locator('.role-nav-link-icon')).toHaveCount(10);
 
-  await workspace.hover();
-  await expect(workspace).toHaveCSS('background-color', 'rgb(238, 234, 248)');
-  await expect(workspace.locator('.role-nav-link-icon')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  const groupsLink = navigation.getByRole('link', { name: 'گروه‌ها', exact: true });
+  await groupsLink.hover();
+  await expect(groupsLink).toHaveCSS('background-color', 'rgb(238, 234, 248)');
+  await expect(groupsLink.locator('.role-nav-link-icon')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
 });
 
 test('student gets the unified visual sidebar with direct learning navigation', async ({ page }) => {
