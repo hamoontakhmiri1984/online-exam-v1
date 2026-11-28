@@ -12,10 +12,8 @@ import {
   UsersRound,
   ClipboardCheck,
   ClockAlert,
-  LayoutDashboard,
 } from 'lucide-react';
 import AppLayout from '../../../components/AppLayout/AppLayout';
-import ContentPageHeader from '../../../components/ContentPageHeader/ContentPageHeader';
 import Toast from '../../../components/Toast/Toast';
 import useAsyncData from '../../../hooks/useAsyncData';
 import { getCurrentUser } from '../../../api/authApi';
@@ -25,7 +23,7 @@ import {
   type AdminExamState,
 } from '../../../api/adminDashboardApi';
 import { formatDateOnly, formatExamDateTime } from '../../../utils/formatDate';
-import { DashboardStatCard } from '../components/DashboardVisuals';
+import { DashboardStatCard, DashboardWelcome } from '../components/DashboardVisuals';
 import { toPersianDigits } from '../../../utils/persianDigits';
 
 const fa = (n: number) => n.toLocaleString('fa-IR');
@@ -331,15 +329,18 @@ export default function AdminDashboard() {
         />
       )}
 
-      <ContentPageHeader
-        variant="welcome"
-        icon={LayoutDashboard}
-        eyebrow="مدیریت و راهبری"
-        title={displayName ? `خوش آمدید، ${displayName}` : 'داشبورد مدیریت'}
+      <DashboardWelcome
+        name={displayName || 'مدیر سامانه'}
         description={data && pending > 0 ? `${fa(pending)} درخواست در انتظار بررسی است` : 'نمای کلی فعالیت‌ها و عملکرد سامانه را از اینجا دنبال کنید.'}
         actions={
-          <button type="button" onClick={() => refetch()} disabled={loading} className={`${linkBtn} min-h-11 gap-2 disabled:cursor-wait disabled:opacity-50`}>
-            <RotateCw size={14} className={loading ? 'animate-spin motion-reduce:animate-none' : ''} />بارگذاری مجدد
+          <button
+            type="button"
+            onClick={() => refetch()}
+            disabled={loading}
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/30 bg-white/15 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/25 focus-visible:outline-2 focus-visible:outline-white disabled:cursor-wait disabled:opacity-50"
+          >
+            <RotateCw size={14} className={loading ? 'animate-spin motion-reduce:animate-none' : ''} />
+            بارگذاری مجدد
           </button>
         }
       />
