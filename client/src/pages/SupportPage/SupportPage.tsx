@@ -358,7 +358,8 @@ export default function SupportPage() {
             maxLength={2000}
             rows={1}
             placeholder="پاسخ خود را بنویسید…"
-            className="max-h-32 min-h-11 min-w-0 flex-1 resize-none overflow-y-hidden border-0 bg-transparent px-4 py-2.5 text-right text-sm leading-6 text-slate-800 outline-none placeholder:text-slate-400 focus:border-0 focus:outline-none focus:ring-0 dark:text-white dark:placeholder:text-slate-400"
+            className="block max-h-32 min-h-11 w-0 min-w-0 flex-1 resize-none appearance-none overflow-y-hidden rounded-none border-0 bg-transparent px-4 py-2.5 text-right text-sm leading-6 text-slate-800 shadow-none outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-slate-400"
+            style={{ width: 0, minWidth: 0, border: 0, borderRadius: 0, background: 'transparent', boxShadow: 'none', outline: 'none' }}
           />
           <button type="submit" disabled={sending || saving || detailLoading || !draft.trim()} className="ui-primary-gradient inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-105 disabled:opacity-40"><span>{sending ? 'ارسال…' : 'ارسال'}</span><Send size={16} aria-hidden="true"/></button>
         </div>}
