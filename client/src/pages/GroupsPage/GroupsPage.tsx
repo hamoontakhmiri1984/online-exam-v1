@@ -237,6 +237,8 @@ function GroupsPage() {
         onNameChange={form.setName}
         category={form.category}
         onCategoryChange={form.setCategory}
+        cardColor={form.cardColor}
+        onCardColorChange={form.setCardColor}
         students={students}
         studentIds={form.studentIds}
         onToggleStudent={form.toggleStudent}
