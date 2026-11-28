@@ -1,4 +1,5 @@
 import { collectListPages, listQueryString, type ListQuery, type ListPage } from '../lib/listPagination';
+import type { GroupCardColor } from '../constants/groupCardColors';
 import type { Category } from '../constants/categories';
 import { apiRequest, ApiError } from '../lib/apiClient';
 
@@ -10,6 +11,7 @@ export type Group = {
   instructorId: string;
   studentIds: string[];
   joinCode: string;
+  cardColor?: GroupCardColor;
 };
 
 export function getGroupsPage(query: ListQuery = {}): Promise<ListPage<Group>> {
@@ -48,6 +50,7 @@ export function addGroup(group: Omit<Group, 'id' | 'joinCode'>): Promise<Group> 
       category: group.category,
       studentIds: group.studentIds,
       instructorId: group.instructorId,
+      cardColor: group.cardColor ?? 'Default',
     },
   });
 }
@@ -62,6 +65,7 @@ export function updateGroup(
       name: updated.name,
       category: updated.category,
       studentIds: updated.studentIds,
+      cardColor: updated.cardColor ?? 'Default',
     },
   });
 }
