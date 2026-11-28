@@ -12,8 +12,10 @@ import {
   UsersRound,
   ClipboardCheck,
   ClockAlert,
+  LayoutDashboard,
 } from 'lucide-react';
 import AppLayout from '../../../components/AppLayout/AppLayout';
+import ContentPageHeader from '../../../components/ContentPageHeader/ContentPageHeader';
 import Toast from '../../../components/Toast/Toast';
 import useAsyncData from '../../../hooks/useAsyncData';
 import { getCurrentUser } from '../../../api/authApi';
@@ -23,7 +25,7 @@ import {
   type AdminExamState,
 } from '../../../api/adminDashboardApi';
 import { formatDateOnly, formatExamDateTime } from '../../../utils/formatDate';
-import { DashboardWelcome, DashboardStatCard } from '../components/DashboardVisuals';
+import { DashboardStatCard } from '../components/DashboardVisuals';
 import { toPersianDigits } from '../../../utils/persianDigits';
 
 const fa = (n: number) => n.toLocaleString('fa-IR');
@@ -319,6 +321,7 @@ export default function AdminDashboard() {
   return (
     <AppLayout title="میزکار">
       <div className="glass-dashboard">
+      <div className="mx-auto max-w-6xl space-y-5" dir="rtl">
       {error && (
         <Toast
           message={error}
@@ -328,15 +331,22 @@ export default function AdminDashboard() {
         />
       )}
 
-      <DashboardWelcome name={displayName || 'مدیر سامانه'} description={data && pending > 0 ? `${fa(pending)} درخواست در انتظار بررسی است` : 'نمای کلی فعالیت‌ها و عملکرد سامانه'} />
+      <ContentPageHeader
+        icon={LayoutDashboard}
+        eyebrow="مدیریت و راهبری"
+        title={displayName ? `خوش آمدید، ${displayName}` : 'داشبورد مدیریت'}
+        description={data && pending > 0 ? `${fa(pending)} درخواست در انتظار بررسی است` : 'نمای کلی فعالیت‌ها و عملکرد سامانه را از اینجا دنبال کنید.'}
+        actions={
+          <button type="button" onClick={() => refetch()} disabled={loading} className={`${linkBtn} min-h-11 gap-2 disabled:cursor-wait disabled:opacity-50`}>
+            <RotateCw size={14} className={loading ? 'animate-spin motion-reduce:animate-none' : ''} />بارگذاری مجدد
+          </button>
+        }
+      />
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-gray-500 dark:text-gray-400" role="status">
+      <div className="mb-1">
+        <p className="text-xs text-slate-500 dark:text-slate-400" role="status">
           {loading ? 'در حال به‌روزرسانی اطلاعات…' : updatedAt ? `آخرین به‌روزرسانی: ${updatedAt.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}` : 'نمای کلی سامانه'}
         </p>
-        <button type="button" onClick={() => refetch()} disabled={loading} className={`${linkBtn} gap-2 disabled:cursor-wait disabled:opacity-50`}>
-          <RotateCw size={14} className={loading ? 'animate-spin motion-reduce:animate-none' : ''} />بارگذاری مجدد
-        </button>
       </div>
       {error && data && <p role="alert" className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">به‌روزرسانی انجام نشد؛ اطلاعات قبلی نمایش داده می‌شود.</p>}
       {loading && !data ? (
@@ -364,6 +374,7 @@ export default function AdminDashboard() {
           </button>
         </div>
       )}
+      </div>
       </div>
     </AppLayout>
   );
