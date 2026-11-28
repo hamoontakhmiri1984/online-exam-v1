@@ -35,6 +35,34 @@ test('admin sidebar sections expand independently and restore the active group',
   const education = navigation.getByRole('button', { name: 'مدیریت آموزشی', exact: true });
   const content = navigation.getByRole('button', { name: 'مدیریت محتوا', exact: true });
 
+  const workspace = navigation.getByRole('link', { name: 'میز کار', exact: true });
+  await workspace.hover();
+  const workspaceVisuals = await workspace.evaluate((element) => {
+    const icon = element.querySelector('.admin-nav-link-icon');
+    if (!icon) throw new Error('Admin navigation icon container is missing');
+    const linkStyle = window.getComputedStyle(element);
+    const iconStyle = window.getComputedStyle(icon);
+    const markerStyle = window.getComputedStyle(element, '::before');
+    return {
+      markerContent: markerStyle.content,
+      markerDisplay: markerStyle.display,
+      iconBackground: iconStyle.backgroundColor,
+      iconColor: iconStyle.color,
+      hoverBackground: linkStyle.backgroundColor,
+    };
+  });
+  expect(workspaceVisuals.markerContent).toBe('none');
+  expect(workspaceVisuals.markerDisplay).toBe('none');
+  expect(workspaceVisuals.iconBackground).toBe('rgb(255, 255, 255)');
+  expect(workspaceVisuals.iconColor).toBe('rgb(94, 67, 170)');
+  expect(workspaceVisuals.hoverBackground).toBe('rgb(238, 234, 248)');
+
+  const activeInstructorLink = navigation.getByRole('link', { name: 'مدرس‌ها', exact: true });
+  const activeMarkerContent = await activeInstructorLink.evaluate((element) =>
+    window.getComputedStyle(element, '::before').content
+  );
+  expect(activeMarkerContent).toBe('none');
+
   await expect(sidebar.locator('.admin-sidebar-identity')).toContainText('کاربر ارشد');
   await expect(sidebar.locator('.admin-nav-section-heading')).toContainText('مدیریت و راهبری');
   await expect(education).toHaveAttribute('aria-expanded', 'true');
