@@ -76,7 +76,7 @@ export async function loginWithPassword(data: PasswordLoginData, ip: string) {
     );
 
     if (!captchaValid) {
-      await registerIpFailure(ip);
+      await registerIpFailure(ip, captchaIdentifier);
 
       throw new AppError(400, 'کد تصویر امنیتی اشتباهه یا منقضی شده', {
         captchaRequired: true,
