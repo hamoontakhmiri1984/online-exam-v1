@@ -89,7 +89,7 @@ function Sidebar({
 
   const sections = groupNavigationItems(visibleItems);
   const expandedGroupsStorageKey =
-    isAdmin && user.id
+    isAdmin && user?.id
       ? ADMIN_NAVIGATION_STORAGE_PREFIX + user.id
       : '';
   const [expandedGroupState, setExpandedGroupState] = useState<ExpandedGroupState>(() => ({
@@ -418,7 +418,7 @@ function Sidebar({
           </div>
 
           {isAdmin ? (
-            <div className={['admin-sidebar-footer m-3 flex shrink-0 items-center gap-2', isCollapsed ? 'justify-center' : ''].join(' ')}>
+            <div className={['admin-sidebar-footer m-3 flex shrink-0 items-center gap-2', isCollapsed ? 'md:flex-col md:justify-center' : ''].join(' ')}>
               {isCollapsed && (
                 <Avatar
                   name={user?.name || user?.username}
@@ -429,7 +429,7 @@ function Sidebar({
               )}
               <button
                 onClick={() => setConfirmLogout(true)}
-                className="admin-sidebar-logout flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-brand-500"
+                className={['admin-sidebar-logout flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-brand-500', isCollapsed ? 'md:h-9 md:w-9 md:flex-none md:px-0' : ''].join(' ')}
                 title="خروج از سامانه"
                 aria-label="خروج از سامانه"
               >
