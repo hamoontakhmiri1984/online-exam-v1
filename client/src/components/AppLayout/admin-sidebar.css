@@ -1049,3 +1049,9 @@
   content: none !important;
   display: none !important;
 }
+
+
+/* With item counts removed, keep the disclosure chevron aligned to the edge. */
+.admin-sidebar--executive .admin-nav-group-trailing {
+  gap: 0;
+}
