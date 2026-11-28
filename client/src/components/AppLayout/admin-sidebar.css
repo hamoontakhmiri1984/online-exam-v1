@@ -1248,3 +1248,43 @@
     box-shadow: -14px 0 42px rgba(41, 31, 86, 0.18);
   }
 }
+
+
+/* Shared card geometry for all three workspace roles. Content and role actions stay page-specific. */
+.app-panel-card {
+  border: 1px solid rgba(119, 105, 165, 0.18) !important;
+  border-radius: 1.25rem !important;
+  box-shadow: 0 2px 9px rgba(38, 31, 76, 0.045) !important;
+}
+
+.app-panel-card--interactive {
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease !important;
+}
+
+.app-panel-card--interactive:hover {
+  border-color: rgba(125, 96, 193, 0.34) !important;
+  box-shadow: 0 7px 18px rgba(62, 45, 116, 0.085) !important;
+  transform: translateY(-1px);
+}
+
+.dark .app-panel-card {
+  border-color: rgba(180, 163, 224, 0.17) !important;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.14) !important;
+}
+
+.dark .app-panel-card--interactive:hover {
+  border-color: rgba(187, 164, 242, 0.34) !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.24) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-panel-card--interactive {
+    transition: none !important;
+  }
+  .app-panel-card--interactive:hover {
+    transform: none;
+  }
+}
