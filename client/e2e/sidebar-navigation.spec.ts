@@ -27,7 +27,10 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('admin sidebar sections expand independently and restore the active group', async ({ page }) => {
+test('admin sidebar starts collapsed on login and groups expand independently', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('adminNavigationExpandedGroups:sidebar-admin', JSON.stringify(['education', 'content']));
+  });
   await page.goto('/instructors');
 
   const navigation = page.getByRole('navigation', { name: 'منوی اصلی' });
@@ -66,6 +69,10 @@ test('admin sidebar sections expand independently and restore the active group',
   await expect(navigation.locator('.admin-nav-group-count')).toHaveCount(0);
   await expect(sidebar.locator('.admin-sidebar-identity')).toContainText('کاربر ارشد');
   await expect(sidebar.locator('.admin-nav-section-heading')).toContainText('مدیریت و راهبری');
+  await expect(education).toHaveAttribute('aria-expanded', 'false');
+  await expect(content).toHaveAttribute('aria-expanded', 'false');
+  await expect(navigation.getByRole('link', { name: 'مدرس‌ها', exact: true })).toHaveCount(0);
+  await education.click();
   await expect(education).toHaveAttribute('aria-expanded', 'true');
   await expect(navigation.getByRole('link', { name: 'مدرس‌ها', exact: true })).toBeVisible();
 
@@ -79,9 +86,9 @@ test('admin sidebar sections expand independently and restore the active group',
   await expect(navigation.getByRole('link', { name: 'مدرس‌ها', exact: true })).toHaveCount(0);
 
   await page.reload();
-  await expect(navigation.getByRole('button', { name: 'مدیریت آموزشی', exact: true })).toHaveAttribute('aria-expanded', 'true');
-  await expect(navigation.getByRole('button', { name: 'مدیریت محتوا', exact: true })).toHaveAttribute('aria-expanded', 'true');
-  await expect(navigation.getByRole('link', { name: 'دسته‌بندی‌ها', exact: true })).toBeVisible();
+  await expect(navigation.getByRole('button', { name: 'مدیریت آموزشی', exact: true })).toHaveAttribute('aria-expanded', 'false');
+  await expect(navigation.getByRole('button', { name: 'مدیریت محتوا', exact: true })).toHaveAttribute('aria-expanded', 'false');
+  await expect(navigation.getByRole('link', { name: 'دسته‌بندی‌ها', exact: true })).toHaveCount(0);
 });
 
 
