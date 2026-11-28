@@ -348,7 +348,7 @@ export default function SupportPage() {
       </div>
       <form onSubmit={e => void sendMessage(e)} className={`shrink-0 border-t border-violet-100 dark:border-violet-400/15 ${isAdmin ? 'px-3 py-3 sm:px-5' : 'px-5 py-4 sm:px-7'}`}>
         {isAdmin && error && <p role="alert" className="mb-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">{error}</p>}
-        {selectedTicket.status === 'Closed' ? <p className="text-sm text-slate-500">این تیکت بسته شده است. برای ادامه گفتگو ابتدا آن را باز کنید.</p> : <div className="flex items-end gap-3">
+        {selectedTicket.status === 'Closed' ? <p className="text-sm text-slate-500">این تیکت بسته شده است. برای ادامه گفتگو ابتدا آن را باز کنید.</p> : <div dir="rtl" className="flex items-end gap-3">
           <div className="min-w-0 flex-1 rounded-2xl border border-violet-200/70 bg-white p-1 shadow-sm transition duration-200 hover:border-violet-300 hover:shadow-md focus-within:border-violet-400 focus-within:shadow-[0_4px_16px_rgba(124,58,237,0.10)] dark:border-violet-400/25 dark:bg-slate-800 dark:hover:border-violet-300/40">
             <textarea
               ref={draftTextareaRef}
@@ -362,7 +362,7 @@ export default function SupportPage() {
               className="block max-h-32 min-h-11 w-full resize-none overflow-y-hidden border-0 bg-transparent px-3 py-2.5 text-right text-sm leading-6 text-slate-800 outline-none placeholder:text-slate-400 focus:border-0 focus:outline-none focus:ring-0 dark:text-white dark:placeholder:text-slate-400"
             />
           </div>
-          <button type="submit" disabled={sending || saving || detailLoading || !draft.trim()} className="ui-primary-gradient inline-flex h-12 min-h-12 shrink-0 items-center justify-center gap-2 self-end rounded-xl px-4 text-sm font-bold text-white shadow-sm transition hover:brightness-105 disabled:opacity-40"><span>{sending ? 'ارسال…' : 'ارسال'}</span><Send size={16} aria-hidden="true"/></button>
+          <button type="submit" disabled={sending || saving || detailLoading || !draft.trim()} className="ui-primary-gradient inline-flex h-12 min-h-12 shrink-0 items-center justify-center gap-2 self-end rounded-xl px-4 text-sm font-bold text-white shadow-sm transition hover:brightness-105 disabled:opacity-40"><Send size={16} aria-hidden="true"/><span>{sending ? 'ارسال…' : 'ارسال'}</span></button>
         </div>}
       </form>
     </section>
