@@ -474,7 +474,7 @@ function Sidebar({
               </button>
             </div>
           ) : (
-            <div className={['role-sidebar-footer m-3 flex shrink-0 items-center gap-2', isCollapsed ? 'md:flex-col md:justify-center' : ''].join(' ')}>
+            <div className={['role-sidebar-footer m-3 flex shrink-0 items-center rounded-xl gap-2', isCollapsed ? 'md:flex-col md:justify-center' : ''].join(' ')}>
               {isCollapsed && (
                 <Avatar
                   name={user?.name || user?.username}
