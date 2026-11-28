@@ -12,6 +12,8 @@ import { getCurrentUser } from '../../api/authApi';
 import { ApiError } from '../../lib/apiClient';
 import { getStudents, type Student } from '../../api/studentApi';
 import { getRemainingGroupQuota } from '../../api/subscriptionApi';
+import { getAdminInstructors, type InstructorSummary } from '../../api/adminInstructorApi';
+import { collectListPages } from '../../lib/listPagination';
 import usePagedCrud from '../../hooks/usePagedCrud';
 import ListPagination from '../../components/ListPagination/ListPagination';
 import useGroupFormModal from '../../hooks/useGroupFormModal';
@@ -28,6 +30,7 @@ import PlanLimitModal from './components/PlanLimitModal';
 
 function GroupsPage() {
   const currentUser = getCurrentUser();
+  const isAdmin = currentUser?.role === 'SuperAdmin';
 
   const {
     items: groups,
@@ -52,12 +55,31 @@ function GroupsPage() {
       : groups.filter((g) => g.instructorId === currentUser?.id);
 
   const [allStudents, setAllStudents] = useState<Student[]>([]);
+  const [instructors, setInstructors] = useState<InstructorSummary[]>([]);
+  const [instructorsLoading, setInstructorsLoading] = useState(isAdmin);
+  const [instructorsError, setInstructorsError] = useState('');
 
   useEffect(() => {
-    getStudents()
-      .then(setAllStudents)
-      .catch(() => setAllStudents([]));
-  }, []);
+    let active = true;
+    if (isAdmin) {
+      setInstructorsLoading(true);
+      collectListPages((query) => getAdminInstructors(query, 'Approved', 'name'))
+        .then((items) => {
+          if (active) setInstructors(items);
+        })
+        .catch((error) => {
+          if (active) setInstructorsError(error instanceof Error ? error.message : 'دریافت فهرست مدرس‌ها ناموفق بود.');
+        })
+        .finally(() => {
+          if (active) setInstructorsLoading(false);
+        });
+    } else {
+      getStudents()
+        .then((items) => { if (active) setAllStudents(items); })
+        .catch(() => { if (active) setAllStudents([]); });
+    }
+    return () => { active = false; };
+  }, [isAdmin]);
 
   const students = allStudents;
 
@@ -73,6 +95,7 @@ function GroupsPage() {
 
   const form = useGroupFormModal({
     instructorId: currentUser?.id ?? '',
+    isAdmin,
     addItem,
     updateItem,
   });
@@ -103,6 +126,12 @@ function GroupsPage() {
   }
 
   async function openAddModal() {
+    if (isAdmin && (instructorsLoading || instructors.length === 0)) {
+      setInstructorsError(instructorsLoading
+        ? 'فهرست مدرس‌ها هنوز دریافت نشده است.'
+        : 'برای ساخت گروه، دست‌کم یک مدرس تأییدشده لازم است.');
+      return;
+    }
     if (await planLimit.ensureAllowed()) form.openAdd();
   }
 
@@ -120,6 +149,14 @@ function GroupsPage() {
           tone="danger"
           icon={XCircle}
           onDismiss={clearError}
+        />
+      )}
+      {instructorsError && (
+        <Toast
+          message={instructorsError}
+          tone="warning"
+          icon={AlertTriangle}
+          onDismiss={() => setInstructorsError('')}
         />
       )}
       {codeError && (
@@ -148,7 +185,7 @@ function GroupsPage() {
           <button
             type="button"
             onClick={openAddModal}
-            disabled={planLimit.checkingLimit}
+            disabled={planLimit.checkingLimit || (isAdmin && (instructorsLoading || instructors.length === 0))}
             className="ui-primary-gradient inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold disabled:cursor-wait disabled:opacity-50"
           >
             <Plus size={18} aria-hidden="true" />
@@ -187,6 +224,15 @@ function GroupsPage() {
       <GroupFormModal
         isOpen={form.isOpen}
         isEditing={!!form.editingId}
+        isAdmin={isAdmin}
+        instructors={instructors.map((instructor) => ({
+          id: instructor.id,
+          name: instructor.name,
+          username: instructor.username,
+        }))}
+        instructorsLoading={instructorsLoading}
+        instructorId={form.selectedInstructorId}
+        onInstructorChange={form.setSelectedInstructorId}
         name={form.name}
         onNameChange={form.setName}
         category={form.category}
