@@ -4,6 +4,7 @@ import { getStudents, deleteStudent, type Student } from '../../api/studentApi';
 import { Trash2, XCircle, Users } from 'lucide-react';
 import Modal from '../../components/Modal/Modal';
 import AppLayout from '../../components/AppLayout/AppLayout';
+import ContentPageHeader from '../../components/ContentPageHeader/ContentPageHeader';
 import useCrud from '../../hooks/useCrud';
 import useGroups from '../../hooks/useGroups';
 import Spinner from '../../components/Spinner/Spinner';
@@ -60,6 +61,13 @@ function StudentsPage() {
 
   return (
     <AppLayout title="دانشجویان">
+      <div dir="rtl" className="mx-auto max-w-6xl space-y-5">
+        <ContentPageHeader
+          icon={Users}
+          eyebrow="مدیریت آموزشی"
+          title="دانشجویان"
+          description="اعضای گروه‌های آموزشی را مشاهده کنید و عضویت آن‌ها را مدیریت کنید."
+        />
       {error && (
         <Toast
           message={error}
@@ -72,10 +80,6 @@ function StudentsPage() {
         <Spinner />
       ) : (
         <>
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold dark:text-white">دانشجویان</h1>
-          </div>
-
           <div className={`ui-admin-table overflow-hidden rounded-2xl border border-violet-200/50 bg-white/85 shadow-sm dark:border-violet-400/15 dark:bg-gray-900/85 ${visibleStudents.length === 0 ? "flex min-h-[440px] items-center justify-center px-5 py-10 sm:min-h-[480px] sm:px-8" : ""}`}>
             {visibleStudents.length === 0 ? (
               <EmptyState
@@ -144,6 +148,7 @@ function StudentsPage() {
           </div>
         </>
       )}
+      </div>
       <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)}>
         <h2 className="text-lg font-bold mb-2 dark:text-white">حذف دانشجو</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
