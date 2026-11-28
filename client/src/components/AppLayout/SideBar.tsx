@@ -28,12 +28,9 @@ import {
   type NavigationGroupId,
 } from './navigationItems';
 import {
-  ADMIN_NAVIGATION_STORAGE_PREFIX,
   ensureNavigationGroupExpanded,
   getNavigationGroupForPath,
-  readExpandedNavigationGroups,
   toggleNavigationGroup,
-  writeExpandedNavigationGroups,
 } from './navigationState';
 import './admin-sidebar.css';
 
@@ -56,16 +53,6 @@ const navigationGroupIcons: Record<NavigationGroupId, LucideIcon> = {
   finance: Wallet,
   system: Settings,
 };
-
-function getNavigationStorage(): Storage | null {
-  if (typeof window === 'undefined') return null;
-
-  try {
-    return window.localStorage;
-  } catch {
-    return null;
-  }
-}
 
 function Sidebar({
   isOpen,
@@ -97,55 +84,23 @@ function Sidebar({
       : 'مدیریت و راهبری سامانه';
 
   const sections = groupNavigationItems(orderedVisibleItems);
-  const expandedGroupsStorageKey =
-    isAdmin && user?.id
-      ? ADMIN_NAVIGATION_STORAGE_PREFIX + user.id
-      : '';
-  const [expandedGroupState, setExpandedGroupState] = useState<ExpandedGroupState>(() => ({
-    storageKey: expandedGroupsStorageKey,
-    groups: readExpandedNavigationGroups(getNavigationStorage(), expandedGroupsStorageKey),
-  }));
-  const expandedGroups = expandedGroupState.storageKey === expandedGroupsStorageKey
+  const expandedGroupsAccountKey = isAdmin ? user?.id ?? '' : '';
+  const [expandedGroupState, setExpandedGroupState] = useState<{
+    accountKey: string;
+    groups: NavigationGroupId[];
+  }>({ accountKey: expandedGroupsAccountKey, groups: [] });
+  const expandedGroups = expandedGroupState.accountKey === expandedGroupsAccountKey
     ? expandedGroupState.groups
-    : readExpandedNavigationGroups(getNavigationStorage(), expandedGroupsStorageKey);
+    : [];
   const activeNavigationGroup = isAdmin
     ? getNavigationGroupForPath(sections, location.pathname)
     : undefined;
 
+  // Expanded groups are deliberately session-only: every fresh login starts collapsed.
   useEffect(() => {
-    if (expandedGroupState.storageKey === expandedGroupsStorageKey) return;
-
-    setExpandedGroupState({
-      storageKey: expandedGroupsStorageKey,
-      groups: readExpandedNavigationGroups(getNavigationStorage(), expandedGroupsStorageKey),
-    });
-  }, [expandedGroupState.storageKey, expandedGroupsStorageKey]);
-
-  useEffect(() => {
-    if (!expandedGroupsStorageKey || expandedGroupState.storageKey !== expandedGroupsStorageKey) return;
-
-    writeExpandedNavigationGroups(
-      getNavigationStorage(),
-      expandedGroupsStorageKey,
-      expandedGroupState.groups
-    );
-  }, [expandedGroupState, expandedGroupsStorageKey]);
-
-  useEffect(() => {
-    if (!activeNavigationGroup || !expandedGroupsStorageKey) return;
-
-    setExpandedGroupState((current) => {
-      const currentGroups = current.storageKey === expandedGroupsStorageKey
-        ? current.groups
-        : readExpandedNavigationGroups(getNavigationStorage(), expandedGroupsStorageKey);
-      if (currentGroups.includes(activeNavigationGroup)) return current;
-
-      return {
-        storageKey: expandedGroupsStorageKey,
-        groups: ensureNavigationGroupExpanded(currentGroups, activeNavigationGroup),
-      };
-    });
-  }, [activeNavigationGroup, expandedGroupsStorageKey, location.pathname]);
+    if (expandedGroupState.accountKey === expandedGroupsAccountKey) return;
+    setExpandedGroupState({ accountKey: expandedGroupsAccountKey, groups: [] });
+  }, [expandedGroupState.accountKey, expandedGroupsAccountKey]);
 
   function handleNavClick(event: React.MouseEvent, to: string) {
     event.preventDefault();
@@ -167,15 +122,12 @@ function Sidebar({
   }
 
   function handleGroupToggle(group: NavigationGroupId) {
-    if (!expandedGroupsStorageKey) return;
-
     setExpandedGroupState((current) => {
-      const currentGroups = current.storageKey === expandedGroupsStorageKey
+      const currentGroups = current.accountKey === expandedGroupsAccountKey
         ? current.groups
-        : readExpandedNavigationGroups(getNavigationStorage(), expandedGroupsStorageKey);
-
+        : [];
       return {
-        storageKey: expandedGroupsStorageKey,
+        accountKey: expandedGroupsAccountKey,
         groups: toggleNavigationGroup(currentGroups, group),
       };
     });
@@ -184,18 +136,15 @@ function Sidebar({
   function handleGroupButtonClick(group: NavigationGroupId) {
     if (isCollapsed) {
       onToggleCollapse();
-      if (!expandedGroups.includes(group) && expandedGroupsStorageKey) {
-        setExpandedGroupState((current) => {
-          const currentGroups = current.storageKey === expandedGroupsStorageKey
-            ? current.groups
-            : readExpandedNavigationGroups(getNavigationStorage(), expandedGroupsStorageKey);
-
-          return {
-            storageKey: expandedGroupsStorageKey,
-            groups: ensureNavigationGroupExpanded(currentGroups, group),
-          };
-        });
-      }
+      setExpandedGroupState((current) => {
+        const currentGroups = current.accountKey === expandedGroupsAccountKey
+          ? current.groups
+          : [];
+        return {
+          accountKey: expandedGroupsAccountKey,
+          groups: ensureNavigationGroupExpanded(currentGroups, group),
+        };
+      });
       return;
     }
 
