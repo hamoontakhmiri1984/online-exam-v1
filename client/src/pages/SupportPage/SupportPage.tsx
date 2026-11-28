@@ -373,7 +373,7 @@ export default function SupportPage() {
 
   return (
     <AppLayout title="پشتیبانی">
-      <div dir="rtl" className="w-full space-y-5">
+      <div dir="rtl" className="mx-auto w-full max-w-6xl space-y-5">
         <ContentPageHeader
           icon={Headphones}
           eyebrow="مرکز پشتیبانی"
