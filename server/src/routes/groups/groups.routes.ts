@@ -119,6 +119,7 @@ router.post(
           approvalStatus: policy.requireGroupApproval ? 'Pending' : 'Approved',
           name: parsed.data.name,
           category: parsed.data.category,
+          cardColor: parsed.data.cardColor ?? 'Default',
           instructorId,
           joinCode,
           students: { connect: studentConnect },
@@ -173,6 +174,7 @@ router.put(
       data: {
         name: parsed.data.name,
         category: parsed.data.category,
+        ...(parsed.data.cardColor ? { cardColor: parsed.data.cardColor } : {}),
         students: { set: studentSet },
       },
       include: withStudents,
