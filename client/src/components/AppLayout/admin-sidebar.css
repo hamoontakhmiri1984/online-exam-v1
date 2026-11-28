@@ -1298,3 +1298,78 @@
     transform: none;
   }
 }
+
+
+/* Logout action — concept 3: quiet lavender surface with a subtle icon divider. */
+.admin-sidebar--executive .admin-sidebar-logout,
+.role-sidebar--executive .role-sidebar-logout {
+  min-height: 39px;
+  gap: 9px;
+  border: 1px solid #e2dced;
+  border-radius: 10px;
+  color: #6248a7;
+  background: #f3effa;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.admin-sidebar--executive .admin-sidebar-logout:hover,
+.role-sidebar--executive .role-sidebar-logout:hover {
+  border-color: #ded6ee;
+  color: #4c378b;
+  background: #eeeaf8;
+  box-shadow: 0 2px 7px rgba(72, 53, 127, 0.045);
+}
+
+.sidebar-logout-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  padding-left: 9px;
+  border-left: 1px solid #d9d0e9;
+  color: inherit;
+}
+
+@media (min-width: 768px) {
+  .sidebar-logout-icon--compact {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+
+.dark .admin-sidebar--executive .admin-sidebar-logout,
+.dark .role-sidebar--executive .role-sidebar-logout {
+  border-color: #48405f;
+  color: #d5c9f3;
+  background: #29263d;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.dark .admin-sidebar--executive .admin-sidebar-logout:hover,
+.dark .role-sidebar--executive .role-sidebar-logout:hover {
+  border-color: #51466e;
+  color: #f1edff;
+  background: #302a45;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.12);
+}
+
+.dark .sidebar-logout-icon {
+  border-left-color: #51466e;
+}
+
+@media (min-width: 768px) {
+  .dark .sidebar-logout-icon--compact {
+    border-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-sidebar--executive .admin-sidebar-logout,
+  .role-sidebar--executive .role-sidebar-logout {
+    transition: none !important;
+  }
+}
