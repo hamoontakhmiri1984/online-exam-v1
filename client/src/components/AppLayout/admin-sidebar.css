@@ -1251,7 +1251,12 @@
 
 
 /* Shared card geometry for all three workspace roles. Content and role actions stay page-specific. */
-.app-panel-card {
+.app-panel-card,
+.ui-admin-table,
+.glass-admin-panel,
+.glass-panel,
+.groups-outer-panel,
+.results-kpi {
   border: 1px solid rgba(119, 105, 165, 0.18) !important;
   border-radius: 1.25rem !important;
   box-shadow: 0 2px 9px rgba(38, 31, 76, 0.045) !important;
@@ -1270,7 +1275,12 @@
   transform: translateY(-1px);
 }
 
-.dark .app-panel-card {
+.dark .app-panel-card,
+.dark .ui-admin-table,
+.dark .glass-admin-panel,
+.dark .glass-panel,
+.dark .groups-outer-panel,
+.dark .results-kpi {
   border-color: rgba(180, 163, 224, 0.17) !important;
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.14) !important;
 }
