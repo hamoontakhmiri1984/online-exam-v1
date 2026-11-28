@@ -80,12 +80,45 @@ function Sidebar({
   const { user } = useAuth();
   const isAdmin = user?.role === 'SuperAdmin';
 
+  const roleNavigationOrder: Record<'Instructor' | 'Student', string[]> = {
+    Instructor: [
+      '/workspace',
+      '/groups',
+      '/exams',
+      '/question-banks',
+      '/practice',
+      '/students',
+      '/lessons',
+      '/plans',
+      '/settings',
+      '/support',
+    ],
+    Student: [
+      '/dashboard',
+      '/exams',
+      '/practice',
+      '/lessons',
+      '/my-results',
+      '/settings',
+      '/support',
+    ],
+  };
+
   const visibleItems = navigationItems.filter((item) =>
     user ? item.roles.includes(user.role) : false
   ).map(item => ({
     ...item,
     label: user?.role === 'SuperAdmin' ? item.adminLabel ?? item.label : item.label,
-  }));
+  })).sort((a, b) => {
+    if (!user || user.role === 'SuperAdmin') return 0;
+    const order = roleNavigationOrder[user.role];
+    return order.indexOf(a.to) - order.indexOf(b.to);
+  });
+  const roleIdentityCaption = user?.role === 'Instructor'
+    ? 'مدیریت تدریس و کلاس‌ها'
+    : user?.role === 'Student'
+      ? 'فضای یادگیری و پیگیری پیشرفت'
+      : 'مدیریت و راهبری سامانه';
 
   const sections = groupNavigationItems(visibleItems);
   const expandedGroupsStorageKey =
@@ -208,9 +241,9 @@ function Sidebar({
         title={isCollapsed ? item.label : undefined}
         className={({ isActive }) => [
           'flex items-center gap-3 whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
-          isAdmin ? 'admin-nav-link' : '',
+          isAdmin ? 'admin-nav-link' : 'role-nav-link',
           isActive
-            ? (isAdmin ? 'admin-nav-link--active sidebar-selected-glass text-brand-ink' : 'sidebar-selected-glass text-brand-ink')
+            ? (isAdmin ? 'admin-nav-link--active text-brand-ink' : 'role-nav-link--active')
             : 'text-gray-600 hover:bg-gray-50 hover:text-gray-950 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100',
           nested ? 'rounded-lg text-[13px] admin-nav-link--nested' : '',
           !nested && isAdmin ? 'admin-nav-link--primary' : '',
@@ -222,7 +255,9 @@ function Sidebar({
             <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
           </span>
         ) : (
-          <Icon size={18} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
+          <span className="role-nav-link-icon">
+            <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
+          </span>
         )}
         <span className={isCollapsed ? 'md:hidden' : ''}>
           {item.label}
@@ -253,7 +288,7 @@ function Sidebar({
           'admin-sidebar fixed inset-y-0 right-0 z-50 flex h-dvh w-72 min-h-0 flex-col border-s border-gray-100 bg-white shadow-2xl transition-all duration-300 dark:border-white/5 dark:bg-gray-900 md:relative md:z-auto md:translate-x-0 md:border-e md:border-s-0 md:shadow-none',
           isCollapsed ? 'md:w-20' : 'md:w-64',
           isOpen ? 'translate-x-0' : 'translate-x-full',
-          isAdmin ? 'admin-sidebar--executive' : '',
+          isAdmin ? 'admin-sidebar--executive' : 'role-sidebar--executive',
         ].filter(Boolean).join(' ')}
       >
         <button
@@ -314,6 +349,31 @@ function Sidebar({
               </div>
             )}
 
+            {!isAdmin && user && (
+              <div className={['role-sidebar-identity mx-3 mb-3', isCollapsed ? 'md:hidden' : ''].join(' ')}>
+                <div className="role-sidebar-identity-main">
+                  <div className="role-sidebar-avatar">
+                    <Avatar
+                      name={user.name || user.username}
+                      src={user.avatarUrl}
+                      size={42}
+                      className="role-sidebar-avatar-image"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="role-sidebar-identity-name truncate">
+                      {user.name || user.username}
+                    </p>
+                    <p className="role-sidebar-identity-role">
+                      {roleLabel[user.role]}
+                    </p>
+                  </div>
+                  <span className="role-sidebar-identity-mark" aria-hidden="true" />
+                </div>
+                <span className="role-sidebar-identity-caption">{roleIdentityCaption}</span>
+              </div>
+            )}
+
             <nav dir="ltr" aria-label="منوی اصلی" className="sidebar-navigation panel-scrollbar admin-sidebar-navigation flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain px-3 py-2">
               {sections.map((section, sectionIndex) => {
                 if (!section.group) {
@@ -321,8 +381,16 @@ function Sidebar({
                     <div
                       key="main"
                       dir="rtl"
-                      className={['flex flex-col gap-1', isAdmin ? 'admin-nav-primary' : ''].join(' ')}
+                      className={[
+                        'flex flex-col gap-1',
+                        isAdmin ? 'admin-nav-primary' : 'role-nav-primary',
+                      ].join(' ')}
                     >
+                      {!isAdmin && !isCollapsed && (
+                        <div className="role-nav-section-heading">
+                          <span>دسترسی‌های شما</span>
+                        </div>
+                      )}
                       {section.items.map((item) => renderNavigationLink(item))}
                     </div>
                   );
@@ -435,34 +503,23 @@ function Sidebar({
               </button>
             </div>
           ) : (
-            <div
-              className={[
-                'm-3 flex shrink-0 items-center rounded-xl bg-gray-50 p-3 transition-all duration-300 dark:bg-gray-800/60',
-                isCollapsed ? 'flex-col gap-2' : 'justify-between',
-              ].join(' ')}
-            >
-              <div className={['flex min-w-0 items-center gap-2.5', isCollapsed ? 'flex-col' : ''].join(' ')}>
+            <div className={['role-sidebar-footer m-3 flex shrink-0 items-center gap-2', isCollapsed ? 'md:flex-col md:justify-center' : ''].join(' ')}>
+              {isCollapsed && (
                 <Avatar
                   name={user?.name || user?.username}
                   src={user?.avatarUrl}
-                  size={36}
+                  size={34}
+                  className="role-sidebar-compact-avatar"
                 />
-                <div className={isCollapsed ? 'hidden' : 'min-w-0'}>
-                  <p className="truncate text-xs font-medium text-gray-800 dark:text-gray-200">
-                    {user?.name || user?.username}
-                  </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    {user ? roleLabel[user.role] : ''}
-                  </p>
-                </div>
-              </div>
+              )}
               <button
                 onClick={() => setConfirmLogout(true)}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 transition duration-200 hover:bg-danger-50 hover:text-danger-600 dark:hover:bg-danger-950/40 dark:hover:text-danger-400"
-                title="خروج"
-                aria-label="خروج"
+                className={['role-sidebar-logout flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-brand-500', isCollapsed ? 'md:h-9 md:w-9 md:flex-none md:px-0' : ''].join(' ')}
+                title="خروج از سامانه"
+                aria-label="خروج از سامانه"
               >
-                <LogOut size={18} />
+                <LogOut size={17} aria-hidden="true" />
+                <span className={isCollapsed ? 'md:hidden' : ''}>خروج از سامانه</span>
               </button>
             </div>
           )}
