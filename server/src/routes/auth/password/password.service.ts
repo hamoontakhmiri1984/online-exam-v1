@@ -40,10 +40,10 @@ type PasswordLoginData = {
   captchaAnswer?: string;
 };
 
-async function invalidCredentials(ip: string) {
-  await registerIpFailure(ip);
+async function invalidCredentials(ip: string, captchaIdentifier: string) {
+  await registerIpFailure(ip, captchaIdentifier);
 
-  const captchaRequired = await isCaptchaRequired(ip);
+  const captchaRequired = await isCaptchaRequired(ip, captchaIdentifier);
 
   return new AppError(
     401,
@@ -53,7 +53,11 @@ async function invalidCredentials(ip: string) {
 }
 
 export async function loginWithPassword(data: PasswordLoginData, ip: string) {
-  const captchaNeeded = await isCaptchaRequired(ip);
+  const resolved = resolveIdentifier(data.identifier);
+  const captchaIdentifier = resolved
+    ? `${resolved.type}:${resolved.value}`
+    : `USERNAME:${normalizeUsername(data.identifier)}`;
+  const captchaNeeded = await isCaptchaRequired(ip, captchaIdentifier);
 
   if (captchaNeeded) {
     if (!data.captchaId || !data.captchaAnswer) {
@@ -80,8 +84,6 @@ export async function loginWithPassword(data: PasswordLoginData, ip: string) {
     }
   }
 
-  const resolved = resolveIdentifier(data.identifier);
-
   const user = resolved
     ? await prisma.user.findFirst({
         where:
@@ -101,7 +103,7 @@ export async function loginWithPassword(data: PasswordLoginData, ip: string) {
 
   if (!user || !user.passwordHash) {
     await verifyAgainstDummy(data.password);
-    throw await invalidCredentials(ip);
+    throw await invalidCredentials(ip, captchaIdentifier);
   }
 
   if (await isAccountLocked(user.id, ip)) {
@@ -124,11 +126,11 @@ export async function loginWithPassword(data: PasswordLoginData, ip: string) {
       logEvent('error', 'notifyUser failed:', error);
     });
 
-    throw await invalidCredentials(ip);
+    throw await invalidCredentials(ip, captchaIdentifier);
   }
 
   await clearFailedAttempts(user.id);
-  await clearIpFailures(ip);
+  await clearIpFailures(ip, captchaIdentifier);
 
   const identifierVerified = user.email
     ? Boolean(user.emailVerifiedAt)

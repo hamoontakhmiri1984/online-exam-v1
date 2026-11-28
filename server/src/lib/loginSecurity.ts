@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { redis } from './redis';
 import { durationToSeconds } from './duration';
 
@@ -86,27 +87,43 @@ const IP_FAIL_TRIGGER = 3;
 const IP_FAIL_WINDOW = '15m';
 const IP_CAPTCHA_DURATION = '30m';
 
-const ipFailKey = (ip: string) => `login:ipfail:${ip}`;
-const ipCaptchaKey = (ip: string) => `login:ipcaptcha:${ip}`;
+// Hash the canonical login identifier with the observed IP. This avoids exposing
+// emails/usernames in Redis keys and prevents shared proxies/NATs from making
+// one user's failed attempts trigger a captcha for every other user.
+const captchaScope = (ip: string, identifier: string) =>
+  createHash('sha256').update(`${ip}\0${identifier}`).digest('hex');
+const ipFailKey = (ip: string, identifier: string) =>
+  `login:ipfail:v2:${captchaScope(ip, identifier)}`;
+const ipCaptchaKey = (ip: string, identifier: string) =>
+  `login:ipcaptcha:v2:${captchaScope(ip, identifier)}`;
 
-export async function isCaptchaRequired(ip: string): Promise<boolean> {
-  const flagged = await redis.get(ipCaptchaKey(ip));
+export async function isCaptchaRequired(
+  ip: string,
+  identifier: string,
+): Promise<boolean> {
+  const flagged = await redis.get(ipCaptchaKey(ip, identifier));
   return flagged !== null;
 }
 
-export async function registerIpFailure(ip: string): Promise<void> {
+export async function registerIpFailure(
+  ip: string,
+  identifier: string,
+): Promise<void> {
   const count = await incrWithTtl(
-    ipFailKey(ip),
+    ipFailKey(ip, identifier),
     durationToSeconds(IP_FAIL_WINDOW),
   );
   if (count >= IP_FAIL_TRIGGER) {
-    await redis.set(ipCaptchaKey(ip), '1', {
+    await redis.set(ipCaptchaKey(ip, identifier), '1', {
       EX: durationToSeconds(IP_CAPTCHA_DURATION),
     });
   }
 }
 
-// Successful login clears the counter, not an already active captcha requirement.
-export async function clearIpFailures(ip: string): Promise<void> {
-  await redis.del(ipFailKey(ip));
+// Successful login clears only this identifier's counter, not an active captcha.
+export async function clearIpFailures(
+  ip: string,
+  identifier: string,
+): Promise<void> {
+  await redis.del(ipFailKey(ip, identifier));
 }
