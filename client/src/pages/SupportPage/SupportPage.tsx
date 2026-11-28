@@ -13,7 +13,7 @@ import {
   getTicket, getTicketMessages,
   postTicketMessage, updateTicketStatus,
   ticketCategoryLabels, ticketPriorityLabels, ticketStatusLabels,
-  type SupportTicket, type AvailableInstructor, type TicketMessage,
+  type SupportTicket, type AvailableInstructor, type AvailableStudent, type TicketMessage,
   type TicketCategory, type TicketPriority,
 } from '../../api/supportTicketApi';
 
@@ -46,6 +46,11 @@ export default function SupportPage() {
   const [ticketView, setTicketView] = useState<'mine' | 'students'>('mine');
   const [availableInstructors, setAvailableInstructors] = useState<AvailableInstructor[]>([]);
   const [assigneeId, setAssigneeId] = useState('');
+  const [teacherStudents, setTeacherStudents] = useState<AvailableStudent[]>([]);
+  const [teacherStudentsLoading, setTeacherStudentsLoading] = useState(false);
+  const [teacherStudentsError, setTeacherStudentsError] = useState('');
+  const [targetStudentId, setTargetStudentId] = useState('');
+  const [createMode, setCreateMode] = useState<'own-ticket' | 'student-message' | 'student-ticket'>('own-ticket');
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [messages, setMessages] = useState<TicketMessage[]>([]);
@@ -85,6 +90,20 @@ export default function SupportPage() {
       .catch(() => { if (active) setError('دریافت فهرست مدرس‌ها ممکن نشد.'); });
     return () => { active = false; };
   }, [isStudent]);
+
+  useEffect(() => {
+    if (!isTeacher) return;
+    let active = true;
+    setTeacherStudentsLoading(true);
+    setTeacherStudentsError('');
+    getTeacherStudents()
+      .then(items => { if (active) setTeacherStudents(items); })
+      .catch(err => {
+        if (active) setTeacherStudentsError(err instanceof Error ? err.message : 'دریافت فهرست دانشجویان ممکن نشد.');
+      })
+      .finally(() => { if (active) setTeacherStudentsLoading(false); });
+    return () => { active = false; };
+  }, [isTeacher]);
 
   useEffect(() => {
     let active = true;
@@ -166,16 +185,47 @@ export default function SupportPage() {
     return () => { active = false; window.clearInterval(id); };
   }, [selectedTicket?.id]);
 
+  function openCreate(mode: 'own-ticket' | 'student-message' | 'student-ticket') {
+    setCreateMode(mode);
+    setSubject('');
+    setBody('');
+    setCategory('Technical');
+    setPriority('Normal');
+    setTargetStudentId('');
+    setError('');
+    setCreateOpen(true);
+  }
+
   async function submitTicket(event: FormEvent) {
     event.preventDefault();
-    if (saving || subject.trim().length < 3 || body.trim().length < 5 || (isStudent && !assigneeId)) return;
+    const isTeacherToStudent = isTeacher && createMode !== 'own-ticket';
+    const isDirectMessage = createMode === 'student-message';
+    if (
+      saving ||
+      (!isDirectMessage && subject.trim().length < 3) ||
+      body.trim().length < 5 ||
+      (isStudent && !assigneeId) ||
+      (isTeacherToStudent && !targetStudentId)
+    ) return;
     setSaving(true);
     setError('');
     try {
-      const created = await createSupportTicket({ subject: subject.trim(), category, priority, body: body.trim(), ...(isStudent ? { assignedInstructorId: assigneeId } : {}) });
+      const created = await createSupportTicket({
+        subject: isDirectMessage ? 'پیام مستقیم مدرس' : subject.trim(),
+        category: isDirectMessage ? 'Other' : category,
+        priority: isDirectMessage ? 'Normal' : priority,
+        body: body.trim(),
+        ...(isStudent ? { assignedInstructorId: assigneeId } : {}),
+        ...(isTeacherToStudent ? { studentId: targetStudentId } : {}),
+      });
       setCreateOpen(false);
-      setSubject(''); setBody(''); setPriority('Normal'); setCategory('Technical');
+      setSubject('');
+      setBody('');
+      setPriority('Normal');
+      setCategory('Technical');
+      setTargetStudentId('');
       setPage(0);
+      if (isTeacherToStudent) setTicketView('students');
       setRefreshKey(key => key + 1);
       await openTicket(created);
     } catch (err) { setError(err instanceof Error ? err.message : 'ثبت تیکت ناموفق بود.'); }
@@ -239,6 +289,7 @@ export default function SupportPage() {
       <button type="button" disabled={loading || (isAdmin ? !hasMore : tickets.length < 50)} onClick={() => setPage(p => p + 1)} className="rounded-xl border border-violet-200 px-4 py-2 text-sm text-brand-ink disabled:opacity-40 dark:border-violet-400/25">بعدی</button>
     </div>
   );
+  const teacherIsRespondingToStudent = isTeacher && selectedTicket?.user?.role === 'Student';
   const conversation = selectedTicket && (
     <section aria-label={isAdmin ? 'گفت‌وگوی تیکت' : undefined} className={`overflow-hidden rounded-2xl border border-violet-200/50 bg-white/90 shadow-sm dark:border-violet-400/20 dark:bg-slate-900/85 ${isAdmin ? 'flex h-[clamp(29rem,66dvh,48rem)] min-w-0 flex-col' : ''}`}>
       {isAdmin && (
@@ -267,7 +318,7 @@ export default function SupportPage() {
       </div>
       <div ref={chatRef} role="log" aria-label="پیام‌های تیکت" className={`overflow-y-auto bg-violet-50/20 dark:bg-slate-950/20 ${isAdmin ? 'panel-scrollbar min-h-0 flex-1 space-y-2 overscroll-contain px-3 py-3 sm:px-5' : 'max-h-[55dvh] min-h-72 space-y-4 px-5 py-5 sm:px-7'}`}>
         {detailLoading ? <Spinner label="در حال دریافت پیام‌ها…" compact /> : messages.map((message, index) => {
-          const mine = isAdmin ? message.fromStaff : !message.fromStaff;
+          const mine = (isAdmin || teacherIsRespondingToStudent) ? message.fromStaff : !message.fromStaff;
           const sentAt = new Date(message.createdAt);
           const day = isAdmin ? sentAt.toLocaleDateString('fa-IR', { dateStyle: 'medium' }) : '';
           const startsDay = isAdmin && (index === 0 || day !== new Date(messages[index - 1].createdAt).toLocaleDateString('fa-IR', { dateStyle: 'medium' }));
@@ -276,7 +327,7 @@ export default function SupportPage() {
               {startsDay && <p className="my-2 flex items-center gap-3 text-center text-xs text-slate-600 before:h-px before:flex-1 before:bg-violet-100 after:h-px after:flex-1 after:bg-violet-100 dark:text-slate-300 dark:before:bg-violet-400/15 dark:after:bg-violet-400/15">{day}</p>}
               <div className={`flex ${mine ? 'justify-start' : 'justify-end'}`}>
                 <div className={`max-w-[85%] rounded-2xl border sm:max-w-[75%] ${isAdmin ? 'px-3 py-2' : 'px-4 py-3 shadow-sm'} ${mine ? 'border-violet-200 bg-violet-100 text-slate-800 dark:border-violet-400/25 dark:bg-violet-500/20 dark:text-white' : 'border-slate-200 bg-white text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-white'}`}>
-                  <p className={`text-[11px] font-bold ${isAdmin ? 'opacity-75' : 'mb-2 opacity-70'}`}>{message.fromStaff ? 'پشتیبانی' : isAdmin ? (selectedTicket.user?.role === 'Student' ? 'دانشجو' : 'مدرس') : 'کاربر'}</p>
+                  <p className={`text-[11px] font-bold ${isAdmin ? 'opacity-75' : 'mb-2 opacity-70'}`}>{message.fromStaff ? (isAdmin ? 'پشتیبانی' : isTeacher ? (teacherIsRespondingToStudent ? 'مدرس' : 'پشتیبانی') : selectedTicket.assignedInstructorId ? 'مدرس / پشتیبانی' : 'پشتیبانی') : isAdmin ? (selectedTicket.user?.role === 'Student' ? 'دانشجو' : 'مدرس') : teacherIsRespondingToStudent ? 'دانشجو' : 'شما'}</p>
                   <p dir="auto" className={`whitespace-pre-wrap [overflow-wrap:anywhere] text-sm ${isAdmin ? 'leading-6' : 'leading-7'}`}>{message.body}</p>
                   <time className={`block text-left ${isAdmin ? 'mt-1 text-[11px] text-slate-600 dark:text-slate-300' : 'mt-2 text-[10px] opacity-60'}`} dateTime={message.createdAt}>{isAdmin ? sentAt.toLocaleTimeString('fa-IR', { timeStyle: 'short' }) : fmt(message.createdAt)}</time>
                 </div>
@@ -306,7 +357,23 @@ export default function SupportPage() {
               <h1 ref={inboxHeadingRef} tabIndex={isAdmin ? -1 : undefined} className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{sectionTitle}</h1>
             </div>
           </div>
-          {!isAdmin && !selectedTicket && <button type="button" onClick={() => setCreateOpen(true)} className="ui-primary-gradient inline-flex min-h-10 items-center gap-2 rounded-xl px-5 text-sm font-semibold"><Plus size={17}/> ثبت تیکت جدید</button>}
+          {!isAdmin && !selectedTicket && (
+            <div className="flex flex-wrap items-center gap-2">
+              {isTeacher && (
+                <>
+                  <button type="button" onClick={() => openCreate('student-message')} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-violet-200 bg-white px-4 text-sm font-semibold text-brand-ink hover:bg-violet-50 dark:border-violet-400/25 dark:bg-slate-900 dark:hover:bg-violet-500/10">
+                    <MessageSquareText size={16} aria-hidden="true" /> پیام به دانشجو
+                  </button>
+                  <button type="button" onClick={() => openCreate('student-ticket')} className="ui-primary-gradient inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold">
+                    <Ticket size={16} aria-hidden="true" /> ثبت تیکت برای دانشجو
+                  </button>
+                </>
+              )}
+              <button type="button" onClick={() => openCreate('own-ticket')} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-violet-200 bg-white px-4 text-sm font-semibold text-brand-ink hover:bg-violet-50 dark:border-violet-400/25 dark:bg-slate-900 dark:hover:bg-violet-500/10">
+                <Plus size={17} aria-hidden="true" /> ثبت تیکت جدید
+              </button>
+            </div>
+          )}
         </div>
 
         {isAdmin && !selectedTicket && (
@@ -405,30 +472,123 @@ export default function SupportPage() {
         )}
       </div>
 
-      <Modal isOpen={createOpen} onClose={() => { if (!saving) setCreateOpen(false); }} wide tall label="ثبت تیکت پشتیبانی">
+      <Modal
+        isOpen={createOpen}
+        onClose={() => { if (!saving) setCreateOpen(false); }}
+        wide
+        tall
+        label={createMode === 'student-message' ? 'ارسال پیام به دانشجو' : 'ثبت تیکت پشتیبانی'}
+      >
         <div dir="rtl">
-          <div className="mb-5 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-brand-ink"><Ticket size={20}/><h2 className="text-lg font-bold text-slate-900 dark:text-white">ثبت تیکت جدید</h2></div>
-
+          <div className="mb-5 flex items-center gap-2 text-brand-ink">
+            {createMode === 'student-message' ? <MessageSquareText size={20} aria-hidden="true" /> : <Ticket size={20} aria-hidden="true" />}
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+              {createMode === 'student-message' ? 'ارسال پیام به دانشجو' : createMode === 'student-ticket' ? 'ثبت تیکت برای دانشجو' : 'ثبت تیکت جدید'}
+            </h2>
           </div>
           <form onSubmit={e => void submitTicket(e)} className="space-y-4">
-            <div><label htmlFor="ticket-subject" className="mb-1.5 block text-sm font-semibold dark:text-white">موضوع</label><input id="ticket-subject" required minLength={3} maxLength={160} value={subject} onChange={e => setSubject(e.target.value)} placeholder="مثلاً مشکل نمایش نتایج آزمون" className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none focus:border-violet-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white"/></div>
-            {isStudent && <div>
-              <label htmlFor="ticket-assignee" className="mb-1.5 block text-sm font-semibold dark:text-white">مدرس مربوطه</label>
-              {availableInstructors.length ? (
-                <UiSelect id="ticket-assignee" aria-label="مدرس مربوطه" value={assigneeId} onChange={e => setAssigneeId(e.target.value)}>
-                  <option value="">انتخاب مدرس</option>
-                  {availableInstructors.map(instructor => <option key={instructor.id} value={instructor.id}>{instructor.name || instructor.username || 'مدرس'}</option>)}
-                </UiSelect>
-              ) : <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">برای ارسال تیکت به مدرس، ابتدا باید عضو یکی از گروه‌های آموزشی باشید.</p>}
-            </div>}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div><label htmlFor="ticket-category" className="mb-1.5 block text-sm font-semibold dark:text-white">دسته‌بندی</label><UiSelect id="ticket-category" value={category} onChange={e => setCategory(e.target.value as TicketCategory)} className="min-h-11 w-full rounded-xl border border-violet-200 bg-white px-3 text-sm dark:border-violet-400/25 dark:bg-slate-800 dark:text-white">{(Object.keys(ticketCategoryLabels) as TicketCategory[]).map(key => <option key={key} value={key}>{ticketCategoryLabels[key]}</option>)}</UiSelect></div>
-              <div><label htmlFor="ticket-priority" className="mb-1.5 block text-sm font-semibold dark:text-white">درجه اهمیت</label><UiSelect id="ticket-priority" value={priority} onChange={e => setPriority(e.target.value as TicketPriority)} className="min-h-11 w-full rounded-xl border border-violet-200 bg-white px-3 text-sm dark:border-violet-400/25 dark:bg-slate-800 dark:text-white">{(Object.keys(ticketPriorityLabels) as TicketPriority[]).map(key => <option key={key} value={key}>{ticketPriorityLabels[key]}</option>)}</UiSelect></div>
+            {isTeacher && createMode !== 'own-ticket' && (
+              <div>
+                <label htmlFor="ticket-target-student" className="mb-1.5 block text-sm font-semibold dark:text-white">دانشجو</label>
+                {teacherStudentsLoading ? (
+                  <Spinner label="در حال دریافت فهرست دانشجویان…" compact />
+                ) : teacherStudents.length ? (
+                  <UiSelect
+                    id="ticket-target-student"
+                    aria-label="دانشجوی موردنظر"
+                    value={targetStudentId}
+                    onChange={e => setTargetStudentId(e.target.value)}
+                  >
+                    <option value="">انتخاب دانشجو</option>
+                    {teacherStudents.map(student => (
+                      <option key={student.id} value={student.id}>
+                        {student.name || student.username || 'دانشجوی بدون نام'}
+                      </option>
+                    ))}
+                  </UiSelect>
+                ) : (
+                  <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
+                    {teacherStudentsError || 'در گروه‌های تأییدشدهٔ شما دانشجویی برای انتخاب وجود ندارد.'}
+                  </p>
+                )}
+              </div>
+            )}
+            {createMode !== 'student-message' && (
+              <div>
+                <label htmlFor="ticket-subject" className="mb-1.5 block text-sm font-semibold dark:text-white">موضوع</label>
+                <input
+                  id="ticket-subject"
+                  required
+                  minLength={3}
+                  maxLength={160}
+                  value={subject}
+                  onChange={e => setSubject(e.target.value)}
+                  placeholder="مثلاً پیگیری وضعیت آموزشی دانشجو"
+                  className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none focus:border-violet-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                />
+              </div>
+            )}
+            {isStudent && (
+              <div>
+                <label htmlFor="ticket-assignee" className="mb-1.5 block text-sm font-semibold dark:text-white">مدرس مربوطه</label>
+                {availableInstructors.length ? (
+                  <UiSelect id="ticket-assignee" aria-label="مدرس مربوطه" value={assigneeId} onChange={e => setAssigneeId(e.target.value)}>
+                    <option value="">انتخاب مدرس</option>
+                    {availableInstructors.map(instructor => <option key={instructor.id} value={instructor.id}>{instructor.name || instructor.username || 'مدرس'}</option>)}
+                  </UiSelect>
+                ) : <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">برای ارسال تیکت به مدرس، ابتدا باید عضو یکی از گروه‌های آموزشی باشید.</p>}
+              </div>
+            )}
+            {createMode !== 'student-message' && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="ticket-category" className="mb-1.5 block text-sm font-semibold dark:text-white">دسته‌بندی</label>
+                  <UiSelect id="ticket-category" value={category} onChange={e => setCategory(e.target.value as TicketCategory)} className="min-h-11 w-full rounded-xl border border-violet-200 bg-white px-3 text-sm dark:border-violet-400/25 dark:bg-slate-800 dark:text-white">
+                    {(Object.keys(ticketCategoryLabels) as TicketCategory[]).map(key => <option key={key} value={key}>{ticketCategoryLabels[key]}</option>)}
+                  </UiSelect>
+                </div>
+                <div>
+                  <label htmlFor="ticket-priority" className="mb-1.5 block text-sm font-semibold dark:text-white">درجه اهمیت</label>
+                  <UiSelect id="ticket-priority" value={priority} onChange={e => setPriority(e.target.value as TicketPriority)} className="min-h-11 w-full rounded-xl border border-violet-200 bg-white px-3 text-sm dark:border-violet-400/25 dark:bg-slate-800 dark:text-white">
+                    {(Object.keys(ticketPriorityLabels) as TicketPriority[]).map(key => <option key={key} value={key}>{ticketPriorityLabels[key]}</option>)}
+                  </UiSelect>
+                </div>
+              </div>
+            )}
+            <div>
+              <label htmlFor="ticket-body" className="mb-1.5 block text-sm font-semibold dark:text-white">{createMode === 'student-message' ? 'متن پیام' : 'شرح درخواست'}</label>
+              <textarea
+                id="ticket-body"
+                required
+                minLength={5}
+                maxLength={2000}
+                rows={5}
+                value={body}
+                onChange={e => setBody(e.target.value)}
+                placeholder={createMode === 'student-message' ? 'پیام خود را برای دانشجو بنویسید…' : 'درخواست را با جزئیات توضیح دهید…'}
+                className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-7 outline-none focus:border-violet-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              />
             </div>
-            <div><label htmlFor="ticket-body" className="mb-1.5 block text-sm font-semibold dark:text-white">شرح درخواست</label><textarea id="ticket-body" required minLength={5} maxLength={2000} rows={5} value={body} onChange={e => setBody(e.target.value)} placeholder="مشکل یا درخواست خود را با جزئیات توضیح دهید…" className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-7 outline-none focus:border-violet-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white"/></div>
-            <p className="flex items-center gap-2 text-xs text-slate-500"><ClipboardList size={15}/> پس از ثبت، کد رهگیری یکتا دریافت می‌کنید.</p>
-            <button type="submit" disabled={saving || subject.trim().length < 3 || body.trim().length < 5 || (isStudent && !assigneeId)} className="ui-primary-gradient inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl font-bold disabled:opacity-40"><CheckCircle2 size={17}/>{saving ? 'در حال ثبت…' : 'ثبت تیکت'}</button>
+            <p className="flex items-center gap-2 text-xs text-slate-500">
+              <ClipboardList size={15} aria-hidden="true" />
+              {createMode === 'student-message'
+                ? 'این پیام به‌صورت گفت‌وگوی جدید در مرکز پشتیبانی دانشجو ثبت می‌شود.'
+                : 'پس از ثبت، کد رهگیری یکتا دریافت می‌کنید.'}
+            </p>
+            <button
+              type="submit"
+              disabled={
+                saving ||
+                (createMode !== 'student-message' && subject.trim().length < 3) ||
+                body.trim().length < 5 ||
+                (isStudent && !assigneeId) ||
+                (isTeacher && createMode !== 'own-ticket' && (!targetStudentId || teacherStudentsLoading || teacherStudents.length === 0))
+              }
+              className="ui-primary-gradient inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl font-bold disabled:opacity-40"
+            >
+              {createMode === 'student-message' ? <Send size={17} aria-hidden="true" /> : <CheckCircle2 size={17} aria-hidden="true" />}
+              {saving ? 'در حال ثبت…' : createMode === 'student-message' ? 'ارسال پیام' : 'ثبت تیکت'}
+            </button>
           </form>
         </div>
       </Modal>
