@@ -1,9 +1,10 @@
 import PanelBack from '../../components/PanelBack/PanelBack';
 import Spinner from '../../components/Spinner/Spinner';
 import { Fragment, useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { CheckCircle2, ClipboardList, MessageSquareText, Plus, Send, Ticket, X } from 'lucide-react';
+import { CheckCircle2, ClipboardList, Headphones, MessageSquareText, Plus, Send, Ticket, X } from 'lucide-react';
 import UiSelect from '../../components/UiSelect';
 import AppLayout from '../../components/AppLayout/AppLayout';
+import ContentPageHeader from '../../components/ContentPageHeader/ContentPageHeader';
 import Modal from '../../components/Modal/Modal';
 import DataTable from '../../components/AdminUI/DataTable';
 import { useAuth } from '../../context/AuthContext';
@@ -373,32 +374,44 @@ export default function SupportPage() {
   return (
     <AppLayout title="پشتیبانی">
       <div dir="rtl" className="mx-auto w-full max-w-6xl space-y-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            {!isAdmin && selectedTicket && <PanelBack label="بازگشت" iconOnly onClick={closeTicket} />}
-            <div>
-              <p className="text-xs font-medium text-brand-ink">مرکز پشتیبانی</p>
-              <h1 ref={inboxHeadingRef} tabIndex={isAdmin ? -1 : undefined} className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{sectionTitle}</h1>
-            </div>
-          </div>
-          {!isAdmin && !selectedTicket && (
-            <div className="flex flex-wrap items-center gap-2">
-              {isTeacher && (
+        <ContentPageHeader
+          icon={Headphones}
+          eyebrow="مرکز پشتیبانی"
+          title={sectionTitle}
+          description={
+            selectedTicket
+              ? `گفت‌وگو و پیگیری تیکت ${selectedTicket.trackingCode}`
+              : isAdmin
+                ? 'درخواست‌های پشتیبانی مدرس‌ها و دانشجویان را بررسی و پیگیری کنید.'
+                : isTeacher
+                  ? 'به پرسش‌های دانشجویان پاسخ دهید و درخواست‌های پشتیبانی را پیگیری کنید.'
+                  : 'درخواست‌های خود را ثبت کنید و پاسخ مدرس یا پشتیبانی را دنبال کنید.'
+          }
+          headingRef={inboxHeadingRef}
+          headingTabIndex={isAdmin ? -1 : undefined}
+          actions={
+            <>
+              {!isAdmin && selectedTicket && <PanelBack label="بازگشت" onClick={closeTicket} />}
+              {!isAdmin && !selectedTicket && (
                 <>
-                  <button type="button" onClick={() => openCreate('student-message')} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-violet-200 bg-white px-4 text-sm font-semibold text-brand-ink hover:bg-violet-50 dark:border-violet-400/25 dark:bg-slate-900 dark:hover:bg-violet-500/10">
-                    <MessageSquareText size={16} aria-hidden="true" /> پیام به دانشجو
-                  </button>
-                  <button type="button" onClick={() => openCreate('student-ticket')} className="ui-primary-gradient inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold">
-                    <Ticket size={16} aria-hidden="true" /> ثبت تیکت برای دانشجو
+                  {isTeacher && (
+                    <>
+                      <button type="button" onClick={() => openCreate('student-message')} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-violet-200 bg-white px-4 text-sm font-semibold text-brand-ink hover:bg-violet-50 dark:border-violet-400/25 dark:bg-slate-900 dark:hover:bg-violet-500/10">
+                        <MessageSquareText size={16} aria-hidden="true" /> پیام به دانشجو
+                      </button>
+                      <button type="button" onClick={() => openCreate('student-ticket')} className="ui-primary-gradient inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold">
+                        <Ticket size={16} aria-hidden="true" /> ثبت تیکت برای دانشجو
+                      </button>
+                    </>
+                  )}
+                  <button type="button" onClick={() => openCreate('own-ticket')} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-violet-200 bg-white px-4 text-sm font-semibold text-brand-ink hover:bg-violet-50 dark:border-violet-400/25 dark:bg-slate-900 dark:hover:bg-violet-500/10">
+                    <Plus size={17} aria-hidden="true" /> ثبت تیکت جدید
                   </button>
                 </>
               )}
-              <button type="button" onClick={() => openCreate('own-ticket')} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-violet-200 bg-white px-4 text-sm font-semibold text-brand-ink hover:bg-violet-50 dark:border-violet-400/25 dark:bg-slate-900 dark:hover:bg-violet-500/10">
-                <Plus size={17} aria-hidden="true" /> ثبت تیکت جدید
-              </button>
-            </div>
-          )}
-        </div>
+            </>
+          }
+        />
 
         {isAdmin && !selectedTicket && (
           <div role="group" aria-label="نوع تیکت‌ها" className="inline-flex rounded-xl border border-violet-200/60 bg-white/80 p-1 dark:border-violet-400/20 dark:bg-slate-900/80">
