@@ -172,7 +172,7 @@ function PlansPage() {
 
   return (
     <AppLayout title="پکیج من">
-      <div className="glass-plans-page">
+      <div className="glass-plans-page mx-auto w-full max-w-6xl space-y-5">
       {toast && (
         <Toast
           message={toast.message}
