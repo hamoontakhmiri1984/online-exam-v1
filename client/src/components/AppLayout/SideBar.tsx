@@ -409,11 +409,15 @@ function Sidebar({
               )}
               <button
                 onClick={() => setConfirmLogout(true)}
+                dir="rtl"
                 className={['admin-sidebar-logout flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-brand-500', isCollapsed ? 'md:h-9 md:w-9 md:flex-none md:px-0' : ''].join(' ')}
                 title="خروج از سامانه"
                 aria-label="خروج از سامانه"
               >
-                <LogOut size={17} aria-hidden="true" />
+                <span className={`sidebar-logout-icon ${isCollapsed ? 'md:border-l-0 md:pl-0' : ''}`}>
+                  <LogOut size={17} aria-hidden="true" />
+                </span>
+                <span aria-hidden="true" className={`sidebar-logout-divider ${isCollapsed ? 'md:hidden' : ''}`} />
                 <span className={isCollapsed ? 'md:hidden' : ''}>خروج از سامانه</span>
               </button>
             </div>
@@ -429,11 +433,15 @@ function Sidebar({
               )}
               <button
                 onClick={() => setConfirmLogout(true)}
+                dir="rtl"
                 className={['role-sidebar-logout flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-brand-500', isCollapsed ? 'md:h-9 md:w-9 md:flex-none md:px-0' : ''].join(' ')}
                 title="خروج از سامانه"
                 aria-label="خروج از سامانه"
               >
-                <LogOut size={17} aria-hidden="true" />
+                <span className={`sidebar-logout-icon ${isCollapsed ? 'md:border-l-0 md:pl-0' : ''}`}>
+                  <LogOut size={17} aria-hidden="true" />
+                </span>
+                <span aria-hidden="true" className={`sidebar-logout-divider ${isCollapsed ? 'md:hidden' : ''}`} />
                 <span className={isCollapsed ? 'md:hidden' : ''}>خروج از سامانه</span>
               </button>
             </div>
