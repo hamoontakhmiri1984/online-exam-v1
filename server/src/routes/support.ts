@@ -68,6 +68,7 @@ const ticketInput = z
     priority: z.enum(['Low', 'Normal', 'High', 'Urgent']).default('Normal'),
     body: z.string().trim().min(5).max(2000),
     assignedInstructorId: z.string().min(1).optional(),
+    studentId: z.string().min(1).optional(),
   })
   .strict();
 const ticketMessageInput = z
@@ -134,6 +135,26 @@ router.get(
   }),
 );
 router.get(
+  '/teacher/students',
+  requireRole('Instructor'),
+  asyncHandler(async (req, res) => {
+    const students = await prisma.user.findMany({
+      where: {
+        role: 'Student',
+        groupsMember: {
+          some: {
+            instructorId: req.user!.sub,
+            approvalStatus: 'Approved',
+          },
+        },
+      },
+      select: { id: true, name: true, username: true },
+      orderBy: [{ name: 'asc' }, { username: 'asc' }],
+    });
+    res.json(students);
+  }),
+);
+router.get(
   '/assigned/tickets',
   requireRole('Instructor'),
   asyncHandler(async (req, res) => {
@@ -164,7 +185,13 @@ router.post(
     if (req.user!.role === 'SuperAdmin')
       throw badRequest('مدیر ارشد تنها به تیکت‌های مدرس‌ها پاسخ می‌دهد');
     const input = ticketInput.parse(req.body);
+    let ticketOwnerId = req.user!.sub;
+    let assignedInstructorId: string | null = null;
+    let initialMessageFromStaff = false;
+
     if (req.user!.role === 'Student') {
+      if (input.studentId)
+        throw badRequest('دانشجو نمی‌تواند به نام دانشجوی دیگری تیکت ثبت کند');
       if (!input.assignedInstructorId)
         throw badRequest('برای ثبت تیکت، مدرس مربوطه را انتخاب کنید');
       const relatedGroup = await prisma.group.findFirst({
@@ -176,24 +203,46 @@ router.post(
       });
       if (!relatedGroup)
         throw badRequest('مدرس انتخاب‌شده متعلق به گروه‌های شما نیست');
-    } else if (input.assignedInstructorId) {
-      throw badRequest('تیکت شخصی مدرس قابل ارجاع به مدرس دیگری نیست');
+      assignedInstructorId = input.assignedInstructorId;
+    } else if (req.user!.role === 'Instructor' && input.studentId) {
+      if (input.assignedInstructorId)
+        throw badRequest('مدرس نمی‌تواند تیکت را به مدرس دیگری ارجاع دهد');
+      const relatedStudent = await prisma.user.findFirst({
+        where: {
+          id: input.studentId,
+          role: 'Student',
+          groupsMember: {
+            some: {
+              instructorId: req.user!.sub,
+              approvalStatus: 'Approved',
+            },
+          },
+        },
+        select: { id: true },
+      });
+      if (!relatedStudent)
+        throw badRequest('دانشجوی انتخاب‌شده در گروه‌های تأییدشدهٔ شما نیست');
+      ticketOwnerId = relatedStudent.id;
+      assignedInstructorId = req.user!.sub;
+      initialMessageFromStaff = true;
+    } else if (input.assignedInstructorId || input.studentId) {
+      throw badRequest('اطلاعات ارجاع تیکت معتبر نیست');
     }
+
     const trackingCode = `TK-${Date.now().toString(36).toUpperCase()}-${randomBytes(5).toString('hex').toUpperCase()}`;
     const ticket = await prisma.supportTicket.create({
       data: {
-        userId: req.user!.sub,
+        userId: ticketOwnerId,
         trackingCode,
         subject: input.subject,
-        assignedInstructorId:
-          req.user!.role === 'Student' ? input.assignedInstructorId : null,
+        assignedInstructorId,
         category: input.category,
         priority: input.priority,
         messages: {
           create: {
             body: input.body,
             clientId: randomUUID(),
-            fromStaff: false,
+            fromStaff: initialMessageFromStaff,
           },
         },
       },

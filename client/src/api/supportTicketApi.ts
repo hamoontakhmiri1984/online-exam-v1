@@ -40,8 +40,12 @@ export const getMyTickets = (page = 0) => apiRequest<SupportTicket[]>(`/support/
 export const createSupportTicket = (input: {
   subject: string; category: TicketCategory; priority: TicketPriority; body: string;
   assignedInstructorId?: string;
+  studentId?: string;
 }) => apiRequest<SupportTicket>('/support/tickets', { method: 'POST', body: input });
 export type AvailableInstructor = { id: string; name: string | null; username: string | null };
+export type AvailableStudent = { id: string; name: string | null; username: string | null };
+export const getTeacherStudents = () =>
+  apiRequest<AvailableStudent[]>('/support/teacher/students');
 export const getStudentInstructors = () =>
   apiRequest<AvailableInstructor[]>('/support/student/instructors');
 export const getAssignedStudentTickets = (page = 0) =>

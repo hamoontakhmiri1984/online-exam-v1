@@ -153,10 +153,14 @@ test('remote assistant requires explicit consent before any provider call', asyn
 test('ticketing separates student and instructor requests, provides unique tracking codes and restricts admin inbox', async (t) => {
   if (!ready) return unavailable(t, 'PostgreSQL/Redis unavailable');
   const student = await user('Student');
+  const studentId = ids.at(-1)!;
   const instructor = await user('Instructor');
+  const instructorId = ids.at(-1)!;
   const outsider = await user('Instructor');
+  const outsiderId = ids.at(-1)!;
   const admin = await user('SuperAdmin');
-  const [studentId, instructorId] = ids.slice(-4);
+  const unrelatedStudent = await user('Student');
+  const unrelatedStudentId = ids.at(-1)!;
   await prisma.group.create({
     data: {
       name: 'کلاس آزمون',
@@ -197,6 +201,27 @@ test('ticketing separates student and instructor requests, provides unique track
     [instructorId],
   );
 
+  const teacherStudents = (await (
+    await request('/teacher/students', instructor)
+  ).json()) as Array<{ id: string }>;
+  assert.deepEqual(teacherStudents.map((row) => row.id), [studentId]);
+  const outsiderStudents = (await (
+    await request('/teacher/students', outsider)
+  ).json()) as Array<{ id: string }>;
+  assert.deepEqual(outsiderStudents, []);
+  assert.equal((await request('/teacher/students', student)).status, 403);
+
+  assert.equal(
+    (await request('/tickets', instructor, {
+      studentId: unrelatedStudentId,
+      subject: 'پیام غیرمجاز',
+      category: 'Other',
+      priority: 'Normal',
+      body: 'این دانشجو در گروه من نیست.',
+    })).status,
+    400,
+  );
+
   const studentResponse = await request('/tickets', student, {
     subject: 'مشکل ورود دانشجو',
     category: 'Account',
@@ -212,6 +237,31 @@ test('ticketing separates student and instructor requests, provides unique track
   };
   assert.match(studentTicket.trackingCode, /^TK-[A-Z0-9-]+$/);
   assert.equal(studentTicket.status, 'Open');
+
+  const teacherStartedResponse = await request('/tickets', instructor, {
+    studentId,
+    subject: 'پیام مستقیم مدرس',
+    category: 'Other',
+    priority: 'Normal',
+    body: 'برای هماهنگی جلسهٔ بعدی کلاس پیام می‌دهم.',
+  });
+  assert.equal(teacherStartedResponse.status, 201);
+  const teacherStartedTicket = (await teacherStartedResponse.json()) as {
+    id: string;
+    userId: string;
+    assignedInstructorId: string | null;
+  };
+  assert.equal(teacherStartedTicket.userId, studentId);
+  assert.equal(teacherStartedTicket.assignedInstructorId, instructorId);
+  assert.equal((await request(`/tickets/${teacherStartedTicket.id}`, student)).status, 200);
+  assert.equal((await request(`/tickets/${teacherStartedTicket.id}`, instructor)).status, 200);
+  assert.equal((await request(`/tickets/${teacherStartedTicket.id}`, outsider)).status, 404);
+  const teacherStartedMessages = (await (
+    await request(`/tickets/${teacherStartedTicket.id}/messages`, student)
+  ).json()) as Array<{ body: string; fromStaff: boolean }>;
+  assert.ok(teacherStartedMessages.some(message =>
+    message.body === 'برای هماهنگی جلسهٔ بعدی کلاس پیام می‌دهم.' && message.fromStaff,
+  ));
 
   const instructorResponse = await request('/tickets', instructor, {
     subject: 'خطای بانک سوال',
@@ -239,6 +289,7 @@ test('ticketing separates student and instructor requests, provides unique track
     await request('/assigned/tickets', instructor)
   ).json()) as Array<{ id: string }>;
   assert.ok(teacherInbox.some((item) => item.id === studentTicket.id));
+  assert.ok(teacherInbox.some((item) => item.id === teacherStartedTicket.id));
   assert.equal((await request('/assigned/tickets', student)).status, 403);
   assert.equal(
     (await request(`/tickets/${studentTicket.id}`, admin)).status,
@@ -279,6 +330,7 @@ test('ticketing separates student and instructor requests, provides unique track
   ).json()) as Array<{ id: string }>;
   assert.ok(mine.some((ticket) => ticket.id === instructorTicket.id));
   assert.ok(!mine.some((ticket) => ticket.id === studentTicket.id));
+  assert.ok(!mine.some((ticket) => ticket.id === teacherStartedTicket.id));
 
   const adminsInstructors = (await (
     await request('/instructors', admin)
