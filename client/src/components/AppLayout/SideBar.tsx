@@ -34,6 +34,7 @@ import {
   toggleNavigationGroup,
   writeExpandedNavigationGroups,
 } from './navigationState';
+import './admin-sidebar.css';
 
 type SidebarProps = {
   isOpen: boolean;
@@ -77,6 +78,7 @@ function Sidebar({
   const [confirmLogout, setConfirmLogout] = useState(false);
   const { guardNavigation } = useExamGuard();
   const { user } = useAuth();
+  const isAdmin = user?.role === 'SuperAdmin';
 
   const visibleItems = navigationItems.filter((item) =>
     user ? item.roles.includes(user.role) : false
@@ -87,7 +89,7 @@ function Sidebar({
 
   const sections = groupNavigationItems(visibleItems);
   const expandedGroupsStorageKey =
-    user?.role === 'SuperAdmin' && user.id
+    isAdmin && user.id
       ? ADMIN_NAVIGATION_STORAGE_PREFIX + user.id
       : '';
   const [expandedGroupState, setExpandedGroupState] = useState<ExpandedGroupState>(() => ({
@@ -97,7 +99,7 @@ function Sidebar({
   const expandedGroups = expandedGroupState.storageKey === expandedGroupsStorageKey
     ? expandedGroupState.groups
     : readExpandedNavigationGroups(getNavigationStorage(), expandedGroupsStorageKey);
-  const activeNavigationGroup = user?.role === 'SuperAdmin'
+  const activeNavigationGroup = isAdmin
     ? getNavigationGroupForPath(sections, location.pathname)
     : undefined;
 
@@ -206,14 +208,22 @@ function Sidebar({
         title={isCollapsed ? item.label : undefined}
         className={({ isActive }) => [
           'flex items-center gap-3 whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
+          isAdmin ? 'admin-nav-link' : '',
           isActive
-            ? 'sidebar-selected-glass text-brand-ink'
+            ? (isAdmin ? 'admin-nav-link--active sidebar-selected-glass text-brand-ink' : 'sidebar-selected-glass text-brand-ink')
             : 'text-gray-600 hover:bg-gray-50 hover:text-gray-950 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100',
-          nested ? 'rounded-lg text-[13px]' : '',
+          nested ? 'rounded-lg text-[13px] admin-nav-link--nested' : '',
+          !nested && isAdmin ? 'admin-nav-link--primary' : '',
           isCollapsed ? 'md:justify-center md:px-0' : '',
         ].filter(Boolean).join(' ')}
       >
-        <Icon size={18} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
+        {isAdmin ? (
+          <span className="admin-nav-link-icon">
+            <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
+          </span>
+        ) : (
+          <Icon size={18} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
+        )}
         <span className={isCollapsed ? 'md:hidden' : ''}>
           {item.label}
         </span>
@@ -240,16 +250,17 @@ function Sidebar({
 
       <aside
         className={[
-          'fixed inset-y-0 right-0 z-50 flex h-dvh w-72 min-h-0 flex-col border-s border-gray-100 bg-white shadow-2xl transition-all duration-300 dark:border-white/5 dark:bg-gray-900 md:relative md:z-auto md:translate-x-0 md:border-e md:border-s-0 md:shadow-none',
+          'admin-sidebar fixed inset-y-0 right-0 z-50 flex h-dvh w-72 min-h-0 flex-col border-s border-gray-100 bg-white shadow-2xl transition-all duration-300 dark:border-white/5 dark:bg-gray-900 md:relative md:z-auto md:translate-x-0 md:border-e md:border-s-0 md:shadow-none',
           isCollapsed ? 'md:w-20' : 'md:w-64',
           isOpen ? 'translate-x-0' : 'translate-x-full',
-        ].join(' ')}
+          isAdmin ? 'admin-sidebar--executive' : '',
+        ].filter(Boolean).join(' ')}
       >
         <button
           onClick={onToggleCollapse}
           title={isCollapsed ? 'باز کردن منو' : 'جمع کردن منو'}
           aria-label={isCollapsed ? 'باز کردن منو' : 'جمع کردن منو'}
-          className="absolute -left-5.5 top-1/2 z-10 hidden h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-400 shadow-md transition-all duration-200 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-ink focus-visible:outline-2 focus-visible:outline-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-500 dark:hover:border-brand-900 dark:hover:bg-brand-950/40 dark:hover:text-brand-ink md:flex"
+          className="admin-sidebar-collapse absolute -left-5.5 top-1/2 z-10 hidden h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-400 shadow-md transition-all duration-200 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-ink focus-visible:outline-2 focus-visible:outline-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-500 dark:hover:border-brand-900 dark:hover:bg-brand-950/40 dark:hover:text-brand-ink md:flex"
         >
           {isCollapsed ? (
             <ChevronLeft size={14} aria-hidden="true" />
@@ -260,9 +271,10 @@ function Sidebar({
 
         <div className="flex h-full min-h-0 flex-col overflow-hidden">
           <div className="flex min-h-0 flex-1 flex-col">
-            <div className="flex shrink-0 items-center justify-between px-5 pb-3 pt-6">
+            <div className="admin-sidebar-brand-row flex shrink-0 items-center justify-between px-5 pb-3 pt-6">
               <button
                 onClick={handleLogoClick}
+                aria-label="رفتن به میز کار"
                 className="flex cursor-pointer items-center rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-500"
               >
                 <Logo size="sm" showText={!isCollapsed} />
@@ -277,11 +289,40 @@ function Sidebar({
               </button>
             </div>
 
-            <nav dir="ltr" aria-label="منوی اصلی" className="sidebar-navigation panel-scrollbar flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain px-3 py-2">
+            {isAdmin && (
+              <div className={['admin-sidebar-identity mx-3 mb-3', isCollapsed ? 'md:hidden' : ''].join(' ')}>
+                <div className="admin-sidebar-identity-main">
+                  <div className="admin-sidebar-avatar">
+                    <Avatar
+                      name={user?.name || user?.username}
+                      src={user?.avatarUrl}
+                      size={42}
+                      className="admin-sidebar-avatar-image"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="admin-sidebar-identity-name truncate">
+                      {user?.name || user?.username || 'کاربر ارشد'}
+                    </p>
+                    <p className="admin-sidebar-identity-role">
+                      مدیر سامانه
+                    </p>
+                  </div>
+                  <span className="admin-sidebar-identity-mark" aria-hidden="true" />
+                </div>
+                <span className="admin-sidebar-identity-caption">مدیریت و راهبری سامانه</span>
+              </div>
+            )}
+
+            <nav dir="ltr" aria-label="منوی اصلی" className="sidebar-navigation panel-scrollbar admin-sidebar-navigation flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain px-3 py-2">
               {sections.map((section, sectionIndex) => {
                 if (!section.group) {
                   return (
-                    <div key="main" dir="rtl" className="flex flex-col gap-1">
+                    <div
+                      key="main"
+                      dir="rtl"
+                      className={['flex flex-col gap-1', isAdmin ? 'admin-nav-primary' : ''].join(' ')}
+                    >
                       {section.items.map((item) => renderNavigationLink(item))}
                     </div>
                   );
@@ -292,6 +333,7 @@ function Sidebar({
                 const isExpanded = expandedGroups.includes(group);
                 const submenuId = 'sidebar-navigation-' + group;
                 const groupLabel = navigationGroupLabel[group];
+                const hasActiveRoute = activeNavigationGroup === group;
 
                 return (
                   <div
@@ -301,12 +343,15 @@ function Sidebar({
                     aria-label={groupLabel}
                     className={[
                       'flex flex-col gap-1',
+                      isAdmin ? 'admin-nav-group' : '',
+                      isExpanded ? 'is-expanded' : '',
+                      hasActiveRoute ? 'has-active-route' : '',
                       sectionIndex > 0 ? 'mt-2 border-t border-gray-100 pt-3 dark:border-white/5' : '',
                     ].filter(Boolean).join(' ')}
                   >
                     {group === 'requests' && !isCollapsed && (
-                      <div className="mb-1 px-3 text-[10px] font-bold tracking-wide text-gray-400 dark:text-gray-500">
-                        بخش‌های مدیریتی
+                      <div className="admin-nav-section-heading">
+                        <span>مدیریت و راهبری</span>
                       </div>
                     )}
                     <button
@@ -314,31 +359,37 @@ function Sidebar({
                       onClick={() => handleGroupButtonClick(group)}
                       aria-expanded={isExpanded}
                       aria-controls={isExpanded && !isCollapsed ? submenuId : undefined}
-                      aria-label={isCollapsed ? 'باز کردن بخش ' + groupLabel : undefined}
+                      aria-label={groupLabel}
                       title={isCollapsed ? groupLabel : undefined}
                       className={[
-                        'flex min-h-11 items-center justify-between gap-3 rounded-xl border px-3 py-2 text-right text-[13px] font-semibold transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
-                        isExpanded
-                          ? 'border-violet-100 bg-violet-50/80 text-brand-ink dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-100'
-                          : 'border-transparent text-gray-600 hover:border-gray-200 hover:bg-gray-50 hover:text-gray-950 dark:text-gray-300 dark:hover:border-white/10 dark:hover:bg-white/5 dark:hover:text-white',
+                        'admin-nav-group-trigger flex min-h-11 items-center justify-between gap-3 rounded-xl border px-3 py-2 text-right text-[13px] font-semibold transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
+                        isExpanded ? 'is-expanded' : '',
+                        hasActiveRoute ? 'has-active-route' : '',
                         isCollapsed ? 'md:justify-center md:px-0' : '',
                       ].filter(Boolean).join(' ')}
                     >
-                      <span className="flex min-w-0 items-center gap-3">
-                        <GroupIcon size={18} strokeWidth={1.8} className="shrink-0" aria-hidden="true" />
+                      <span className="admin-nav-group-leading flex min-w-0 items-center gap-3">
+                        <span className="admin-nav-group-icon">
+                          <GroupIcon size={18} strokeWidth={1.8} aria-hidden="true" />
+                        </span>
                         <span className={isCollapsed ? 'md:hidden' : 'truncate'}>
                           {groupLabel}
                         </span>
                       </span>
                       {!isCollapsed && (
-                        <ChevronDown
-                          size={15}
-                          aria-hidden="true"
-                          className={[
-                            'shrink-0 text-gray-400 transition-transform duration-150 dark:text-gray-500',
-                            isExpanded ? 'rotate-0' : 'rotate-90',
-                          ].join(' ')}
-                        />
+                        <span className="admin-nav-group-trailing">
+                          <span className="admin-nav-group-count" aria-hidden="true">
+                            {String(section.items.length).padStart(2, '0')}
+                          </span>
+                          <ChevronDown
+                            size={15}
+                            aria-hidden="true"
+                            className={[
+                              'admin-nav-group-chevron shrink-0 transition-transform duration-150',
+                              isExpanded ? 'rotate-0' : 'rotate-90',
+                            ].join(' ')}
+                          />
+                        </span>
                       )}
                     </button>
 
@@ -350,10 +401,10 @@ function Sidebar({
                             initial={shouldReduceMotion ? false : { height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: shouldReduceMotion ? 0 : 0.18, ease: 'easeOut' }}
-                            className="overflow-hidden"
+                            transition={{ duration: shouldReduceMotion ? 0 : 0.2, ease: 'easeOut' }}
+                            className="admin-nav-submenu-wrap overflow-hidden"
                           >
-                            <div className="mr-4 flex flex-col gap-1 border-r border-gray-200 py-1 pr-2 dark:border-gray-700">
+                            <div className="admin-nav-submenu mr-2 flex flex-col gap-1 py-2 pr-2">
                               {section.items.map((item) => renderNavigationLink(item, true))}
                             </div>
                           </motion.div>
@@ -366,41 +417,58 @@ function Sidebar({
             </nav>
           </div>
 
-          <div
-            className={[
-              'm-3 flex shrink-0 items-center rounded-xl border border-gray-100 bg-gray-50 p-3 transition-all duration-300 dark:border-white/5 dark:bg-gray-800/60',
-              isCollapsed ? 'flex-col gap-2' : 'justify-between',
-            ].join(' ')}
-          >
+          {isAdmin ? (
+            <div className={['admin-sidebar-footer m-3 flex shrink-0 items-center gap-2', isCollapsed ? 'justify-center' : ''].join(' ')}>
+              {isCollapsed && (
+                <Avatar
+                  name={user?.name || user?.username}
+                  src={user?.avatarUrl}
+                  size={34}
+                  className="admin-sidebar-compact-avatar"
+                />
+              )}
+              <button
+                onClick={() => setConfirmLogout(true)}
+                className="admin-sidebar-logout flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-brand-500"
+                title="خروج از سامانه"
+                aria-label="خروج از سامانه"
+              >
+                <LogOut size={17} aria-hidden="true" />
+                <span className={isCollapsed ? 'md:hidden' : ''}>خروج از سامانه</span>
+              </button>
+            </div>
+          ) : (
             <div
               className={[
-                'flex min-w-0 items-center gap-2.5',
-                isCollapsed ? 'flex-col' : '',
-              ].filter(Boolean).join(' ')}
+                'm-3 flex shrink-0 items-center rounded-xl bg-gray-50 p-3 transition-all duration-300 dark:bg-gray-800/60',
+                isCollapsed ? 'flex-col gap-2' : 'justify-between',
+              ].join(' ')}
             >
-              <Avatar
-                name={user?.name || user?.username}
-                src={user?.avatarUrl}
-                size={36}
-              />
-              <div className={isCollapsed ? 'hidden' : 'min-w-0'}>
-                <p className="truncate text-xs font-medium text-gray-800 dark:text-gray-200">
-                  {user?.name || user?.username}
-                </p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">
-                  {user ? roleLabel[user.role] : ''}
-                </p>
+              <div className={['flex min-w-0 items-center gap-2.5', isCollapsed ? 'flex-col' : ''].join(' ')}>
+                <Avatar
+                  name={user?.name || user?.username}
+                  src={user?.avatarUrl}
+                  size={36}
+                />
+                <div className={isCollapsed ? 'hidden' : 'min-w-0'}>
+                  <p className="truncate text-xs font-medium text-gray-800 dark:text-gray-200">
+                    {user?.name || user?.username}
+                  </p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    {user ? roleLabel[user.role] : ''}
+                  </p>
+                </div>
               </div>
+              <button
+                onClick={() => setConfirmLogout(true)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 transition duration-200 hover:bg-danger-50 hover:text-danger-600 dark:hover:bg-danger-950/40 dark:hover:text-danger-400"
+                title="خروج"
+                aria-label="خروج"
+              >
+                <LogOut size={18} />
+              </button>
             </div>
-            <button
-              onClick={() => setConfirmLogout(true)}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 transition duration-200 hover:bg-danger-50 hover:text-danger-600 focus-visible:outline-2 focus-visible:outline-brand-500 dark:hover:bg-danger-950/40 dark:hover:text-danger-400"
-              title="خروج"
-              aria-label="خروج"
-            >
-              <LogOut size={18} />
-            </button>
-          </div>
+          )}
         </div>
       </aside>
     </>
