@@ -332,6 +332,7 @@ export default function AdminDashboard() {
       )}
 
       <ContentPageHeader
+        variant="welcome"
         icon={LayoutDashboard}
         eyebrow="مدیریت و راهبری"
         title={displayName ? `خوش آمدید، ${displayName}` : 'داشبورد مدیریت'}
