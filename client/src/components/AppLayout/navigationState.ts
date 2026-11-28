@@ -12,7 +12,7 @@ const navigationGroupIds: NavigationGroupId[] = [
 
 export type NavigationStorage = Pick<Storage, 'getItem' | 'setItem'>;
 
-type RoutableNavigationItem = { to: string };
+type RoutableNavigationItem = { to: string; group?: NavigationGroupId };
 
 function normalizePath(path: string): string {
   if (path.length > 1) return path.replace(/\/+$/, '');
