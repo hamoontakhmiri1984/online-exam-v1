@@ -41,11 +41,6 @@ type SidebarProps = {
   onToggleCollapse: () => void;
 };
 
-type ExpandedGroupState = {
-  storageKey: string;
-  groups: NavigationGroupId[];
-};
-
 const navigationGroupIcons: Record<NavigationGroupId, LucideIcon> = {
   requests: ShieldCheck,
   education: GraduationCap,
