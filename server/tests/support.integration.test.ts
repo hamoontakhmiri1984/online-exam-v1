@@ -188,7 +188,7 @@ test('ticketing separates student and instructor requests, provides unique track
         category: 'Account',
         priority: 'Normal',
         body: 'نباید به مدرس غریبه ارجاع شود.',
-        assignedInstructorId: ids.at(-2),
+        assignedInstructorId: outsiderId,
       })
     ).status,
     400,
