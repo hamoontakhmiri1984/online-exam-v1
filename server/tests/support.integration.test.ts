@@ -322,13 +322,15 @@ test('ticketing separates student and instructor requests, provides unique track
         item.user.role === 'Student',
     ),
   );
-  assert.ok(!studentInbox.items.some((item) => item.id === instructorTicket.id));
+  assert.ok(
+    !studentInbox.items.some((item) => item.id === instructorTicket.id),
+  );
 
   const adminStudentReply = await request(
     '/tickets/' + studentTicket.id + '/messages',
     admin,
     {
-    body: 'پشتیبانی درخواست شما را بررسی می‌کند.',
+      body: 'پشتیبانی درخواست شما را بررسی می‌کند.',
       clientId: randomUUID(),
     },
   );
