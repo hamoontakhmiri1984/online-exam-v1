@@ -19,7 +19,7 @@ function QuestionCard({
   disabled = false,
 }: QuestionCardProps) {
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700">
+    <div className="app-panel-card app-panel-card--interactive bg-white p-6 dark:bg-gray-900">
       <div className="flex items-start justify-between gap-4">
         <p className="min-w-0 whitespace-pre-wrap break-words font-medium text-gray-800 dark:text-white">
           <span className="text-gray-400 dark:text-gray-500">
