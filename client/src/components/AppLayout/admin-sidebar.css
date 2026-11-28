@@ -1042,3 +1042,10 @@
 .dark .admin-sidebar--executive .admin-nav-group-count {
   color: #c9c1d9 !important;
 }
+
+
+/* No edge marker is used for any primary admin navigation item. */
+.admin-sidebar--executive .admin-nav-link::before {
+  content: none !important;
+  display: none !important;
+}
