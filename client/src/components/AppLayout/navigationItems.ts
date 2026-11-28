@@ -153,3 +153,41 @@ export function groupNavigationItems<T extends { group?: NavigationGroupId }>(
   }
   return sections;
 }
+
+
+const roleNavigationOrder: Record<'Instructor' | 'Student', string[]> = {
+  Instructor: [
+    '/workspace',
+    '/groups',
+    '/exams',
+    '/question-banks',
+    '/practice',
+    '/students',
+    '/lessons',
+    '/plans',
+    '/settings',
+    '/support',
+  ],
+  Student: [
+    '/dashboard',
+    '/exams',
+    '/practice',
+    '/lessons',
+    '/my-results',
+    '/settings',
+    '/support',
+  ],
+};
+
+export function sortRoleNavigationItems<T extends { to: string }>(
+  items: readonly T[],
+  role: 'Instructor' | 'Student'
+): T[] {
+  const order = roleNavigationOrder[role];
+  return [...items].sort((a, b) => {
+    const aIndex = order.indexOf(a.to);
+    const bIndex = order.indexOf(b.to);
+    return (aIndex < 0 ? Number.MAX_SAFE_INTEGER : aIndex) -
+      (bIndex < 0 ? Number.MAX_SAFE_INTEGER : bIndex);
+  });
+}
