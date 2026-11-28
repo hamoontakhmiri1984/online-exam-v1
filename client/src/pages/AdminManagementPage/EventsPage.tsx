@@ -1,5 +1,6 @@
 import AppLayout from '../../components/AppLayout/AppLayout';
-import PageHeader from '../../components/PageHeader/PageHeader';
+import LearningPageLayout from '../../components/LearningPageLayout/LearningPageLayout';
+import { History } from 'lucide-react';
 import DataTable from '../../components/AdminUI/DataTable';
 import { LoadError } from '../../components/AdminUI/FilterBar';
 import ListPagination from '../../components/ListPagination/ListPagination';
@@ -60,11 +61,14 @@ export function EventsList({ compact = false }: { compact?: boolean }) {
 export default function EventsPage() {
   return (
     <AppLayout title="رویدادها">
-      <PageHeader
+      <LearningPageLayout
+        eyebrow="مدیریت و راهبری"
         title="رویدادها"
-        description="سوابق ثبت‌شدهٔ عملیات مدیریتی؛ این فهرست قابل ویرایش نیست."
-      />
-      <EventsList />
+        description="سوابق عملیات مدیریتی ثبت‌شده را مشاهده کنید. این فهرست قابل ویرایش نیست."
+        icon={History}
+      >
+        <EventsList />
+      </LearningPageLayout>
     </AppLayout>
   );
 }
