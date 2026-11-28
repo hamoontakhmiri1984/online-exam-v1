@@ -9,7 +9,7 @@ import DataTable from '../../components/AdminUI/DataTable';
 import { useAuth } from '../../context/AuthContext';
 import {
   createSupportTicket, getAdminSupportTickets, getMyTickets,
-  getAssignedStudentTickets, getStudentInstructors,
+  getAssignedStudentTickets, getStudentInstructors, getTeacherStudents,
   getTicket, getTicketMessages,
   postTicketMessage, updateTicketStatus,
   ticketCategoryLabels, ticketPriorityLabels, ticketStatusLabels,
