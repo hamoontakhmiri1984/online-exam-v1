@@ -1,6 +1,7 @@
 import { readCreationPolicy } from '../../lib/approvalPolicy';
 import { parseListQuery } from '../../lib/listPagination';
 import { Router } from 'express';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { requireRole } from '../../middleware/requireAuth';
 import { generateUniqueJoinCode } from '../../lib/joinCode';
@@ -107,7 +108,7 @@ router.post(
     );
     const joinCode = await generateUniqueJoinCode();
 
-    const createWithPolicy = async (db: typeof prisma) => {
+    const createWithPolicy = async (db: Prisma.TransactionClient) => {
       const policy = await readCreationPolicy(db);
       return db.group.create({
         data: {
