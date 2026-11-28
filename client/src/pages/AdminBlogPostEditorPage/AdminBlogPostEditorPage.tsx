@@ -1,7 +1,8 @@
 import PanelBack from '../../components/PanelBack/PanelBack';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Save, Loader2, XCircle } from 'lucide-react';
+import { Save, Loader2, XCircle, FileText } from 'lucide-react';
 import AppLayout from '../../components/AppLayout/AppLayout';
+import LearningPageLayout from '../../components/LearningPageLayout/LearningPageLayout';
 import Spinner from '../../components/Spinner/Spinner';
 import ToggleSwitch from '../../components/ToggleSwitch/ToggleSwitch';
 import MarkdownEditor from '../../components/MarkdownEditor/MarkdownEditor';
@@ -49,9 +50,14 @@ function AdminBlogPostEditorPage() {
 
   return (
     <AppLayout title={isEditMode ? 'ویرایشِ پست' : 'پستِ جدید'}>
+      <LearningPageLayout
+        eyebrow="مدیریت محتوا"
+        title={isEditMode ? 'ویرایش مقاله' : 'مقاله جدید'}
+        description={isEditMode ? 'اطلاعات و محتوای مقاله را ویرایش و ذخیره کنید.' : 'مقاله‌ی تازه‌ای برای انتشار در سامانه آماده کنید.'}
+        icon={FileText}
+        actions={<PanelBack onClick={() => navigate('/blog-posts')} label="بازگشت به فهرست مقالات" />}
+      >
       {error && <div className="form-inline-error mb-4 flex items-center justify-between gap-3" role="alert"><span>{error}</span><button type="button" aria-label="بستن خطا" onClick={clearError}><XCircle size={17}/></button></div>}
-
-      <PanelBack onClick={() => navigate('/blog-posts')} label="بازگشت به لیستِ پست‌ها" className="mb-4" />
 
       {loading ? (
         <Spinner />
@@ -59,7 +65,7 @@ function AdminBlogPostEditorPage() {
         <form
           onSubmit={onSubmit}
           noValidate
-          className="flex flex-col gap-6 rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900"
+          className="flex flex-col gap-6"
         >
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div className="flex flex-col gap-1.5">
@@ -158,6 +164,7 @@ function AdminBlogPostEditorPage() {
           </button>
         </form>
       )}
+      </LearningPageLayout>
     </AppLayout>
   );
 }
