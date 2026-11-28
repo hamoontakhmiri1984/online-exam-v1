@@ -77,6 +77,16 @@ test('student can create a ticket with tracking code and open the conversation',
   await page.goto('/support');
   await page.getByRole('button', { name: 'ثبت تیکت جدید' }).click();
   await expect(page.getByRole('dialog').getByRole('button', { name: 'بستن' })).toHaveCount(1);
+  const ticketDialog = page.getByRole('dialog');
+  const dialogSurface = ticketDialog.locator('div').first();
+  await expect(dialogSurface).toHaveCSS('min-height', '608px');
+  const instructorSelect = ticketDialog.getByRole('combobox', { name: 'مدرس مربوطه' });
+  await instructorSelect.click();
+  const instructorOptions = ticketDialog.getByRole('listbox', { name: 'مدرس مربوطه' });
+  await expect(instructorOptions).toBeVisible();
+  const instructorMenuHeight = await instructorOptions.evaluate(element => Number.parseFloat(getComputedStyle(element).maxHeight));
+  expect(instructorMenuHeight).toBeGreaterThan(300);
+  await instructorOptions.getByRole('option', { name: 'مدرس دانشجو' }).click();
   await page.getByLabel('موضوع').fill(ticket.subject);
   const description = page.getByLabel('شرح درخواست');
   await expect(description).toHaveCSS('resize', 'none');
