@@ -60,12 +60,6 @@ test('admin sidebar starts collapsed on login and groups expand independently', 
   expect(workspaceVisuals.iconColor).toBe('rgb(94, 67, 170)');
   expect(workspaceVisuals.hoverBackground).toBe('rgb(238, 234, 248)');
 
-  const activeInstructorLink = navigation.getByRole('link', { name: 'مدرس‌ها', exact: true });
-  const activeMarkerContent = await activeInstructorLink.evaluate((element) =>
-    window.getComputedStyle(element, '::before').content
-  );
-  expect(activeMarkerContent).toBe('none');
-
   await expect(navigation.locator('.admin-nav-group-count')).toHaveCount(0);
   await expect(sidebar.locator('.admin-sidebar-identity')).toContainText('کاربر ارشد');
   await expect(sidebar.locator('.admin-nav-section-heading')).toContainText('مدیریت و راهبری');
@@ -75,6 +69,11 @@ test('admin sidebar starts collapsed on login and groups expand independently', 
   await education.click();
   await expect(education).toHaveAttribute('aria-expanded', 'true');
   await expect(navigation.getByRole('link', { name: 'مدرس‌ها', exact: true })).toBeVisible();
+  const activeInstructorLink = navigation.getByRole('link', { name: 'مدرس‌ها', exact: true });
+  const activeMarkerContent = await activeInstructorLink.evaluate((element) =>
+    window.getComputedStyle(element, '::before').content
+  );
+  expect(activeMarkerContent).toBe('none');
 
   await content.click();
   await expect(content).toHaveAttribute('aria-expanded', 'true');
