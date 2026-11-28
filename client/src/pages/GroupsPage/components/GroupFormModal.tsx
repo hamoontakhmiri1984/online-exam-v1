@@ -35,7 +35,7 @@ function GroupFormModal({
   onClose,
 }: GroupFormModalProps) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
+    <Modal isOpen={isOpen} onClose={onClose} tall>
       <h2 className="text-lg font-bold mb-4 dark:text-white">
         {isEditing ? 'ویرایش گروه' : 'گروه جدید'}
       </h2>
@@ -67,7 +67,7 @@ function GroupFormModal({
             اعضای گروه ({studentIds.length.toLocaleString('fa-IR')} نفر
             انتخاب‌شده)
           </label>
-          <div className="max-h-52 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700">
+          <div className="max-h-[min(42dvh,22rem)] overflow-y-auto overscroll-contain rounded-xl border border-gray-200 dark:border-gray-700">
             {students.length === 0 ? (
               <p className="p-4 text-center text-sm text-gray-400">
                 هنوز دانشجویی ثبت نشده
