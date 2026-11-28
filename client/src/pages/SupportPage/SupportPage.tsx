@@ -445,7 +445,7 @@ export default function SupportPage() {
         {isAdmin ? (
           <div className="@container">
             <div className="grid min-w-0 items-stretch gap-5 @[42rem]:grid-cols-2">
-              <section aria-label="فهرست تیکت‌ها" className={`min-h-72 min-w-0 overflow-hidden rounded-2xl border border-violet-200/50 bg-white/85 shadow-sm dark:border-violet-400/20 dark:bg-slate-900/85 ${selectedTicket ? 'hidden @[42rem]:flex @[42rem]:h-[clamp(29rem,66dvh,48rem)] @[42rem]:flex-col' : ''}`}>
+              <section aria-label="فهرست تیکت‌ها" className={`flex h-[clamp(18rem,40dvh,34rem)] min-h-72 min-w-0 flex-col overflow-hidden rounded-2xl border border-violet-200/50 bg-white/85 shadow-sm dark:border-violet-400/20 dark:bg-slate-900/85 ${selectedTicket ? 'hidden @[42rem]:flex @[42rem]:h-[clamp(29rem,66dvh,48rem)]' : ''}`}>
                 <div className="shrink-0 border-b border-violet-100 p-2.5 dark:border-violet-400/15">
                   <div role="group" aria-label="وضعیت تیکت‌ها" className="inline-flex gap-1 rounded-xl border border-violet-200/60 bg-white/85 p-1 dark:border-violet-400/20 dark:bg-slate-900/80">
                     {([{ label: 'همه', waiting: false }, { label: 'در انتظار پاسخ', waiting: true }]).map(({ label, waiting }) => (
