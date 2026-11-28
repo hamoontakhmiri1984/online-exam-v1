@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import type { Group } from '../api/groupApi';
+import {
+  GROUP_CARD_DEFAULT_COLOR,
+  type GroupCardColor,
+} from '../constants/groupCardColors';
 import type { Category } from '../constants/categories';
 
 type GroupInput = Omit<Group, 'id' | 'joinCode'>;
@@ -20,6 +24,7 @@ function useGroupFormModal({
   const [name, setName] = useState('');
   const [category, setCategory] = useState<Category | ''>('');
   const [studentIds, setStudentIds] = useState<string[]>([]);
+  const [cardColor, setCardColor] = useState<GroupCardColor>(GROUP_CARD_DEFAULT_COLOR);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   function openAdd() {
@@ -27,6 +32,7 @@ function useGroupFormModal({
     setName('');
     setCategory('');
     setStudentIds([]);
+    setCardColor(GROUP_CARD_DEFAULT_COLOR);
     setIsOpen(true);
   }
 
@@ -35,6 +41,7 @@ function useGroupFormModal({
     setName(group.name);
     setCategory(group.category);
     setStudentIds(group.studentIds);
+    setCardColor(group.cardColor ?? GROUP_CARD_DEFAULT_COLOR);
     setIsOpen(true);
   }
 
@@ -63,6 +70,7 @@ function useGroupFormModal({
       category,
       instructorId,
       studentIds,
+      cardColor,
     };
 
     const saved = editingId
@@ -84,6 +92,8 @@ function useGroupFormModal({
     setCategory,
     studentIds,
     toggleStudent,
+    cardColor,
+    setCardColor,
     validationError,
     dismissValidationError: () => setValidationError(null),
     openAdd,

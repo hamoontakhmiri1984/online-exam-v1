@@ -110,6 +110,7 @@ router.post(
               : 'Approved',
             name: parsed.data.name,
             category: parsed.data.category,
+            cardColor: parsed.data.cardColor ?? 'Default',
             instructorId: req.user!.sub,
             joinCode,
             students: { connect: studentConnect },
@@ -154,6 +155,9 @@ router.put(
       data: {
         name: parsed.data.name,
         category: parsed.data.category,
+        ...(parsed.data.cardColor
+          ? { cardColor: parsed.data.cardColor }
+          : {}),
         students: { set: studentSet },
       },
       include: withStudents,

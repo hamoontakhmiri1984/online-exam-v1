@@ -9,6 +9,7 @@ export function serializeGroup(group: {
   instructorId: string;
   joinCode: string;
   approvalStatus: 'Pending' | 'Approved' | 'Rejected';
+  cardColor: 'Default' | 'Stone' | 'BlueGray' | 'Sage' | 'Sand' | 'Lavender' | 'Teal';
   students: { id: string }[];
 }) {
   return {
@@ -19,6 +20,7 @@ export function serializeGroup(group: {
     instructorId: group.instructorId,
     joinCode: group.joinCode,
     studentIds: group.students.map((s) => s.id),
+    cardColor: group.cardColor,
   };
 }
 
