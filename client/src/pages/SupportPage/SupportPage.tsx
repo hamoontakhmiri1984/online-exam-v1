@@ -69,6 +69,7 @@ export default function SupportPage() {
   const [sending, setSending] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const chatRef = useRef<HTMLDivElement>(null);
+  const draftTextareaRef = useRef<HTMLTextAreaElement>(null);
   const pendingId = useRef<string | null>(null);
   const inboxHeadingRef = useRef<HTMLHeadingElement>(null);
   const conversationHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -169,6 +170,15 @@ export default function SupportPage() {
     if (!selectedTicket) return;
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight });
   }, [messages, selectedTicket]);
+
+  useEffect(() => {
+    const textarea = draftTextareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = '44px';
+    const nextHeight = Math.min(textarea.scrollHeight, 128);
+    textarea.style.height = `${nextHeight}px`;
+    textarea.style.overflowY = textarea.scrollHeight > 128 ? 'auto' : 'hidden';
+  }, [draft, selectedTicketId]);
 
   useEffect(() => {
     if (!selectedTicket) return;
@@ -338,9 +348,19 @@ export default function SupportPage() {
       </div>
       <form onSubmit={e => void sendMessage(e)} className={`shrink-0 border-t border-violet-100 dark:border-violet-400/15 ${isAdmin ? 'px-3 py-3 sm:px-5' : 'px-5 py-4 sm:px-7'}`}>
         {isAdmin && error && <p role="alert" className="mb-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">{error}</p>}
-        {selectedTicket.status === 'Closed' ? <p className="text-sm text-slate-500">این تیکت بسته شده است. برای ادامه گفتگو ابتدا آن را باز کنید.</p> : <div className="flex items-end gap-3">
-          <textarea aria-label="پاسخ به تیکت" readOnly={isAdmin && sending} value={draft} onChange={e => { setDraft(e.target.value); pendingId.current = null; }} maxLength={2000} rows={2} placeholder="پاسخ خود را بنویسید…" className={`min-w-0 flex-1 resize-none rounded-xl border border-violet-200 bg-slate-50/70 px-3 py-2 outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-400 dark:border-violet-400/25 dark:bg-slate-800 dark:text-white ${isAdmin ? 'min-h-14 text-base sm:text-sm' : 'min-h-20 text-sm'}`}/>
-          <button type="submit" disabled={sending || saving || detailLoading || !draft.trim()} className="ui-primary-gradient inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-4 text-sm font-bold disabled:opacity-40"><Send size={16} aria-hidden="true"/>{sending ? 'ارسال…' : 'ارسال'}</button>
+        {selectedTicket.status === 'Closed' ? <p className="text-sm text-slate-500">این تیکت بسته شده است. برای ادامه گفتگو ابتدا آن را باز کنید.</p> : <div className="flex items-end gap-0 rounded-[1.75rem] border border-violet-200/80 bg-white p-1.5 shadow-sm transition focus-within:border-violet-400 focus-within:shadow-[0_0_0_3px_rgba(139,92,246,0.10)] dark:border-violet-400/25 dark:bg-slate-800">
+          <textarea
+            ref={draftTextareaRef}
+            aria-label="پاسخ به تیکت"
+            readOnly={isAdmin && sending}
+            value={draft}
+            onChange={e => { setDraft(e.target.value); pendingId.current = null; }}
+            maxLength={2000}
+            rows={1}
+            placeholder="پاسخ خود را بنویسید…"
+            className="max-h-32 min-h-11 min-w-0 flex-1 resize-none overflow-y-hidden border-0 bg-transparent px-4 py-2.5 text-right text-sm leading-6 text-slate-800 outline-none placeholder:text-slate-400 focus:border-0 focus:outline-none focus:ring-0 dark:text-white dark:placeholder:text-slate-400"
+          />
+          <button type="submit" disabled={sending || saving || detailLoading || !draft.trim()} className="ui-primary-gradient inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-105 disabled:opacity-40"><span>{sending ? 'ارسال…' : 'ارسال'}</span><Send size={16} aria-hidden="true"/></button>
         </div>}
       </form>
     </section>
