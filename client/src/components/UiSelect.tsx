@@ -60,7 +60,7 @@ export default function UiSelect({ className = '', children, value, defaultValue
         <span className="min-w-0 truncate">{current?.label ?? 'انتخاب کنید'}</span>
         <ChevronDown size={17} aria-hidden="true" className={`shrink-0 text-brand-ink transition-transform dark:text-brand-ink ${open ? 'rotate-180' : ''}`} />
       </button>
-      {open && <div id={menuId} role="listbox" aria-label={ariaLabel} className="ui-select-menu absolute inset-x-0 top-full z-50 mt-2 max-h-60 overflow-y-auto rounded-2xl border border-violet-200 bg-white p-1.5 shadow-xl shadow-violet-950/10 dark:border-violet-400/25 dark:bg-slate-800">
+      {open && <div id={menuId} role="listbox" aria-label={ariaLabel} className="ui-select-menu absolute inset-x-0 top-full z-50 mt-2 max-h-[min(65dvh,28rem)] overflow-y-auto overscroll-contain rounded-2xl border border-violet-200 bg-white p-1.5 shadow-xl shadow-violet-950/10 dark:border-violet-400/25 dark:bg-slate-800">
         {choices.map((choice, index) => (
           <button key={index} type="button" role="option" aria-selected={choice.value === selected} disabled={choice.disabled}
             // Keep the trigger focused while choosing; native option-button focus
