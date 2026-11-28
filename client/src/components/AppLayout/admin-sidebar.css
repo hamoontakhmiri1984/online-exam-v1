@@ -1144,7 +1144,7 @@
 .role-sidebar--executive .role-nav-link--active,
 .role-sidebar--executive .role-nav-link--active:hover {
   border-color: #d6cbea !important;
-  color: #4d3693 !important;
+  color: #5b3bad !important;
   background: #eee9f8 !important;
   box-shadow: inset 0 0 0 1px rgba(96, 69, 158, 0.035) !important;
 }
@@ -1214,7 +1214,7 @@
 .dark .role-sidebar--executive .role-nav-link--active,
 .dark .role-sidebar--executive .role-nav-link--active:hover {
   border-color: #5c4d7f !important;
-  color: #f0eaff !important;
+  color: #d5c1ff !important;
   background: #302a45 !important;
 }
 
