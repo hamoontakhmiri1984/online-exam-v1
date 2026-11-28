@@ -3,7 +3,8 @@ import { Save, Pencil } from 'lucide-react';
 import { notifySaveSuccess, notifySaveError } from '../../components/Toast/Toast';
 import { useState } from 'react';
 import AppLayout from '../../components/AppLayout/AppLayout';
-import PageHeader from '../../components/PageHeader/PageHeader';
+import LearningPageLayout from '../../components/LearningPageLayout/LearningPageLayout';
+import { CreditCard } from 'lucide-react';
 import DataTable from '../../components/AdminUI/DataTable';
 import { LoadError, controlClass } from '../../components/AdminUI/FilterBar';
 import ListPagination from '../../components/ListPagination/ListPagination';
@@ -40,10 +41,12 @@ export default function SubscriptionsPage() {
   }
   return (
     <AppLayout title="اشتراک‌ها">
-      <PageHeader
+      <LearningPageLayout
+        eyebrow="امور مالی"
         title="اشتراک‌ها"
-        description="مدیریت اشتراک مدرس‌های تأییدشده؛ تخصیص دستی اشتراک به‌معنی ثبت پرداخت نیست."
-      />
+        description="اشتراک مدرس‌های تأییدشده را بررسی و مدیریت کنید؛ تخصیص دستی به معنی ثبت پرداخت نیست."
+        icon={CreditCard}
+      >
       <ListPagination {...list} maxSearchLength={100} />
       <LoadError message={list.error} retry={list.reload} />
       {editing && (
@@ -135,6 +138,7 @@ export default function SubscriptionsPage() {
           },
         ]}
       />
+      </LearningPageLayout>
     </AppLayout>
   );
 }
