@@ -24,6 +24,7 @@ import {
   navigationGroupLabel,
   navigationItems,
   roleLabel,
+  sortRoleNavigationItems,
   type NavigationGroupId,
 } from './navigationItems';
 import {
@@ -80,47 +81,22 @@ function Sidebar({
   const { user } = useAuth();
   const isAdmin = user?.role === 'SuperAdmin';
 
-  const roleNavigationOrder: Record<'Instructor' | 'Student', string[]> = {
-    Instructor: [
-      '/workspace',
-      '/groups',
-      '/exams',
-      '/question-banks',
-      '/practice',
-      '/students',
-      '/lessons',
-      '/plans',
-      '/settings',
-      '/support',
-    ],
-    Student: [
-      '/dashboard',
-      '/exams',
-      '/practice',
-      '/lessons',
-      '/my-results',
-      '/settings',
-      '/support',
-    ],
-  };
-
   const visibleItems = navigationItems.filter((item) =>
     user ? item.roles.includes(user.role) : false
   ).map(item => ({
     ...item,
     label: user?.role === 'SuperAdmin' ? item.adminLabel ?? item.label : item.label,
-  })).sort((a, b) => {
-    if (!user || user.role === 'SuperAdmin') return 0;
-    const order = roleNavigationOrder[user.role];
-    return order.indexOf(a.to) - order.indexOf(b.to);
-  });
+  }));
+  const orderedVisibleItems = user && user.role !== 'SuperAdmin'
+    ? sortRoleNavigationItems(visibleItems, user.role)
+    : visibleItems;
   const roleIdentityCaption = user?.role === 'Instructor'
     ? 'مدیریت تدریس و کلاس‌ها'
     : user?.role === 'Student'
       ? 'فضای یادگیری و پیگیری پیشرفت'
       : 'مدیریت و راهبری سامانه';
 
-  const sections = groupNavigationItems(visibleItems);
+  const sections = groupNavigationItems(orderedVisibleItems);
   const expandedGroupsStorageKey =
     isAdmin && user?.id
       ? ADMIN_NAVIGATION_STORAGE_PREFIX + user.id
@@ -386,11 +362,6 @@ function Sidebar({
                         isAdmin ? 'admin-nav-primary' : 'role-nav-primary',
                       ].join(' ')}
                     >
-                      {!isAdmin && !isCollapsed && (
-                        <div className="role-nav-section-heading">
-                          <span>دسترسی‌های شما</span>
-                        </div>
-                      )}
                       {section.items.map((item) => renderNavigationLink(item))}
                     </div>
                   );
