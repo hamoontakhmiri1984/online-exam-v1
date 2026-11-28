@@ -9,6 +9,7 @@ import { notifySaveSuccess } from '../../components/Toast/Toast';
 import ConfirmDeleteModal from '../../components/Modal/ConfirmDeleteModal';
 import AppLayout from '../../components/AppLayout/AppLayout';
 import LearningContentCard from '../../components/LearningContentCard/LearningContentCard';
+import ContentPageHeader from '../../components/ContentPageHeader/ContentPageHeader';
 import ListPagination from '../../components/ListPagination/ListPagination';
 import usePagedList from '../../hooks/usePagedList';
 import { panel, secondary, statusLabels } from './practiceUi';
@@ -39,17 +40,18 @@ export default function PracticePage() {
   return (
     <AppLayout title={learner ? 'تمرین‌های من' : 'مدیریت تمرین‌ها'}>
       <div className="mx-auto max-w-6xl space-y-5" dir="rtl">
-        <header className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-violet-200/50 bg-gradient-to-bl from-violet-50 via-white to-white p-6 dark:border-violet-400/20 dark:from-violet-500/10 dark:via-slate-900 dark:to-slate-900">
-          <div>
-            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-brand-ink"><BookOpenCheck size={18} /> {learner ? 'یادگیری با تمرین' : 'آموزش و تمرین'}</div>
-            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">{learner ? 'تمرین‌های من' : 'مجموعه‌های تمرین'}</h1>
-            <p className="mt-2 max-w-xl text-sm leading-7 text-slate-500 dark:text-slate-400">{learner ? 'تمرین کنید، بازخورد هر پاسخ را ببینید و سابقه خود را مرور کنید.' : 'بانک سؤال را آماده کنید، سؤال‌ها را انتخاب کنید و تمرین را فقط برای گروه‌های موردنظر منتشر کنید.'}</p>
-          </div>
-          {!learner && <div className="flex flex-wrap gap-2">
-            <Link to="/question-banks" className={secondary}><LibraryBig size={17}/> مدیریت بانک سؤال</Link>
-            <Link to="/practice/new" className="ui-primary-gradient inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold"><Plus size={18}/> تمرین جدید</Link>
-          </div>}
-        </header>
+        <ContentPageHeader
+          icon={BookOpenCheck}
+          eyebrow={learner ? 'یادگیری با تمرین' : 'آموزش و تمرین'}
+          title={learner ? 'تمرین‌های من' : 'مجموعه‌های تمرین'}
+          description={learner ? 'تمرین کنید، بازخورد هر پاسخ را ببینید و سابقه خود را مرور کنید.' : 'بانک سؤال را آماده کنید، سؤال‌ها را انتخاب کنید و تمرین را فقط برای گروه‌های موردنظر منتشر کنید.'}
+          actions={!learner && (
+            <>
+              <Link to="/question-banks" className={secondary}><LibraryBig size={17}/> مدیریت بانک سؤال</Link>
+              <Link to="/practice/new" className="ui-primary-gradient inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold"><Plus size={18}/> تمرین جدید</Link>
+            </>
+          )}
+        />
         <section className={panel}>
           <ListPagination {...list} />
           {list.error ? (
