@@ -174,10 +174,10 @@ export default function SupportPage() {
   useEffect(() => {
     const textarea = draftTextareaRef.current;
     if (!textarea) return;
-    textarea.style.height = '44px';
-    const nextHeight = Math.min(textarea.scrollHeight, 128);
-    textarea.style.height = `${nextHeight}px`;
-    textarea.style.overflowY = textarea.scrollHeight > 128 ? 'auto' : 'hidden';
+    textarea.style.height = 'auto';
+    const contentHeight = textarea.scrollHeight;
+    textarea.style.height = `${Math.max(44, Math.min(contentHeight, 128))}px`;
+    textarea.style.overflowY = contentHeight > 128 ? 'auto' : 'hidden';
   }, [draft, selectedTicketId]);
 
   useEffect(() => {
@@ -348,20 +348,21 @@ export default function SupportPage() {
       </div>
       <form onSubmit={e => void sendMessage(e)} className={`shrink-0 border-t border-violet-100 dark:border-violet-400/15 ${isAdmin ? 'px-3 py-3 sm:px-5' : 'px-5 py-4 sm:px-7'}`}>
         {isAdmin && error && <p role="alert" className="mb-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">{error}</p>}
-        {selectedTicket.status === 'Closed' ? <p className="text-sm text-slate-500">این تیکت بسته شده است. برای ادامه گفتگو ابتدا آن را باز کنید.</p> : <div className="flex items-end gap-0 rounded-[1.75rem] border border-violet-200/80 bg-white p-1.5 shadow-sm transition focus-within:border-violet-400 focus-within:shadow-[0_0_0_3px_rgba(139,92,246,0.10)] dark:border-violet-400/25 dark:bg-slate-800">
-          <textarea
-            ref={draftTextareaRef}
-            aria-label="پاسخ به تیکت"
-            readOnly={isAdmin && sending}
-            value={draft}
-            onChange={e => { setDraft(e.target.value); pendingId.current = null; }}
-            maxLength={2000}
-            rows={1}
-            placeholder="پاسخ خود را بنویسید…"
-            className="block max-h-32 min-h-11 w-0 min-w-0 flex-1 resize-none appearance-none overflow-y-hidden rounded-none border-0 bg-transparent px-4 py-2.5 text-right text-sm leading-6 text-slate-800 shadow-none outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-slate-400"
-            style={{ width: 0, minWidth: 0, border: 0, borderRadius: 0, background: 'transparent', boxShadow: 'none', outline: 'none' }}
-          />
-          <button type="submit" disabled={sending || saving || detailLoading || !draft.trim()} className="ui-primary-gradient inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-105 disabled:opacity-40"><span>{sending ? 'ارسال…' : 'ارسال'}</span><Send size={16} aria-hidden="true"/></button>
+        {selectedTicket.status === 'Closed' ? <p className="text-sm text-slate-500">این تیکت بسته شده است. برای ادامه گفتگو ابتدا آن را باز کنید.</p> : <div className="flex items-end gap-3">
+          <div className="min-w-0 flex-1 rounded-2xl border border-violet-200/70 bg-white p-1 shadow-sm transition duration-200 hover:border-violet-300 hover:shadow-md focus-within:border-violet-400 focus-within:shadow-[0_4px_16px_rgba(124,58,237,0.10)] dark:border-violet-400/25 dark:bg-slate-800 dark:hover:border-violet-300/40">
+            <textarea
+              ref={draftTextareaRef}
+              aria-label="پاسخ به تیکت"
+              readOnly={isAdmin && sending}
+              value={draft}
+              onChange={e => { setDraft(e.target.value); pendingId.current = null; }}
+              maxLength={2000}
+              rows={1}
+              placeholder="پاسخ خود را بنویسید…"
+              className="block max-h-32 min-h-11 w-full resize-none overflow-y-hidden border-0 bg-transparent px-3 py-2.5 text-right text-sm leading-6 text-slate-800 outline-none placeholder:text-slate-400 focus:border-0 focus:outline-none focus:ring-0 dark:text-white dark:placeholder:text-slate-400"
+            />
+          </div>
+          <button type="submit" disabled={sending || saving || detailLoading || !draft.trim()} className="ui-primary-gradient inline-flex h-12 min-h-12 shrink-0 items-center justify-center gap-2 self-end rounded-xl px-4 text-sm font-bold text-white shadow-sm transition hover:brightness-105 disabled:opacity-40"><span>{sending ? 'ارسال…' : 'ارسال'}</span><Send size={16} aria-hidden="true"/></button>
         </div>}
       </form>
     </section>
