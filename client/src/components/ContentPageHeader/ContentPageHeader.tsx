@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import type { LucideIcon } from 'lucide-react';
 
 type ContentPageHeaderProps = {
@@ -7,6 +7,8 @@ type ContentPageHeaderProps = {
   title: string;
   description: string;
   actions?: ReactNode;
+  headingRef?: Ref<HTMLHeadingElement>;
+  headingTabIndex?: number;
 };
 
 export default function ContentPageHeader({
@@ -15,6 +17,8 @@ export default function ContentPageHeader({
   title,
   description,
   actions,
+  headingRef,
+  headingTabIndex,
 }: ContentPageHeaderProps) {
   return (
     <header
@@ -26,7 +30,7 @@ export default function ContentPageHeader({
           <Icon size={18} aria-hidden="true" />
           {eyebrow}
         </div>
-        <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">
+        <h1 ref={headingRef} tabIndex={headingTabIndex} className="text-2xl font-extrabold text-slate-900 dark:text-white">
           {title}
         </h1>
         <p className="mt-2 max-w-xl text-sm leading-7 text-slate-500 dark:text-slate-400">
