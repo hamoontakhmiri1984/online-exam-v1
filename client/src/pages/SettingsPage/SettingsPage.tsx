@@ -94,7 +94,7 @@ function SettingsPage() {
           onDismiss={() => setJoinSuccess(null)}
         />
       )}
-      <div dir="rtl" className="mx-auto max-w-5xl space-y-5">
+      <div dir="rtl" className="w-full space-y-5">
         <ContentPageHeader
           icon={SettingsIcon}
           eyebrow="حساب کاربری"
@@ -131,7 +131,7 @@ function SettingsPage() {
               tabIndex={0}
               className="min-h-52 min-w-0 p-4 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-500 sm:p-6"
             >
-              <div className="max-w-2xl">{content}</div>
+              <div className="w-full min-w-0">{content}</div>
             </section>
           ))}
         </div>
