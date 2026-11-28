@@ -31,9 +31,12 @@ test('admin sidebar sections expand independently and restore the active group',
   await page.goto('/instructors');
 
   const navigation = page.getByRole('navigation', { name: 'منوی اصلی' });
+  const sidebar = page.locator('.admin-sidebar--executive');
   const education = navigation.getByRole('button', { name: 'مدیریت آموزشی', exact: true });
   const content = navigation.getByRole('button', { name: 'مدیریت محتوا', exact: true });
 
+  await expect(sidebar.locator('.admin-sidebar-identity')).toContainText('کاربر ارشد');
+  await expect(sidebar.locator('.admin-nav-section-heading')).toContainText('مدیریت و راهبری');
   await expect(education).toHaveAttribute('aria-expanded', 'true');
   await expect(navigation.getByRole('link', { name: 'مدرس‌ها', exact: true })).toBeVisible();
 
