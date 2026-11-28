@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import AppLayout from '../../components/AppLayout/AppLayout';
-import PageHeader from '../../components/PageHeader/PageHeader';
+import LearningPageLayout from '../../components/LearningPageLayout/LearningPageLayout';
+import { Wallet } from 'lucide-react';
 import DataTable from '../../components/AdminUI/DataTable';
 import FilterBar, {
   RangeSelect,
@@ -27,10 +28,12 @@ export default function PaymentsPage() {
   );
   return (
     <AppLayout title="پرداخت‌ها">
-      <PageHeader
+      <LearningPageLayout
+        eyebrow="امور مالی"
         title="پرداخت‌ها"
-        description="سوابق پرداخت مدرس‌ها؛ مرتب‌شده بر اساس زمان ایجاد پرداخت"
-      />
+        description="سوابق پرداخت مدرس‌ها را بر اساس زمان ایجاد پرداخت بررسی کنید."
+        icon={Wallet}
+      >
       <FilterBar>
         <RangeSelect days={days} onChange={setDays} />
       </FilterBar>
@@ -77,6 +80,7 @@ export default function PaymentsPage() {
           },
         ]}
       />
+      </LearningPageLayout>
     </AppLayout>
   );
 }
