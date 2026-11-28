@@ -531,3 +531,415 @@
     transition: none !important;
   }
 }
+
+
+/* Selected direction: concept 1 — refined executive, restrained surfaces. */
+.glass-app-shell .admin-sidebar--executive {
+  background: #f8f8fc !important;
+  border-color: #e7e5ef !important;
+  box-shadow: 8px 0 26px rgba(46, 38, 91, 0.035);
+}
+
+.dark .glass-app-shell .admin-sidebar--executive {
+  background: #171827 !important;
+  border-color: #2c2b40 !important;
+  box-shadow: 8px 0 28px rgba(0, 0, 0, 0.2);
+}
+
+/* Compact identity panel: clear hierarchy without taking over the sidebar. */
+.admin-sidebar--executive .admin-sidebar-identity {
+  padding: 10px 12px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 15px;
+  background: linear-gradient(125deg, #6044bd 0%, #50369f 54%, #3f2d83 100%);
+  box-shadow:
+    0 6px 14px rgba(67, 47, 132, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.admin-sidebar--executive .admin-sidebar-identity::before {
+  width: 94px;
+  height: 94px;
+  top: -68px;
+  left: -34px;
+  opacity: 0.55;
+  box-shadow: 0 0 0 13px rgba(255, 255, 255, 0.025);
+}
+
+.admin-sidebar--executive .admin-sidebar-identity::after {
+  width: 62px;
+  height: 62px;
+  right: -35px;
+  bottom: -45px;
+  opacity: 0.5;
+}
+
+.admin-sidebar-identity-main {
+  gap: 9px;
+}
+
+.admin-sidebar--executive .admin-sidebar-avatar {
+  width: 41px;
+  height: 41px;
+  flex-basis: 41px;
+  border-radius: 12px;
+  border-color: rgba(255, 255, 255, 0.38);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.admin-sidebar--executive .admin-sidebar-avatar-image {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 9px !important;
+}
+
+.admin-sidebar-identity-name {
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.admin-sidebar-identity-role {
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.admin-sidebar-identity-mark {
+  width: 7px;
+  height: 7px;
+  flex-basis: 7px;
+  margin-bottom: 5px;
+}
+
+.admin-sidebar-identity-caption {
+  margin-top: 7px;
+  padding-top: 6px;
+  font-size: 9px;
+}
+
+/* Primary destinations are distinct from expandable management groups. */
+.admin-sidebar--executive .admin-nav-primary {
+  gap: 4px;
+  margin-bottom: 6px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid #e7e5ed;
+}
+
+.admin-sidebar--executive .admin-nav-link {
+  border-radius: 11px;
+  color: #56566b !important;
+  box-shadow: none;
+  transition: color 150ms ease, background 150ms ease, border-color 150ms ease;
+}
+
+.admin-sidebar--executive .admin-nav-link:hover {
+  border-color: #e7e2f3;
+  color: #45366f !important;
+  background: #fff !important;
+}
+
+.admin-sidebar--executive .admin-nav-link--primary {
+  min-height: 43px;
+  font-weight: 700;
+}
+
+.admin-sidebar--executive .admin-nav-link--active {
+  border-color: #d8cdf4;
+  color: #4d3597 !important;
+  background: #eee9fa !important;
+  box-shadow: inset 0 0 0 1px rgba(112, 81, 183, 0.035);
+}
+
+.admin-sidebar--executive .admin-nav-link--active::before {
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  background: #7250c6;
+}
+
+.admin-sidebar--executive .admin-nav-link-icon {
+  width: 28px;
+  height: 28px;
+  flex-basis: 28px;
+  border: 1px solid #e8e4f0;
+  border-radius: 8px;
+  color: #6c6384;
+  background: #fff;
+  box-shadow: none;
+}
+
+.admin-sidebar--executive .admin-nav-link--active .admin-nav-link-icon {
+  border-color: #6246b3;
+  color: #fff;
+  background: #6246b3;
+  box-shadow: none;
+}
+
+/* A quiet divider/title, not a decorative headline. */
+.admin-sidebar--executive .admin-nav-section-heading {
+  margin: 7px 3px 5px;
+  color: #8a8797;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.admin-sidebar--executive .admin-nav-section-heading::before,
+.admin-sidebar--executive .admin-nav-section-heading::after {
+  background: #e4e1eb;
+}
+
+/* Solid, restrained group surfaces create a more deliberate hierarchy. */
+.admin-sidebar--executive .admin-nav-group {
+  margin-top: 4px;
+  padding-top: 3px;
+}
+
+.admin-sidebar--executive .admin-nav-group-trigger {
+  min-height: 46px;
+  border: 1px solid #e5e3ed;
+  border-radius: 12px;
+  color: #555468;
+  background: #fff;
+  box-shadow: 0 2px 5px rgba(43, 35, 79, 0.025);
+}
+
+.admin-sidebar--executive .admin-nav-group-trigger:hover {
+  border-color: #cfc4e8;
+  color: #4c3784;
+  background: #fff;
+  box-shadow: 0 3px 8px rgba(66, 47, 126, 0.05);
+}
+
+.admin-sidebar--executive .admin-nav-group-trigger.is-expanded {
+  border-color: #bba9e6;
+  color: #4d3595;
+  background: #f0ecfa;
+  box-shadow: inset 0 0 0 1px rgba(110, 78, 184, 0.045);
+}
+
+.admin-sidebar--executive .admin-nav-group-trigger.has-active-route {
+  border-color: #9d85dc;
+  box-shadow: inset 0 0 0 1px rgba(110, 78, 184, 0.08);
+}
+
+.admin-sidebar--executive .admin-nav-group-icon {
+  width: 29px;
+  height: 29px;
+  flex-basis: 29px;
+  border: 1px solid #e7e3ef;
+  border-radius: 8px;
+  color: #675d82;
+  background: #f8f7fb;
+}
+
+.admin-sidebar--executive .admin-nav-group-trigger.is-expanded .admin-nav-group-icon,
+.admin-sidebar--executive .admin-nav-group-trigger.has-active-route .admin-nav-group-icon {
+  border-color: #6043b2;
+  color: #fff;
+  background: #6043b2;
+  box-shadow: none;
+}
+
+.admin-sidebar--executive .admin-nav-group-count {
+  min-width: 22px;
+  height: 19px;
+  border-color: #e8e5ef;
+  border-radius: 6px;
+  color: #817b90;
+  background: #f7f6fa;
+  font-size: 9px;
+}
+
+.admin-sidebar--executive .admin-nav-group-trigger.is-expanded .admin-nav-group-count {
+  border-color: #d8cdef;
+  color: #6248a7;
+  background: #fff;
+}
+
+/* Submenus read as a connected tree, not a second stack of glass cards. */
+.admin-sidebar--executive .admin-nav-submenu {
+  margin-right: 14px;
+  padding: 6px 10px 6px 5px;
+  border-right: 1px solid #d6cce9;
+  border-radius: 0 0 9px 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.admin-sidebar--executive .admin-nav-link--nested {
+  min-height: 36px;
+  padding: 6px 9px;
+  border-color: transparent;
+  border-radius: 8px;
+  color: #696779 !important;
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.admin-sidebar--executive .admin-nav-link--nested:hover {
+  border-color: #eeeaf5;
+  background: #f1eef8 !important;
+}
+
+.admin-sidebar--executive .admin-nav-link--nested.admin-nav-link--active {
+  border-color: #ded4f0;
+  color: #4f3893 !important;
+  background: #eae4f7 !important;
+  box-shadow: none;
+}
+
+/* Footer remains visible and feels like a deliberate system action. */
+.admin-sidebar--executive .admin-sidebar-footer {
+  padding-top: 9px;
+  border-top-color: #e6e3ed;
+}
+
+.admin-sidebar--executive .admin-sidebar-logout {
+  min-height: 39px;
+  border: 1px solid #ded7ec;
+  border-radius: 10px;
+  color: #6248a7;
+  background: #fff;
+  box-shadow: none;
+}
+
+.admin-sidebar--executive .admin-sidebar-logout:hover {
+  border-color: #c9b8e5;
+  color: #50358f;
+  background: #f4f0fb;
+}
+
+.dark .admin-sidebar--executive .admin-sidebar-primary,
+.dark .admin-sidebar--executive .admin-nav-primary {
+  border-bottom-color: #303047;
+}
+
+.dark .admin-sidebar--executive .admin-nav-link {
+  color: #cbc7d9 !important;
+}
+
+.dark .admin-sidebar--executive .admin-nav-link:hover {
+  border-color: #37344f;
+  color: #f1edff !important;
+  background: #24243a !important;
+}
+
+.dark .admin-sidebar--executive .admin-nav-link--active {
+  border-color: #5c4b86;
+  color: #eee7ff !important;
+  background: #30294a !important;
+}
+
+.dark .admin-sidebar--executive .admin-nav-link-icon {
+  border-color: #3b3852;
+  color: #c7bce4;
+  background: #25243a;
+}
+
+.dark .admin-sidebar--executive .admin-nav-link--active .admin-nav-link-icon {
+  border-color: #795fc2;
+  color: #fff;
+  background: #674cae;
+}
+
+.dark .admin-sidebar--executive .admin-nav-section-heading {
+  color: #9e98b3;
+}
+
+.dark .admin-sidebar--executive .admin-nav-section-heading::before,
+.dark .admin-sidebar--executive .admin-nav-section-heading::after {
+  background: #38344d;
+}
+
+.dark .admin-sidebar--executive .admin-nav-group-trigger {
+  border-color: #363449;
+  color: #d1ccdf;
+  background: #222336;
+  box-shadow: none;
+}
+
+.dark .admin-sidebar--executive .admin-nav-group-trigger:hover {
+  border-color: #65548f;
+  color: #f2edff;
+  background: #2a2840;
+}
+
+.dark .admin-sidebar--executive .admin-nav-group-trigger.is-expanded {
+  border-color: #7660a7;
+  color: #eee7ff;
+  background: #302947;
+}
+
+.dark .admin-sidebar--executive .admin-nav-group-trigger.has-active-route {
+  border-color: #9077c8;
+  box-shadow: inset 0 0 0 1px rgba(181, 157, 236, 0.08);
+}
+
+.dark .admin-sidebar--executive .admin-nav-group-icon {
+  border-color: #403b58;
+  color: #c9bee5;
+  background: #2a283e;
+}
+
+.dark .admin-sidebar--executive .admin-nav-group-trigger.is-expanded .admin-nav-group-icon,
+.dark .admin-sidebar--executive .admin-nav-group-trigger.has-active-route .admin-nav-group-icon {
+  border-color: #775bbd;
+  color: #fff;
+  background: #6549ad;
+}
+
+.dark .admin-sidebar--executive .admin-nav-group-count {
+  border-color: #3d3853;
+  color: #aaa3bd;
+  background: #29273d;
+}
+
+.dark .admin-sidebar--executive .admin-nav-group-trigger.is-expanded .admin-nav-group-count {
+  border-color: #68568f;
+  color: #e2d8ff;
+  background: #39304f;
+}
+
+.dark .admin-sidebar--executive .admin-nav-submenu {
+  border-right-color: #514568;
+  background: transparent;
+  box-shadow: none;
+}
+
+.dark .admin-sidebar--executive .admin-nav-link--nested {
+  color: #bdb8cd !important;
+}
+
+.dark .admin-sidebar--executive .admin-nav-link--nested:hover {
+  border-color: #39344e;
+  background: #28253d !important;
+}
+
+.dark .admin-sidebar--executive .admin-nav-link--nested.admin-nav-link--active {
+  border-color: #5c4d7f;
+  color: #f0eaff !important;
+  background: #352d4b !important;
+}
+
+.dark .admin-sidebar--executive .admin-sidebar-footer {
+  border-top-color: #303047;
+}
+
+.dark .admin-sidebar--executive .admin-sidebar-logout {
+  border-color: #48405f;
+  color: #d5c9f3;
+  background: #242238;
+}
+
+.dark .admin-sidebar--executive .admin-sidebar-logout:hover {
+  border-color: #7863a7;
+  color: #f0eaff;
+  background: #302746;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-sidebar--executive .admin-nav-link,
+  .admin-sidebar--executive .admin-nav-link-icon,
+  .admin-sidebar--executive .admin-nav-group-trigger {
+    transition: none !important;
+  }
+}
