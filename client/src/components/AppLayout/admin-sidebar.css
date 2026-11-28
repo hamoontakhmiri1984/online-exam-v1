@@ -943,3 +943,102 @@
     transition: none !important;
   }
 }
+
+
+/* Option 1: calm hover, stable icon contrast, and no decorative edge marker. */
+.admin-sidebar--executive .admin-nav-link:hover {
+  border-color: #ded6ee !important;
+  color: #4c378b !important;
+  background: #eeeaf8 !important;
+  box-shadow: 0 2px 7px rgba(72, 53, 127, 0.045) !important;
+}
+
+.admin-sidebar--executive .admin-nav-link--active,
+.admin-sidebar--executive .admin-nav-link--active:hover {
+  border-color: #d6cbea !important;
+  color: #4d3693 !important;
+  background: #eee9f8 !important;
+  box-shadow: inset 0 0 0 1px rgba(96, 69, 158, 0.035) !important;
+}
+
+.admin-sidebar--executive .admin-nav-link--active::before,
+.admin-sidebar--executive .admin-nav-link--nested.admin-nav-link--active::before {
+  content: none !important;
+  display: none !important;
+}
+
+.admin-sidebar--executive .admin-nav-link-icon,
+.admin-sidebar--executive .admin-nav-link:hover .admin-nav-link-icon,
+.admin-sidebar--executive .admin-nav-link--active .admin-nav-link-icon,
+.admin-sidebar--executive .admin-nav-link--active:hover .admin-nav-link-icon {
+  border-color: #e5deef !important;
+  color: #5e43aa !important;
+  background: #fff !important;
+  box-shadow: none !important;
+}
+
+.admin-sidebar--executive .admin-nav-link--nested:hover {
+  border-color: #e5deef !important;
+  color: #4e3988 !important;
+  background: #f0edf8 !important;
+}
+
+.admin-sidebar--executive .admin-nav-link--nested.admin-nav-link--active,
+.admin-sidebar--executive .admin-nav-link--nested.admin-nav-link--active:hover {
+  border-color: #e1d8ef !important;
+  color: #4f3893 !important;
+  background: #eae5f5 !important;
+}
+
+.admin-sidebar--executive .admin-nav-link--nested.admin-nav-link--active .admin-nav-link-icon {
+  border-color: #e5deef !important;
+  color: #5e43aa !important;
+  background: #fff !important;
+}
+
+/* Small navigation metadata remains readable against its light surface. */
+.admin-sidebar--executive .admin-nav-section-heading {
+  color: #625d70 !important;
+}
+
+.admin-sidebar--executive .admin-nav-group-count {
+  color: #5f596f !important;
+}
+
+/* Dark mode keeps the icon tile distinct without a bright purple overlay. */
+.dark .admin-sidebar--executive .admin-nav-link:hover {
+  border-color: #51466e !important;
+  color: #f1edff !important;
+  background: #29263d !important;
+}
+
+.dark .admin-sidebar--executive .admin-nav-link--active,
+.dark .admin-sidebar--executive .admin-nav-link--active:hover {
+  border-color: #5c4d7f !important;
+  color: #f0eaff !important;
+  background: #302a45 !important;
+}
+
+.dark .admin-sidebar--executive .admin-nav-link-icon,
+.dark .admin-sidebar--executive .admin-nav-link:hover .admin-nav-link-icon,
+.dark .admin-sidebar--executive .admin-nav-link--active .admin-nav-link-icon,
+.dark .admin-sidebar--executive .admin-nav-link--active:hover .admin-nav-link-icon {
+  border-color: #554a70 !important;
+  color: #d6c8ff !important;
+  background: #27243a !important;
+  box-shadow: none !important;
+}
+
+.dark .admin-sidebar--executive .admin-nav-link--nested:hover {
+  border-color: #4a405f !important;
+  color: #f0eaff !important;
+  background: #29263d !important;
+}
+
+.dark .admin-sidebar--executive .admin-nav-section-heading {
+  color: #c2bad3 !important;
+}
+
+.dark .admin-sidebar--executive .admin-nav-group-count {
+  color: #c9c1d9 !important;
+}
