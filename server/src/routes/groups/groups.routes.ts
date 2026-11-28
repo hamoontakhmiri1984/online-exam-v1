@@ -92,14 +92,18 @@ router.post(
     const isAdmin = req.user!.role === 'SuperAdmin';
     const instructorId = isAdmin ? parsed.data.instructorId : req.user!.sub;
     if (!instructorId)
-      return res.status(400).json({ error: 'برای ساخت گروه، مدرس مسئول را انتخاب کنید.' });
+      return res.status(400).json({
+        error: 'برای ساخت گروه، مدرس مسئول را انتخاب کنید.',
+      });
 
     const instructor = await prisma.user.findFirst({
       where: { id: instructorId, role: 'Instructor', approvalStatus: 'Approved' },
       select: { id: true },
     });
     if (!instructor)
-      return res.status(400).json({ error: 'مدرس انتخاب‌شده معتبر یا تأییدشده نیست.' });
+      return res.status(400).json({
+        error: 'مدرس انتخاب‌شده معتبر یا تأییدشده نیست.',
+      });
 
     const studentConnect = await resolveStudentIds(
       parsed.data.studentIds,
