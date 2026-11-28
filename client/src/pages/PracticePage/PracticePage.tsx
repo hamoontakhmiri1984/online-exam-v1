@@ -68,7 +68,7 @@ export default function PracticePage() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {list.items.map(p => learner ? (
-                <article key={p.id} className="flex min-w-0 flex-col rounded-2xl border border-violet-100 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-md dark:border-violet-400/15 dark:bg-slate-800/60">
+                <article key={p.id} className="app-panel-card app-panel-card--interactive flex min-w-0 flex-col bg-white p-5 dark:bg-slate-800/60">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <span className="inline-flex items-center gap-2 text-brand-ink"><BookOpenCheck size={19}/><span className="text-xs font-semibold">مجموعه تمرین</span></span>
                     <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${p.status === 'Published' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200'}`}>{statusLabels[p.status]}</span>

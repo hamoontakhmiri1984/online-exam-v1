@@ -7,6 +7,7 @@ import {
   groupNavigationItems,
   navigationGroupLabel,
   navigationItems,
+  sortRoleNavigationItems,
 } from '../src/components/AppLayout/navigationItems';
 import Card from '../src/components/Card/Card';
 import PageHeader from '../src/components/PageHeader/PageHeader';
@@ -85,4 +86,14 @@ test('shared panel components render the expected markup', () => {
     renderToString(createElement(Card, { padded: false }, 'x')),
     /p-6/
   );
+});
+
+test('Instructor and Student navigation keep support as the final destination', () => {
+  const instructor = sortRoleNavigationItems(forRole('Instructor'), 'Instructor');
+  const student = sortRoleNavigationItems(forRole('Student'), 'Student');
+
+  assert.equal(instructor[0].to, '/workspace');
+  assert.equal(instructor.at(-1)?.to, '/support');
+  assert.equal(student[0].to, '/dashboard');
+  assert.equal(student.at(-1)?.to, '/support');
 });

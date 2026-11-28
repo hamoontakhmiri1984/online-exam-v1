@@ -108,6 +108,31 @@ test('Postgres approval: isolated schema, concurrent revisions, registration and
       ).status,
       403,
     );
+    const adminCreated = await r('SuperAdmin:admin', 'POST', '/groups', {
+      name: 'Admin assigned group',
+      category: 'test',
+      studentIds: [],
+      instructorId: 'owner',
+    });
+    assert.equal(adminCreated.status, 201, JSON.stringify(adminCreated.body));
+    assert.equal(adminCreated.body.instructorId, 'owner');
+    assert.equal(adminCreated.body.approvalStatus, 'Pending');
+
+    const missingOwner = await r('SuperAdmin:admin', 'POST', '/groups', {
+      name: 'Missing owner group',
+      category: 'test',
+      studentIds: [],
+    });
+    assert.equal(missingOwner.status, 400);
+
+    const unapprovedOwner = await r('SuperAdmin:admin', 'POST', '/groups', {
+      name: 'Unapproved owner group',
+      category: 'test',
+      studentIds: [],
+      instructorId: 'waiting',
+    });
+    assert.equal(unapprovedOwner.status, 400);
+
     const { assertOwnsAllGroups } = load('routes/exams/exams.service.ts');
     await assert.rejects(
       assertOwnsAllGroups([group.id], 'Instructor', 'owner'),

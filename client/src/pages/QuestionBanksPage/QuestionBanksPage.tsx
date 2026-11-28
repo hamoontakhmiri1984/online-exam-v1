@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, BookOpen, FolderPlus, Pencil, Plus, Trash2, XCircle, LibraryBig } from 'lucide-react';
 import { getCurrentUser } from '../../api/authApi';
 import AppLayout from '../../components/AppLayout/AppLayout';
+import LearningPageLayout from '../../components/LearningPageLayout/LearningPageLayout';
 import LearningContentCard from '../../components/LearningContentCard/LearningContentCard';
 import EmptyState from '../../components/EmptyState/EmptyState';
 import Spinner from '../../components/Spinner/Spinner';
@@ -89,19 +90,31 @@ export default function QuestionBanksPage() {
   return (
     <AppLayout title="بانک سؤال">
       {error && <Toast message={error} tone="danger" icon={XCircle} onDismiss={clearError}/>}
-      <div className="mx-auto max-w-6xl space-y-5" dir="rtl">
-        <header className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-violet-200/40 bg-gradient-to-bl from-violet-50 via-white to-white p-6 dark:border-violet-400/20 dark:from-violet-500/10 dark:via-slate-900 dark:to-slate-900">
-          <div>
-            <div className="mb-2 inline-flex items-center gap-2 text-sm font-semibold text-brand-ink"><LibraryBig size={18}/> مدیریت محتوای آموزشی</div>
-            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">بانک سؤال</h1>
-            <p className="mt-2 max-w-xl text-sm leading-7 text-slate-500 dark:text-slate-400">سؤال‌ها را در بانک‌های موضوعی مرتب کنید؛ سپس برای آزمون و تمرین از آن‌ها استفاده کنید.</p>
-          </div>
-          {canManage && <div className="flex flex-wrap gap-2">
-            <Link to="/practice" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-violet-200 bg-white px-4 text-sm font-semibold text-brand-ink hover:bg-violet-50 dark:border-violet-400/25 dark:bg-slate-800">مشاهده تمرین‌ها<ArrowLeft size={15}/></Link>
-            <button type="button" onClick={create} className="ui-primary-gradient inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold"><Plus size={18}/> بانک جدید</button>
-          </div>}
-        </header>
-        <section className="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm dark:border-violet-400/15 dark:bg-slate-900 sm:p-6">
+      <LearningPageLayout
+        eyebrow="مدیریت محتوای آموزشی"
+        title="بانک سؤال"
+        description="سؤال‌ها را در بانک‌های موضوعی مرتب کنید؛ سپس برای آزمون و تمرین از آن‌ها استفاده کنید."
+        icon={LibraryBig}
+        actions={canManage ? (
+          <>
+            <Link
+              to="/practice"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-violet-200 bg-white px-4 text-sm font-semibold text-brand-ink hover:bg-violet-50 dark:border-violet-400/25 dark:bg-slate-800"
+            >
+              مشاهده تمرین‌ها
+              <ArrowLeft size={15} aria-hidden="true" />
+            </Link>
+            <button
+              type="button"
+              onClick={create}
+              className="ui-primary-gradient inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold"
+            >
+              <Plus size={18} aria-hidden="true" />
+              بانک جدید
+            </button>
+          </>
+        ) : undefined}
+      >
           <ListPagination {...{ page, pageSize, total, loading, q, setPage, setSearch }} />
           {loading ? <Spinner label="در حال دریافت بانک‌های سؤال…" /> : error && !banks.length ? (
             <div className="py-8 text-center text-sm text-rose-600" role="alert"><p>{error}</p><button type="button" onClick={reload} className="mt-3 underline">تلاش مجدد</button></div>
@@ -131,8 +144,7 @@ export default function QuestionBanksPage() {
               ))}
             </div>
           )}
-        </section>
-      </div>
+      </LearningPageLayout>
       <Modal isOpen={formOpen} onClose={closeForm} label={editing ? 'ویرایش بانک سؤال' : 'ایجاد بانک سؤال'}>
         <div dir="rtl">
           <div className="mb-5">

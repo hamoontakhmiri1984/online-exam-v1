@@ -87,7 +87,8 @@ async function ticketAccess(id: string, userId: string, role: string) {
   if (!ticket) throw notFound('تیکت پیدا نشد');
   const ownsTicket = ticket.userId === userId;
   const adminCanAccess =
-    role === 'SuperAdmin' && ticket.user.role === 'Instructor';
+    role === 'SuperAdmin' &&
+    (ticket.user.role === 'Instructor' || ticket.user.role === 'Student');
   const assignedTeacherCanAccess =
     role === 'Instructor' &&
     ticket.user.role === 'Student' &&
@@ -211,13 +212,21 @@ router.get(
       .max(10000)
       .parse(req.query.page ?? 0);
     const status = z.literal('Open').optional().parse(req.query.status);
+    const userRole = z
+      .enum(['Instructor', 'Student'])
+      .default('Instructor')
+      .parse(req.query.userRole);
     const pageSize = 50;
     const rows = await prisma.supportTicket.findMany({
-      where: { user: { role: 'Instructor' }, status },
+      where: { user: { role: userRole }, status },
       orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
       skip: page * pageSize,
       take: pageSize + 1,
-      include: { user: { select: { id: true, name: true, username: true } } },
+      include: {
+        user: {
+          select: { id: true, name: true, username: true, role: true },
+        },
+      },
     });
     res.json({
       items: rows.slice(0, pageSize),

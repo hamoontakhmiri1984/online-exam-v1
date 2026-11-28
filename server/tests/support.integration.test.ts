@@ -242,7 +242,7 @@ test('ticketing separates student and instructor requests, provides unique track
   assert.equal((await request('/assigned/tickets', student)).status, 403);
   assert.equal(
     (await request(`/tickets/${studentTicket.id}`, admin)).status,
-    404,
+    200,
   );
   assert.equal(
     (await request(`/tickets/${instructorTicket.id}`, student)).status,
@@ -305,6 +305,46 @@ test('ticketing separates student and instructor requests, provides unique track
   };
   assert.ok(allInbox.items.some((item) => item.id === instructorTicket.id));
   assert.ok(!allInbox.items.some((item) => item.id === studentTicket.id));
+  const studentInboxResponse = await request(
+    '/inbox/tickets?userRole=Student',
+    admin,
+  );
+  assert.equal(studentInboxResponse.status, 200);
+  const studentInbox = (await studentInboxResponse.json()) as {
+    items: Array<{ id: string; user: { id: string; role: string } }>;
+    hasMore: boolean;
+  };
+  assert.ok(
+    studentInbox.items.some(
+      (item) =>
+        item.id === studentTicket.id &&
+        item.user.id === studentId &&
+        item.user.role === 'Student',
+    ),
+  );
+  assert.ok(
+    !studentInbox.items.some((item) => item.id === instructorTicket.id),
+  );
+
+  const adminStudentReply = await request(
+    '/tickets/' + studentTicket.id + '/messages',
+    admin,
+    {
+      body: 'پشتیبانی درخواست شما را بررسی می‌کند.',
+      clientId: randomUUID(),
+    },
+  );
+  assert.equal(adminStudentReply.status, 201);
+  const studentMessagesAfterAdminReply = (await (
+    await request('/tickets/' + studentTicket.id + '/messages', student)
+  ).json()) as Array<{ body: string; fromStaff: boolean }>;
+  assert.ok(
+    studentMessagesAfterAdminReply.some(
+      (message) =>
+        message.body === 'پشتیبانی درخواست شما را بررسی می‌کند.' &&
+        message.fromStaff,
+    ),
+  );
   const instructorDetail = await request(
     `/tickets/${instructorTicket.id}/messages`,
     admin,
@@ -314,15 +354,6 @@ test('ticketing separates student and instructor requests, provides unique track
     },
   );
   assert.equal(instructorDetail.status, 201);
-  assert.equal(
-    (
-      await request(`/tickets/${studentTicket.id}/messages`, admin, {
-        body: 'نباید مجاز باشد',
-        clientId: randomUUID(),
-      })
-    ).status,
-    404,
-  );
 
   const updated = await request(
     `/tickets/${instructorTicket.id}`,

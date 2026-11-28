@@ -1,9 +1,10 @@
 import { z } from 'zod';
 
 export const createGroupSchema = z.object({
-  name: z.string().min(2),
+  name: z.string().trim().min(2).max(120),
   category: z.string().min(1),
   studentIds: z.array(z.string().min(1)).max(500).default([]),
+  instructorId: z.string().min(1).optional(),
 });
 
 export const updateGroupSchema = z.object({

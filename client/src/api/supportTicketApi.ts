@@ -9,7 +9,7 @@ export type SupportTicket = {
   trackingCode: string;
   userId: string;
   assignedInstructorId?: string | null;
-  user?: { id: string; name: string | null; username: string | null };
+  user?: { id: string; name: string | null; username: string | null; role?: 'Instructor' | 'Student' };
   subject: string;
   category: TicketCategory;
   priority: TicketPriority;
@@ -46,9 +46,13 @@ export const getStudentInstructors = () =>
   apiRequest<AvailableInstructor[]>('/support/student/instructors');
 export const getAssignedStudentTickets = (page = 0) =>
   apiRequest<SupportTicket[]>(`/support/assigned/tickets?page=${page}`);
-export const getAdminSupportTickets = (page = 0, waitingOnly = false) =>
+export const getAdminSupportTickets = (
+  page = 0,
+  waitingOnly = false,
+  userRole: 'Instructor' | 'Student' = 'Instructor',
+) =>
   apiRequest<{ items: SupportTicket[]; hasMore: boolean }>(
-    `/support/inbox/tickets?page=${page}${waitingOnly ? '&status=Open' : ''}`,
+    `/support/inbox/tickets?page=${page}&userRole=${userRole}${waitingOnly ? '&status=Open' : ''}`,
   );
 export const getTicket = (id: string) =>
   apiRequest<SupportTicket>(`/support/tickets/${encodeURIComponent(id)}`);

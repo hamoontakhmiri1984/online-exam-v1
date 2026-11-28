@@ -25,7 +25,7 @@ export function DashboardStatCard({ icon: Icon, label, value, tone }: {
   icon: LucideIcon; label: string; value: string; tone: StatTone;
 }) {
   return (
-    <article className={`glass-unified-stat glass-unified-stat--${tone} flex flex-col rounded-3xl border p-5`}>
+    <article className={`app-panel-card glass-unified-stat glass-unified-stat--${tone} flex flex-col p-5`}>
       <div className="glass-unified-stat-content"><div className="glass-unified-stat-icon" aria-hidden="true"><Icon size={25} strokeWidth={1.8}/></div><div className="glass-unified-stat-copy"><p className="glass-unified-stat-label">{label}</p><p className="glass-unified-stat-value" dir="auto">{value}</p></div></div>
     </article>
   );

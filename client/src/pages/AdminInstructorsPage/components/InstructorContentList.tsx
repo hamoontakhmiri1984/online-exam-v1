@@ -6,7 +6,7 @@ export default function InstructorContentList({ items, tab, onOpenBank }: Props)
   return (
     <div className="space-y-3">
       {items.map(item => (
-        <article key={item.id} className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+        <article key={item.id} className="app-panel-card bg-white p-4 dark:bg-gray-800 dark:text-gray-200">
           <h3 className="whitespace-pre-wrap font-semibold">{item.text || item.title || item.name || item.fileName || item.exam?.title || item.id}</h3>
           <p className="mt-2 text-sm text-gray-500">{item.category || item.username || item.difficulty}</p>
           {item.groups && <p className="text-sm">گروه‌ها: {item.groups.map(group => group.name).join('، ') || 'بدون گروه'}</p>}

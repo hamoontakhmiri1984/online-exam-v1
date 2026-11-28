@@ -18,7 +18,7 @@ export default function LearningContentCard({
   const Icon = kind === 'bank' ? BookOpen : BookOpenCheck;
 
   return (
-    <article className={`learning-content-card learning-content-card--${kind}`}>
+    <article className={`app-panel-card app-panel-card--interactive learning-content-card learning-content-card--${kind}`}>
       <div className="learning-content-card-header">
         <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
           <span className="learning-content-card-icon"><Icon size={18} aria-hidden="true" /></span>

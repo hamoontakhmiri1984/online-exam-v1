@@ -12,11 +12,14 @@ import { getCurrentUser } from '../../api/authApi';
 import { ApiError } from '../../lib/apiClient';
 import { getStudents, type Student } from '../../api/studentApi';
 import { getRemainingGroupQuota } from '../../api/subscriptionApi';
+import { getAdminInstructors, type InstructorSummary } from '../../api/adminInstructorApi';
+import { collectListPages } from '../../lib/listPagination';
 import usePagedCrud from '../../hooks/usePagedCrud';
 import ListPagination from '../../components/ListPagination/ListPagination';
 import useGroupFormModal from '../../hooks/useGroupFormModal';
 import useInstructorPlanLimit from '../../hooks/useInstructorPlanLimit';
 import AppLayout from '../../components/AppLayout/AppLayout';
+import LearningPageLayout from '../../components/LearningPageLayout/LearningPageLayout';
 import Spinner from '../../components/Spinner/Spinner';
 import Toast from '../../components/Toast/Toast';
 import EmptyState from '../../components/EmptyState/EmptyState';
@@ -27,6 +30,7 @@ import PlanLimitModal from './components/PlanLimitModal';
 
 function GroupsPage() {
   const currentUser = getCurrentUser();
+  const isAdmin = currentUser?.role === 'SuperAdmin';
 
   const {
     items: groups,
@@ -51,12 +55,31 @@ function GroupsPage() {
       : groups.filter((g) => g.instructorId === currentUser?.id);
 
   const [allStudents, setAllStudents] = useState<Student[]>([]);
+  const [instructors, setInstructors] = useState<InstructorSummary[]>([]);
+  const [instructorsLoading, setInstructorsLoading] = useState(isAdmin);
+  const [instructorsError, setInstructorsError] = useState('');
 
   useEffect(() => {
-    getStudents()
-      .then(setAllStudents)
-      .catch(() => setAllStudents([]));
-  }, []);
+    let active = true;
+    if (isAdmin) {
+      setInstructorsLoading(true);
+      collectListPages((query) => getAdminInstructors(query, 'Approved', 'name'))
+        .then((items) => {
+          if (active) setInstructors(items);
+        })
+        .catch((error) => {
+          if (active) setInstructorsError(error instanceof Error ? error.message : 'دریافت فهرست مدرس‌ها ناموفق بود.');
+        })
+        .finally(() => {
+          if (active) setInstructorsLoading(false);
+        });
+    } else {
+      getStudents()
+        .then((items) => { if (active) setAllStudents(items); })
+        .catch(() => { if (active) setAllStudents([]); });
+    }
+    return () => { active = false; };
+  }, [isAdmin]);
 
   const students = allStudents;
 
@@ -72,6 +95,7 @@ function GroupsPage() {
 
   const form = useGroupFormModal({
     instructorId: currentUser?.id ?? '',
+    isAdmin,
     addItem,
     updateItem,
   });
@@ -102,6 +126,12 @@ function GroupsPage() {
   }
 
   async function openAddModal() {
+    if (isAdmin && (instructorsLoading || instructors.length === 0)) {
+      setInstructorsError(instructorsLoading
+        ? 'فهرست مدرس‌ها هنوز دریافت نشده است.'
+        : 'برای ساخت گروه، دست‌کم یک مدرس تأییدشده لازم است.');
+      return;
+    }
     if (await planLimit.ensureAllowed()) form.openAdd();
   }
 
@@ -121,6 +151,14 @@ function GroupsPage() {
           onDismiss={clearError}
         />
       )}
+      {instructorsError && (
+        <Toast
+          message={instructorsError}
+          tone="warning"
+          icon={AlertTriangle}
+          onDismiss={() => setInstructorsError('')}
+        />
+      )}
       {codeError && (
         <Toast
           message={codeError}
@@ -138,54 +176,63 @@ function GroupsPage() {
         />
       )}
 
-      <ListPagination {...{ page, pageSize, total, loading, q, setPage, setSearch }} />
-      {loading ? (
-        <Spinner />
-      ) : (
-        <>
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-bold dark:text-white">گروه‌ها</h1>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                هر گروه یه دسته از دانشجوهاست؛ درس‌ها و آزمون‌ها رو به گروه وصل
-                می‌کنی، نه مستقیم به تک‌تک دانشجوها
-              </p>
-            </div>
-
+      <LearningPageLayout
+        eyebrow="مدیریت کلاس‌ها"
+        title="گروه‌ها"
+        description="گروه‌های آموزشی را بسازید، اعضا را مدیریت کنید و کد عضویت را در اختیار دانشجویان قرار دهید."
+        icon={Users}
+        actions={
+          <button
+            type="button"
+            onClick={openAddModal}
+            disabled={planLimit.checkingLimit || (isAdmin && (instructorsLoading || instructors.length === 0))}
+            className="ui-primary-gradient inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold disabled:cursor-wait disabled:opacity-50"
+          >
+            <Plus size={18} aria-hidden="true" />
+            گروه جدید
+          </button>
+        }
+      >
+        <ListPagination {...{ page, pageSize, total, loading, q, setPage, setSearch }} />
+        {loading ? (
+          <Spinner />
+        ) : visibleGroups.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="هنوز گروهی نساخته‌اید"
+            description="برای شروع یک گروه آموزشی بسازید؛ سپس دانشجویان را اضافه کنید و آزمون‌ها و درس‌ها را به آن اختصاص دهید."
+            action={{ label: '+ گروه جدید', onClick: openAddModal }}
+          />
+        ) : (
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,17rem),1fr))] gap-4">
+            {visibleGroups.map((group) => (
+              <GroupCard
+                key={group.id}
+                group={group}
+                isCopied={copiedGroupId === group.id}
+                isRegenerating={regeneratingId === group.id}
+                onCopyCode={handleCopyCode}
+                onRegenerateCode={handleRegenerateCode}
+                onEdit={form.openEdit}
+                onDelete={setDeleteTarget}
+              />
+            ))}
           </div>
-
-          <section className="groups-outer-panel rounded-2xl border border-violet-200/50 bg-white/80 p-4 shadow-sm backdrop-blur-xl dark:border-violet-400/15 dark:bg-gray-900/80 sm:p-5">
-          {visibleGroups.length === 0 ? (
-            <EmptyState
-              icon={Users}
-              title="هنوز گروهی نساختی"
-              description="اول یه گروه بساز، بعد دانشجوها رو بهش اضافه کن تا بتونی آزمون و درس براشون تعریف کنی."
-              action={{ label: '+ گروه جدید', onClick: openAddModal }}
-            />
-          ) : (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,17rem),1fr))] gap-4">
-              {visibleGroups.map((group) => (
-                <GroupCard
-                  key={group.id}
-                  group={group}
-                  isCopied={copiedGroupId === group.id}
-                  isRegenerating={regeneratingId === group.id}
-                  onCopyCode={handleCopyCode}
-                  onRegenerateCode={handleRegenerateCode}
-                  onEdit={form.openEdit}
-                  onDelete={setDeleteTarget}
-                />
-              ))}
-            </div>
-          )}
-          {visibleGroups.length > 0 && <div className="mt-4 flex justify-center rounded-xl bg-violet-50/25 px-4 py-4 dark:bg-violet-500/5"><button type="button" onClick={openAddModal} disabled={planLimit.checkingLimit} className="ui-create-cta"><Plus size={17}/> گروه جدید</button></div>}
-          </section>
-        </>
-      )}
+        )}
+      </LearningPageLayout>
 
       <GroupFormModal
         isOpen={form.isOpen}
         isEditing={!!form.editingId}
+        isAdmin={isAdmin}
+        instructors={instructors.map((instructor) => ({
+          id: instructor.id,
+          name: instructor.name,
+          username: instructor.username,
+        }))}
+        instructorsLoading={instructorsLoading}
+        instructorId={form.selectedInstructorId}
+        onInstructorChange={form.setSelectedInstructorId}
         name={form.name}
         onNameChange={form.setName}
         category={form.category}

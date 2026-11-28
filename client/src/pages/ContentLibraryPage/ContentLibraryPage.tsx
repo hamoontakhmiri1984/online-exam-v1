@@ -46,7 +46,7 @@ function ContentItem({ card, busy, onToggle, onDelete }: {
   onDelete: (card: ContentCard) => void;
 }) {
   return (
-    <article className={'group relative flex min-w-0 flex-col overflow-visible rounded-3xl border border-violet-200/50 bg-white/80 shadow-sm backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-violet-300 hover:shadow-lg hover:shadow-violet-500/10 dark:border-violet-400/15 dark:bg-slate-900/75 dark:hover:border-violet-400/40'}>
+    <article className={'app-panel-card app-panel-card--interactive group relative flex min-w-0 flex-col overflow-visible bg-white/80 backdrop-blur-xl dark:bg-slate-900/75'}>
       <div className="relative h-44 overflow-hidden rounded-t-3xl">
         <ContentCover card={card} />
         <span className="absolute right-3 top-3 rounded-full border border-white/50 bg-white/85 px-3 py-1 text-[11px] font-semibold text-slate-700 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-slate-900/80 dark:text-slate-200">

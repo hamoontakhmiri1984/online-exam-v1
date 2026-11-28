@@ -54,10 +54,17 @@ test('student can create a ticket with tracking code and open the conversation',
     subject: 'مشکل ورود به آزمون', category: 'Exams', priority: 'High',
     status: 'Open', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
   };
-  const messages = [{
-    id: 'msg-1', ticketId: ticket.id, clientId: 'uuid-1', fromStaff: false,
-    body: 'صفحه آزمون باز نمی‌شود.', createdAt: new Date().toISOString(),
-  }];
+  const messages = [
+    {
+      id: 'msg-1', ticketId: ticket.id, clientId: 'uuid-1', fromStaff: false,
+      body: 'صفحه آزمون باز نمی‌شود.', createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'msg-2', ticketId: ticket.id, clientId: 'uuid-2', fromStaff: true,
+      body: 'پشتیبانی درخواست شما را دریافت کرد و در حال بررسی است.',
+      createdAt: new Date(Date.now() + 1000).toISOString(),
+    },
+  ];
   let created = false;
   await page.route('http://127.0.0.1:4109/**', async route => {
     const path = new URL(route.request().url()).pathname;
@@ -77,6 +84,16 @@ test('student can create a ticket with tracking code and open the conversation',
   await page.goto('/support');
   await page.getByRole('button', { name: 'ثبت تیکت جدید' }).click();
   await expect(page.getByRole('dialog').getByRole('button', { name: 'بستن' })).toHaveCount(1);
+  const ticketDialog = page.getByRole('dialog');
+  const dialogSurface = ticketDialog.locator('div').first();
+  await expect(dialogSurface).toHaveCSS('min-height', '608px');
+  const instructorSelect = ticketDialog.getByRole('combobox', { name: 'مدرس مربوطه' });
+  await instructorSelect.click();
+  const instructorOptions = ticketDialog.getByRole('listbox', { name: 'مدرس مربوطه' });
+  await expect(instructorOptions).toBeVisible();
+  const instructorMenuHeight = await instructorOptions.evaluate(element => Number.parseFloat(getComputedStyle(element).maxHeight));
+  expect(instructorMenuHeight).toBeGreaterThan(300);
+  await instructorOptions.getByRole('option', { name: 'مدرس دانشجو' }).click();
   await page.getByLabel('موضوع').fill(ticket.subject);
   const description = page.getByLabel('شرح درخواست');
   await expect(description).toHaveCSS('resize', 'none');
@@ -84,6 +101,8 @@ test('student can create a ticket with tracking code and open the conversation',
   await page.getByRole('button', { name: 'ثبت تیکت', exact: true }).click();
   await expect(page.getByText(ticket.trackingCode)).toBeVisible();
   await expect(page.getByRole('log', { name: 'پیام‌های تیکت' })).toContainText(messages[0].body);
+  await expect(page.getByRole('log', { name: 'پیام‌های تیکت' })).toContainText(messages[1].body);
+  await expect(page.getByRole('log', { name: 'پیام‌های تیکت' })).toContainText('پشتیبانی');
   await expect(page.getByRole('textbox', { name: 'پاسخ به تیکت' })).toHaveCSS('resize', 'none');
 });
 
@@ -238,4 +257,67 @@ test('session automatically recovers from transient refresh errors without showi
   await expect(page.getByText('سرویس موقتاً در دسترس نیست', { exact: false })).toHaveCount(0);
   await page.reload();
   await expect(page.getByRole('heading', { name: 'تیکت‌های من' })).toBeVisible();
+});
+
+
+test('super admin can view and answer student support tickets in a separate inbox', async ({ page }) => {
+  const user = {
+    id: 'admin-2', role: 'SuperAdmin', name: 'مدیر', username: 'admin',
+    approvalStatus: 'Approved', onboardingCompleted: true,
+  };
+  const studentTicket = {
+    id: 'student-ticket-1', userId: 'student-1', assignedInstructorId: 'teacher-1',
+    trackingCode: 'TK-STUDENT-ADMIN-01', subject: 'مشکل ورود دانشجو',
+    category: 'Account', priority: 'Normal', status: 'Open',
+    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    user: { id: 'student-1', name: 'دانشجوی نمونه', username: 'student', role: 'Student' },
+  };
+  let messages = [{
+    id: 'student-msg-1', ticketId: studentTicket.id, clientId: 'student-client-1',
+    fromStaff: false, body: 'بعد از ورود، صفحه من باز نمی‌شود.',
+    createdAt: new Date().toISOString(),
+  }];
+
+  await page.route('http://127.0.0.1:4109/**', async route => {
+    const url = new URL(route.request().url());
+    const requestPath = url.pathname;
+    let body: unknown = [];
+    if (requestPath === '/auth/refresh') body = { accessToken: 'admin-token' };
+    else if (requestPath === '/auth/me') body = user;
+    else if (requestPath === '/support/inbox/tickets') {
+      body = url.searchParams.get('userRole') === 'Student'
+        ? { items: [studentTicket], hasMore: false }
+        : { items: [], hasMore: false };
+    } else if (requestPath === '/support/tickets/student-ticket-1') {
+      body = studentTicket;
+    } else if (requestPath === '/support/tickets/student-ticket-1/messages') {
+      if (route.request().method() === 'POST') {
+        const input = route.request().postDataJSON();
+        messages = [...messages, {
+          id: 'admin-reply', ticketId: studentTicket.id,
+          clientId: input.clientId, fromStaff: true,
+          body: input.body, createdAt: new Date().toISOString(),
+        }];
+        body = { id: studentTicket.id };
+      } else body = messages;
+    }
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+  });
+
+  await page.goto('/support');
+  await expect(page.getByRole('heading', { name: 'صندوق تیکت‌های مدرس‌ها' })).toBeVisible();
+  await page.getByRole('button', { name: 'تیکت‌های دانشجویان', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'صندوق تیکت‌های دانشجویان' })).toBeVisible();
+
+  const ticket = page.getByRole('button', { name: /مشکل ورود دانشجو.*دانشجوی نمونه/ });
+  await expect(ticket).toBeVisible();
+  await ticket.click();
+
+  const conversation = page.getByRole('region', { name: 'گفت‌وگوی تیکت' });
+  await expect(conversation).toContainText('دانشجو: دانشجوی نمونه');
+  await expect(conversation.getByRole('log')).toContainText('بعد از ورود، صفحه من باز نمی‌شود.');
+  await conversation.getByRole('textbox', { name: 'پاسخ به تیکت' }).fill('درخواست شما در حال بررسی است.');
+  await conversation.getByRole('button', { name: 'ارسال', exact: true }).click();
+  await expect(conversation.getByRole('log')).toContainText('درخواست شما در حال بررسی است.');
+  expect(messages.at(-1)?.fromStaff).toBe(true);
 });

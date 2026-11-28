@@ -47,6 +47,7 @@ export function addGroup(group: Omit<Group, 'id' | 'joinCode'>): Promise<Group> 
       name: group.name,
       category: group.category,
       studentIds: group.studentIds,
+      instructorId: group.instructorId,
     },
   });
 }

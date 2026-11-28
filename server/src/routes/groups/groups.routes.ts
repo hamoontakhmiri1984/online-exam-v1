@@ -1,6 +1,7 @@
 import { readCreationPolicy } from '../../lib/approvalPolicy';
 import { parseListQuery } from '../../lib/listPagination';
 import { Router } from 'express';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { requireRole } from '../../middleware/requireAuth';
 import { generateUniqueJoinCode } from '../../lib/joinCode';
@@ -82,43 +83,61 @@ router.get(
 
 router.post(
   '/',
-  requireRole('Instructor'),
+  requireRole('Instructor', 'SuperAdmin'),
   asyncHandler(async (req, res) => {
     const parsed = createGroupSchema.safeParse(req.body);
     if (!parsed.success)
       return res.status(400).json({ error: parsed.error.issues[0].message });
 
+    const isAdmin = req.user!.role === 'SuperAdmin';
+    const instructorId = isAdmin ? parsed.data.instructorId : req.user!.sub;
+    if (!instructorId)
+      return res.status(400).json({
+        error: 'برای ساخت گروه، مدرس مسئول را انتخاب کنید.',
+      });
+
+    const instructor = await prisma.user.findFirst({
+      where: { id: instructorId, role: 'Instructor', approvalStatus: 'Approved' },
+      select: { id: true },
+    });
+    if (!instructor)
+      return res.status(400).json({
+        error: 'مدرس انتخاب‌شده معتبر یا تأییدشده نیست.',
+      });
+
     const studentConnect = await resolveStudentIds(
       parsed.data.studentIds,
       req.user!.role,
-      req.user!.sub,
+      instructorId,
     );
-
     const joinCode = await generateUniqueJoinCode();
 
-    // Check quota and create the group in the same locked transaction.
-    const group = await withQuotaLock(
-      req.user!.sub,
-      'groups',
-      1,
-      async (db) => {
-        const policy = await readCreationPolicy(db);
-        return db.group.create({
-          data: {
-            approvalStatus: policy.requireGroupApproval
-              ? 'Pending'
-              : 'Approved',
-            name: parsed.data.name,
-            category: parsed.data.category,
-            instructorId: req.user!.sub,
-            joinCode,
-            students: { connect: studentConnect },
-          },
-          include: withStudents,
-        });
-      },
-      { requireTransaction: true },
-    );
+    const createWithPolicy = async (db: Prisma.TransactionClient) => {
+      const policy = await readCreationPolicy(db);
+      return db.group.create({
+        data: {
+          approvalStatus: policy.requireGroupApproval ? 'Pending' : 'Approved',
+          name: parsed.data.name,
+          category: parsed.data.category,
+          instructorId,
+          joinCode,
+          students: { connect: studentConnect },
+        },
+        include: withStudents,
+      });
+    };
+
+    // Instructors are subject to their plan quota; SuperAdmin assigns the owner
+    // explicitly and bypasses instructor-level quota accounting.
+    const group = isAdmin
+      ? await prisma.$transaction((db) => createWithPolicy(db))
+      : await withQuotaLock(
+          req.user!.sub,
+          'groups',
+          1,
+          createWithPolicy,
+          { requireTransaction: true },
+        );
 
     res.status(201).json(serializeGroup(group));
   }),

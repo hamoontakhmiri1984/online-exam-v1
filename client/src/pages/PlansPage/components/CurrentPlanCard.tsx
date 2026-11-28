@@ -26,7 +26,7 @@ function CurrentPlanCard({
   if (!subscription || !plan || !usage) return null;
 
   return (
-    <div className="mb-8 w-full rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <div className="app-panel-card mb-8 w-full bg-white p-6 dark:bg-gray-900">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-ink dark:bg-brand-950/40">

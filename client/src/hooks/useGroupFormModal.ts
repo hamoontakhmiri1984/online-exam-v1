@@ -6,12 +6,14 @@ type GroupInput = Omit<Group, 'id' | 'joinCode'>;
 
 type UseGroupFormModalParams = {
   instructorId: string;
+  isAdmin?: boolean;
   addItem: (input: GroupInput) => Promise<unknown>;
   updateItem: (id: string, input: GroupInput) => Promise<unknown>;
 };
 
 function useGroupFormModal({
   instructorId,
+  isAdmin = false,
   addItem,
   updateItem,
 }: UseGroupFormModalParams) {
@@ -20,6 +22,7 @@ function useGroupFormModal({
   const [name, setName] = useState('');
   const [category, setCategory] = useState<Category | ''>('');
   const [studentIds, setStudentIds] = useState<string[]>([]);
+  const [selectedInstructorId, setSelectedInstructorId] = useState(isAdmin ? '' : instructorId);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   function openAdd() {
@@ -27,6 +30,8 @@ function useGroupFormModal({
     setName('');
     setCategory('');
     setStudentIds([]);
+    setSelectedInstructorId(isAdmin ? '' : instructorId);
+    setValidationError(null);
     setIsOpen(true);
   }
 
@@ -35,6 +40,8 @@ function useGroupFormModal({
     setName(group.name);
     setCategory(group.category);
     setStudentIds(group.studentIds);
+    setSelectedInstructorId(group.instructorId);
+    setValidationError(null);
     setIsOpen(true);
   }
 
@@ -57,11 +64,15 @@ function useGroupFormModal({
       setValidationError('نام گروه باید حداقل دو حرف باشد و دسته‌بندی انتخاب شود.');
       return;
     }
+    if (isAdmin && !selectedInstructorId) {
+      setValidationError('مدرس مسئول گروه را انتخاب کنید.');
+      return;
+    }
 
     const groupData: GroupInput = {
       name: name.trim(),
       category,
-      instructorId,
+      instructorId: isAdmin ? selectedInstructorId : instructorId,
       studentIds,
     };
 
@@ -84,6 +95,8 @@ function useGroupFormModal({
     setCategory,
     studentIds,
     toggleStudent,
+    selectedInstructorId,
+    setSelectedInstructorId,
     validationError,
     dismissValidationError: () => setValidationError(null),
     openAdd,
