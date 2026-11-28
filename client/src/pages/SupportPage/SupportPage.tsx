@@ -405,7 +405,7 @@ export default function SupportPage() {
         )}
       </div>
 
-      <Modal isOpen={createOpen} onClose={() => { if (!saving) setCreateOpen(false); }} wide label="ثبت تیکت پشتیبانی">
+      <Modal isOpen={createOpen} onClose={() => { if (!saving) setCreateOpen(false); }} wide tall label="ثبت تیکت پشتیبانی">
         <div dir="rtl">
           <div className="mb-5 flex items-center justify-between">
             <div className="flex items-center gap-2 text-brand-ink"><Ticket size={20}/><h2 className="text-lg font-bold text-slate-900 dark:text-white">ثبت تیکت جدید</h2></div>
