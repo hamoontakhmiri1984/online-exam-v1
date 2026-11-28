@@ -44,7 +44,7 @@ function GroupCard({
 
   return (
     <article style={themeStyle} className="app-panel-card app-panel-card--interactive flex min-w-0 flex-col overflow-hidden border border-[var(--group-card-border)] dark:border-[var(--group-card-border-dark)]">
-      <div className="relative isolate flex flex-1 flex-col overflow-hidden bg-[var(--group-card-face)] p-4 text-[var(--group-card-ink)] dark:bg-[var(--group-card-face-dark)] dark:text-[var(--group-card-ink-dark)]">
+      <div className="relative isolate flex flex-1 flex-col overflow-hidden bg-[image:var(--group-card-face)] p-4 text-[var(--group-card-ink)] dark:bg-[image:var(--group-card-face-dark)] dark:text-[var(--group-card-ink-dark)]">
         <div aria-hidden="true" className="pointer-events-none absolute -end-12 -bottom-23 -z-10 size-52 rounded-full border border-[var(--group-card-border)] shadow-[0_0_0_16px_rgba(100,116,139,.06),0_0_0_32px_rgba(100,116,139,.035)] dark:border-[var(--group-card-border-dark)] dark:shadow-[0_0_0_16px_rgba(226,232,240,.06),0_0_0_32px_rgba(226,232,240,.035)]" />
         <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
           <span className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--group-card-muted)] dark:text-[var(--group-card-muted-dark)]">
