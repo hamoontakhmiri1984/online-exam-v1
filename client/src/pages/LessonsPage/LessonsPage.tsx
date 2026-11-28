@@ -76,7 +76,7 @@ function LessonsPage() {
                   <button
                     key={group.id}
                     onClick={() => navigate(`/lessons/${group.id}`)}
-                    className="lesson-premium-card flex flex-col items-start gap-3 rounded-3xl border border-gray-100 bg-white p-6 text-right shadow-sm transition hover:-translate-y-1 hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
+                    className="app-panel-card app-panel-card--interactive lesson-premium-card flex flex-col items-start gap-3 bg-white p-6 text-right dark:bg-gray-900"
                   >
                     <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-ink dark:bg-brand-600/15">
                       <Video size={20} />
