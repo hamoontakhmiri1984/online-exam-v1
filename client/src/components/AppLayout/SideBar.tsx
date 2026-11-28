@@ -414,7 +414,7 @@ function Sidebar({
                 title="خروج از سامانه"
                 aria-label="خروج از سامانه"
               >
-                <span className={`sidebar-logout-icon ${isCollapsed ? 'md:border-l-0 md:pl-0' : ''}`}>
+                <span className={`sidebar-logout-icon ${isCollapsed ? 'sidebar-logout-icon--compact' : ''}`}>
                   <LogOut size={17} aria-hidden="true" />
                 </span>
                 <span className={isCollapsed ? 'md:hidden' : ''}>خروج از سامانه</span>
@@ -437,7 +437,7 @@ function Sidebar({
                 title="خروج از سامانه"
                 aria-label="خروج از سامانه"
               >
-                <span className={`sidebar-logout-icon ${isCollapsed ? 'md:border-l-0 md:pl-0' : ''}`}>
+                <span className={`sidebar-logout-icon ${isCollapsed ? 'sidebar-logout-icon--compact' : ''}`}>
                   <LogOut size={17} aria-hidden="true" />
                 </span>
                 <span className={isCollapsed ? 'md:hidden' : ''}>خروج از سامانه</span>
