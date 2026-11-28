@@ -63,6 +63,7 @@ test('admin sidebar sections expand independently and restore the active group',
   );
   expect(activeMarkerContent).toBe('none');
 
+  await expect(navigation.locator('.admin-nav-group-count')).toHaveCount(0);
   await expect(sidebar.locator('.admin-sidebar-identity')).toContainText('کاربر ارشد');
   await expect(sidebar.locator('.admin-nav-section-heading')).toContainText('مدیریت و راهبری');
   await expect(education).toHaveAttribute('aria-expanded', 'true');
