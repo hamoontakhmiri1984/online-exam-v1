@@ -40,6 +40,9 @@ test('expanded navigation groups persist safely and discard unknown values', () 
   };
 
   assert.deepEqual(readExpandedNavigationGroups(storage, 'admin-navigation:one'), ['education', 'content']);
+  assert.deepEqual(readExpandedNavigationGroups(storage, 'admin-navigation:new-account'), ['requests']);
+  values.set('admin-navigation:all-closed', '[]');
+  assert.deepEqual(readExpandedNavigationGroups(storage, 'admin-navigation:all-closed'), []);
   assert.deepEqual(readExpandedNavigationGroups(storage, 'admin-navigation:broken'), []);
   writeExpandedNavigationGroups(storage, 'admin-navigation:one', ['requests', 'finance']);
   assert.deepEqual(readExpandedNavigationGroups(storage, 'admin-navigation:one'), ['requests', 'finance']);
