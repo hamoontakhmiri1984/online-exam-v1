@@ -2,7 +2,8 @@ import InstructorFilter from '../../components/AdminUI/InstructorFilter';
 import UiSelect from '../../components/UiSelect';
 import { useState } from 'react';
 import AppLayout from '../../components/AppLayout/AppLayout';
-import PageHeader from '../../components/PageHeader/PageHeader';
+import LearningPageLayout from '../../components/LearningPageLayout/LearningPageLayout';
+import { BarChart3 } from 'lucide-react';
 import DataTable from '../../components/AdminUI/DataTable';
 import FilterBar, {
   RangeSelect,
@@ -24,11 +25,13 @@ export default function ReportsPage() {
   );
   return (
     <AppLayout title="گزارش‌ها">
-      <div className="reports-page">
-      <PageHeader
+      <LearningPageLayout
+        eyebrow="مدیریت و راهبری"
         title="گزارش‌ها"
-        description="عملکرد آموزشی و فعالیت سامانه در بازهٔ انتخاب‌شده"
-      />
+        description="عملکرد آموزشی و فعالیت سامانه را در بازهٔ انتخاب‌شده بررسی کنید."
+        icon={BarChart3}
+      >
+      <div className="reports-page">
       <FilterBar>
         <RangeSelect days={days} onChange={setDays} />
         <InstructorFilter value={instructorId} onChange={setInstructorId} />
@@ -95,6 +98,7 @@ export default function ReportsPage() {
         ]}
       />
       </div>
+      </LearningPageLayout>
     </AppLayout>
   );
 }
